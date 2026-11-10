@@ -1,0 +1,52 @@
+handler1.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler10.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler11.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler12.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler13.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler14.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler15.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler16.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler17.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler18.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler19.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler2.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler20.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler21.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler22.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler23.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler24.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler25.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler3.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler4.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler5.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler6.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler7.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler8.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+handler9.ts(3,9): error TS2322: Type 'string | undefined' is not assignable to type 'number'.
+  Type 'undefined' is not assignable to type 'number'.
+routes.ts(3,17): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.

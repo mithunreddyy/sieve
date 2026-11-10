@@ -1,0 +1,85 @@
+   Compiling shop v0.1.0 (/work/shop)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.92s
+     Running unittests src/lib.rs (target/debug/deps/shop-1a2b3c4d5e6f7a8b)
+
+running 62 tests
+test tests::doubles_0 ... ok
+test tests::doubles_1 ... ok
+test tests::doubles_2 ... ok
+test tests::doubles_3 ... ok
+test tests::doubles_4 ... ok
+test tests::doubles_5 ... ok
+test tests::doubles_6 ... ok
+test tests::doubles_7 ... ok
+test tests::doubles_8 ... ok
+test tests::doubles_9 ... ok
+test tests::doubles_10 ... ok
+test tests::doubles_11 ... ok
+test tests::doubles_12 ... ok
+test tests::doubles_13 ... ok
+test tests::doubles_14 ... ok
+test tests::doubles_15 ... ok
+test tests::doubles_16 ... ok
+test tests::doubles_17 ... ok
+test tests::doubles_18 ... ok
+test tests::doubles_19 ... ok
+test tests::doubles_20 ... ok
+test tests::doubles_21 ... ok
+test tests::doubles_22 ... ok
+test tests::doubles_23 ... ok
+test tests::doubles_24 ... ok
+test tests::doubles_25 ... ok
+test tests::doubles_26 ... ok
+test tests::doubles_27 ... ok
+test tests::doubles_28 ... ok
+test tests::doubles_29 ... ok
+test tests::doubles_30 ... ok
+test tests::discount_applied_once ... FAILED
+test tests::doubles_31 ... ok
+test tests::doubles_32 ... ok
+test tests::doubles_33 ... ok
+test tests::doubles_34 ... ok
+test tests::doubles_35 ... ok
+test tests::doubles_36 ... ok
+test tests::doubles_37 ... ok
+test tests::doubles_38 ... ok
+test tests::doubles_39 ... ok
+test tests::doubles_40 ... ok
+test tests::doubles_41 ... ok
+test tests::doubles_42 ... ok
+test tests::doubles_43 ... ok
+test tests::doubles_44 ... ok
+test tests::doubles_45 ... ok
+test tests::doubles_46 ... ok
+test tests::doubles_47 ... ok
+test tests::doubles_48 ... ok
+test tests::doubles_49 ... ok
+test tests::doubles_50 ... ok
+test tests::doubles_51 ... ok
+test tests::doubles_52 ... ok
+test tests::doubles_53 ... ok
+test tests::doubles_54 ... ok
+test tests::doubles_55 ... ok
+test tests::doubles_56 ... ok
+test tests::doubles_57 ... ok
+test tests::doubles_58 ... ok
+test tests::doubles_59 ... ok
+test tests::doubles_60 ... ok
+
+failures:
+
+---- tests::discount_applied_once stdout ----
+
+thread 'tests::discount_applied_once' panicked at src/lib.rs:20:9:
+assertion `left == right` failed
+  left: 81.0
+ right: 90.0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::discount_applied_once
+
+test result: FAILED. 61 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`

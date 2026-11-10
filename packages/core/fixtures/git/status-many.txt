@@ -1,0 +1,70 @@
+On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	deleted:    readme.md
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   lib/arguments/command-file.js
+	modified:   lib/arguments/command.js
+	modified:   lib/arguments/cwd.js
+	modified:   lib/arguments/encoding-option.js
+	modified:   lib/arguments/escape.js
+	modified:   lib/arguments/fd-options.js
+	modified:   lib/arguments/file-url.js
+	modified:   lib/arguments/options.js
+	modified:   lib/arguments/shell.js
+	modified:   lib/arguments/specific.js
+	modified:   lib/convert/add.js
+	modified:   lib/convert/concurrent.js
+	modified:   lib/convert/duplex.js
+	modified:   lib/convert/iterable.js
+	modified:   lib/convert/readable.js
+	modified:   lib/convert/shared.js
+	modified:   lib/convert/web.js
+	modified:   lib/convert/writable.js
+	modified:   lib/io/contents.js
+	modified:   lib/io/input-sync.js
+	modified:   lib/io/iterate.js
+	modified:   lib/io/max-buffer.js
+	modified:   lib/io/output-async.js
+	modified:   lib/io/output-sync.js
+	modified:   lib/io/pipeline.js
+	modified:   lib/io/strip-newline.js
+	modified:   lib/ipc/array.js
+	modified:   lib/ipc/buffer-messages.js
+	modified:   lib/ipc/forward.js
+	modified:   lib/ipc/get-each.js
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	readme.md
+	scratch-1.tmp
+	scratch-10.tmp
+	scratch-11.tmp
+	scratch-12.tmp
+	scratch-13.tmp
+	scratch-14.tmp
+	scratch-15.tmp
+	scratch-16.tmp
+	scratch-17.tmp
+	scratch-18.tmp
+	scratch-19.tmp
+	scratch-2.tmp
+	scratch-20.tmp
+	scratch-21.tmp
+	scratch-22.tmp
+	scratch-23.tmp
+	scratch-24.tmp
+	scratch-25.tmp
+	scratch-3.tmp
+	scratch-4.tmp
+	scratch-5.tmp
+	scratch-6.tmp
+	scratch-7.tmp
+	scratch-8.tmp
+	scratch-9.tmp
+

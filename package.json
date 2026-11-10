@@ -1,0 +1,21 @@
+{
+  "name": "sieve-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "packages/adapters/*"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "biome check .",
+    "bench": "bun packages/bench/src/main.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2",
+    "@types/bun": "latest",
+    "typescript": "^5.9"
+  }
+}

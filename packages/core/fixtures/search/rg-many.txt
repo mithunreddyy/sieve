@@ -1,0 +1,800 @@
+/work/execa/index.d.ts:11:export type {ResultPromise, Subprocess} from './types/subprocess/subprocess.js';
+/work/execa/test-d/convert/readable.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/readable.test-d.ts:7:expectTypeOf(subprocess.readable()).toBe<Readable>();
+/work/execa/test-d/convert/readable.test-d.ts:9:subprocess.readable({from: 'stdout'});
+/work/execa/test-d/convert/readable.test-d.ts:10:subprocess.readable({from: 'stderr'});
+/work/execa/test-d/convert/readable.test-d.ts:11:subprocess.readable({from: 'all'});
+/work/execa/test-d/convert/readable.test-d.ts:12:subprocess.readable({from: 'fd3'});
+/work/execa/test-d/convert/readable.test-d.ts:13:expectError(subprocess.readable({from: 'fd3' as string}));
+/work/execa/test-d/convert/readable.test-d.ts:14:expectError(subprocess.readable({from: 'stdin'}));
+/work/execa/test-d/convert/readable.test-d.ts:15:expectError(subprocess.readable({from: 'fd'}));
+/work/execa/test-d/convert/readable.test-d.ts:16:expectError(subprocess.readable({from: 'fdNotANumber'}));
+/work/execa/test-d/convert/readable.test-d.ts:17:expectError(subprocess.readable({to: 'stdin'}));
+/work/execa/test-d/convert/readable.test-d.ts:19:subprocess.readable({binary: false});
+/work/execa/test-d/convert/readable.test-d.ts:20:expectError(subprocess.readable({binary: 'false'}));
+/work/execa/test-d/convert/readable.test-d.ts:22:subprocess.readable({preserveNewlines: false});
+/work/execa/test-d/convert/readable.test-d.ts:23:expectError(subprocess.readable({preserveNewlines: 'false'}));
+/work/execa/test-d/convert/readable.test-d.ts:25:expectError(subprocess.readable('stdout'));
+/work/execa/test-d/convert/readable.test-d.ts:26:expectError(subprocess.readable({other: 'stdout'}));
+/work/execa/test-d/convert/writable.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/writable.test-d.ts:7:expectTypeOf(subprocess.writable()).toBe<Writable>();
+/work/execa/test-d/convert/writable.test-d.ts:9:subprocess.writable({to: 'stdin'});
+/work/execa/test-d/convert/writable.test-d.ts:10:subprocess.writable({to: 'fd3'});
+/work/execa/test-d/convert/writable.test-d.ts:11:expectError(subprocess.writable({to: 'fd3' as string}));
+/work/execa/test-d/convert/writable.test-d.ts:12:expectError(subprocess.writable({to: 'stdout'}));
+/work/execa/test-d/convert/writable.test-d.ts:13:expectError(subprocess.writable({to: 'fd'}));
+/work/execa/test-d/convert/writable.test-d.ts:14:expectError(subprocess.writable({to: 'fdNotANumber'}));
+/work/execa/test-d/convert/writable.test-d.ts:15:expectError(subprocess.writable({from: 'stdout'}));
+/work/execa/test-d/convert/writable.test-d.ts:17:expectError(subprocess.writable({binary: false}));
+/work/execa/test-d/convert/writable.test-d.ts:19:expectError(subprocess.writable({preserveNewlines: false}));
+/work/execa/test-d/convert/writable.test-d.ts:21:expectError(subprocess.writable('stdin'));
+/work/execa/test-d/convert/writable.test-d.ts:22:expectError(subprocess.writable({other: 'stdin'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/readable-stream.test-d.ts:7:expectTypeOf(subprocess.readableStream()).toBe<ReadableStream>();
+/work/execa/test-d/convert/readable-stream.test-d.ts:9:subprocess.readableStream({from: 'stdout'});
+/work/execa/test-d/convert/readable-stream.test-d.ts:10:subprocess.readableStream({from: 'stderr'});
+/work/execa/test-d/convert/readable-stream.test-d.ts:11:subprocess.readableStream({from: 'all'});
+/work/execa/test-d/convert/readable-stream.test-d.ts:12:subprocess.readableStream({from: 'fd3'});
+/work/execa/test-d/convert/readable-stream.test-d.ts:13:expectError(subprocess.readableStream({from: 'fd3' as string}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:14:expectError(subprocess.readableStream({from: 'stdin'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:15:expectError(subprocess.readableStream({from: 'fd'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:16:expectError(subprocess.readableStream({from: 'fdNotANumber'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:17:expectError(subprocess.readableStream({to: 'stdin'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:19:subprocess.readableStream({binary: false});
+/work/execa/test-d/convert/readable-stream.test-d.ts:20:expectError(subprocess.readableStream({binary: 'false'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:22:subprocess.readableStream({preserveNewlines: false});
+/work/execa/test-d/convert/readable-stream.test-d.ts:23:expectError(subprocess.readableStream({preserveNewlines: 'false'}));
+/work/execa/test-d/convert/readable-stream.test-d.ts:25:expectError(subprocess.readableStream('stdout'));
+/work/execa/test-d/convert/readable-stream.test-d.ts:26:expectError(subprocess.readableStream({other: 'stdout'}));
+/work/execa/test-d/convert/duplex.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/duplex.test-d.ts:7:expectTypeOf(subprocess.duplex()).toBe<Duplex>();
+/work/execa/test-d/convert/duplex.test-d.ts:9:subprocess.duplex({from: 'stdout'});
+/work/execa/test-d/convert/duplex.test-d.ts:10:subprocess.duplex({from: 'stderr'});
+/work/execa/test-d/convert/duplex.test-d.ts:11:subprocess.duplex({from: 'all'});
+/work/execa/test-d/convert/duplex.test-d.ts:12:subprocess.duplex({from: 'fd3'});
+/work/execa/test-d/convert/duplex.test-d.ts:13:subprocess.duplex({to: 'fd3'});
+/work/execa/test-d/convert/duplex.test-d.ts:14:subprocess.duplex({from: 'stdout', to: 'stdin'});
+/work/execa/test-d/convert/duplex.test-d.ts:15:subprocess.duplex({from: 'stdout', to: 'fd3'});
+/work/execa/test-d/convert/duplex.test-d.ts:16:expectError(subprocess.duplex({from: 'stdout' as string}));
+/work/execa/test-d/convert/duplex.test-d.ts:17:expectError(subprocess.duplex({to: 'fd3' as string}));
+/work/execa/test-d/convert/duplex.test-d.ts:18:expectError(subprocess.duplex({from: 'stdin'}));
+/work/execa/test-d/convert/duplex.test-d.ts:19:expectError(subprocess.duplex({from: 'stderr', to: 'stdout'}));
+/work/execa/test-d/convert/duplex.test-d.ts:20:expectError(subprocess.duplex({from: 'fd'}));
+/work/execa/test-d/convert/duplex.test-d.ts:21:expectError(subprocess.duplex({from: 'fdNotANumber'}));
+/work/execa/test-d/convert/duplex.test-d.ts:22:expectError(subprocess.duplex({to: 'fd'}));
+/work/execa/test-d/convert/duplex.test-d.ts:23:expectError(subprocess.duplex({to: 'fdNotANumber'}));
+/work/execa/test-d/convert/duplex.test-d.ts:25:subprocess.duplex({binary: false});
+/work/execa/test-d/convert/duplex.test-d.ts:26:expectError(subprocess.duplex({binary: 'false'}));
+/work/execa/test-d/convert/duplex.test-d.ts:28:subprocess.duplex({preserveNewlines: false});
+/work/execa/test-d/convert/duplex.test-d.ts:29:expectError(subprocess.duplex({preserveNewlines: 'false'}));
+/work/execa/test-d/convert/duplex.test-d.ts:31:expectError(subprocess.duplex('stdout'));
+/work/execa/test-d/convert/duplex.test-d.ts:32:expectError(subprocess.duplex({other: 'stdout'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/transform-stream.test-d.ts:7:expectTypeOf(subprocess.transformStream()).toBe<ReadableWritablePair>();
+/work/execa/test-d/convert/transform-stream.test-d.ts:9:subprocess.transformStream({from: 'stdout'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:10:subprocess.transformStream({from: 'stderr'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:11:subprocess.transformStream({from: 'all'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:12:subprocess.transformStream({from: 'fd3'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:13:subprocess.transformStream({to: 'fd3'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:14:subprocess.transformStream({from: 'stdout', to: 'stdin'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:15:subprocess.transformStream({from: 'stdout', to: 'fd3'});
+/work/execa/test-d/convert/transform-stream.test-d.ts:16:expectError(subprocess.transformStream({from: 'stdout' as string}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:17:expectError(subprocess.transformStream({to: 'fd3' as string}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:18:expectError(subprocess.transformStream({from: 'stdin'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:19:expectError(subprocess.transformStream({from: 'stderr', to: 'stdout'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:20:expectError(subprocess.transformStream({from: 'fd'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:21:expectError(subprocess.transformStream({from: 'fdNotANumber'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:22:expectError(subprocess.transformStream({to: 'fd'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:23:expectError(subprocess.transformStream({to: 'fdNotANumber'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:25:subprocess.transformStream({binary: false});
+/work/execa/test-d/convert/transform-stream.test-d.ts:26:expectError(subprocess.transformStream({binary: 'false'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:28:subprocess.transformStream({preserveNewlines: false});
+/work/execa/test-d/convert/transform-stream.test-d.ts:29:expectError(subprocess.transformStream({preserveNewlines: 'false'}));
+/work/execa/test-d/convert/transform-stream.test-d.ts:31:expectError(subprocess.transformStream('stdout'));
+/work/execa/test-d/convert/transform-stream.test-d.ts:32:expectError(subprocess.transformStream({other: 'stdout'}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/writable-stream.test-d.ts:7:expectTypeOf(subprocess.writableStream()).toBe<WritableStream>();
+/work/execa/test-d/convert/writable-stream.test-d.ts:9:subprocess.writableStream({to: 'stdin'});
+/work/execa/test-d/convert/writable-stream.test-d.ts:10:subprocess.writableStream({to: 'fd3'});
+/work/execa/test-d/convert/writable-stream.test-d.ts:11:expectError(subprocess.writableStream({to: 'fd3' as string}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:12:expectError(subprocess.writableStream({to: 'stdout'}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:13:expectError(subprocess.writableStream({to: 'fd'}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:14:expectError(subprocess.writableStream({to: 'fdNotANumber'}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:15:expectError(subprocess.writableStream({from: 'stdout'}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:17:expectError(subprocess.writableStream({binary: false}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:19:expectError(subprocess.writableStream({preserveNewlines: false}));
+/work/execa/test-d/convert/writable-stream.test-d.ts:21:expectError(subprocess.writableStream('stdin'));
+/work/execa/test-d/convert/writable-stream.test-d.ts:22:expectError(subprocess.writableStream({other: 'stdin'}));
+/work/execa/test-d/convert/iterable.test-d.ts:4:const subprocess = execa('unicorns');
+/work/execa/test-d/convert/iterable.test-d.ts:87:const objectPipe = subprocess.pipe('unicorns', {stdout: objectTransform});
+/work/execa/test-d/convert/iterable.test-d.ts:90:expectTypeOf(subprocess.pipe(objectSubprocess).iterable()).toBe<AsyncIterableIterator<unknown>>();
+/work/execa/test-d/convert/iterable.test-d.ts:91:expectTypeOf(subprocess.pipe(objectSubprocess).iterable({from: 'stderr'})).toBe<AsyncIterableIterator<string>>();
+/work/execa/test-d/convert/iterable.test-d.ts:94:	for await (const line of subprocess) {
+/work/execa/test-d/convert/iterable.test-d.ts:98:	for await (const line of subprocess.iterable()) {
+/work/execa/test-d/convert/iterable.test-d.ts:102:	for await (const line of subprocess.iterable({binary: false})) {
+/work/execa/test-d/convert/iterable.test-d.ts:106:	for await (const line of subprocess.iterable({binary: true})) {
+/work/execa/test-d/convert/iterable.test-d.ts:110:	for await (const line of subprocess.iterable({} as {binary: boolean})) {
+/work/execa/test-d/convert/iterable.test-d.ts:137:expectTypeOf(subprocess.iterable()).toBe<AsyncIterableIterator<string>>();
+/work/execa/test-d/convert/iterable.test-d.ts:138:expectTypeOf(subprocess.iterable({binary: false})).toBe<AsyncIterableIterator<string>>();
+/work/execa/test-d/convert/iterable.test-d.ts:139:expectTypeOf(subprocess.iterable({binary: true})).toBe<AsyncIterableIterator<Uint8Array>>();
+/work/execa/test-d/convert/iterable.test-d.ts:140:expectTypeOf(subprocess.iterable({} as {binary: boolean})).toBe<AsyncIterableIterator<string | Uint8Array>>();
+/work/execa/test-d/convert/iterable.test-d.ts:152:subprocess.iterable({});
+/work/execa/test-d/convert/iterable.test-d.ts:153:subprocess.iterable({from: 'stdout'});
+/work/execa/test-d/convert/iterable.test-d.ts:154:subprocess.iterable({from: 'stderr'});
+/work/execa/test-d/convert/iterable.test-d.ts:155:subprocess.iterable({from: 'all'});
+/work/execa/test-d/convert/iterable.test-d.ts:156:subprocess.iterable({from: 'fd3'});
+/work/execa/test-d/convert/iterable.test-d.ts:157:expectError(subprocess.iterable({from: 'fd3' as string}));
+/work/execa/test-d/convert/iterable.test-d.ts:158:expectError(subprocess.iterable({from: 'stdin'}));
+/work/execa/test-d/convert/iterable.test-d.ts:159:expectError(subprocess.iterable({from: 'fd'}));
+/work/execa/test-d/convert/iterable.test-d.ts:160:expectError(subprocess.iterable({from: 'fdNotANumber'}));
+/work/execa/test-d/convert/iterable.test-d.ts:161:expectError(subprocess.iterable({to: 'stdin'}));
+/work/execa/test-d/convert/iterable.test-d.ts:163:subprocess.iterable({binary: false});
+/work/execa/test-d/convert/iterable.test-d.ts:164:expectError(subprocess.iterable({binary: 'false'}));
+/work/execa/test-d/convert/iterable.test-d.ts:166:subprocess.iterable({preserveNewlines: false});
+/work/execa/test-d/convert/iterable.test-d.ts:167:expectError(subprocess.iterable({preserveNewlines: 'false'}));
+/work/execa/test-d/convert/iterable.test-d.ts:169:expectError(subprocess.iterable('stdout'));
+/work/execa/test-d/convert/iterable.test-d.ts:170:expectError(subprocess.iterable({other: 'stdout'}));
+/work/execa/test-d/pipe.test-d.ts:17:const subprocess = execa('unicorns', {all: true});
+/work/execa/test-d/pipe.test-d.ts:26:expectTypeOf(await subprocess.pipe(subprocess)).not.toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:27:expectTypeOf(await scriptSubprocess.pipe(subprocess)).not.toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:28:expectTypeOf(await subprocess.pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:30:expectTypeOf(await subprocess.pipe(bufferSubprocess, pipeOptions)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:33:expectTypeOf(await subprocess.pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:35:expectTypeOf(await subprocess.pipe(pipeOptions)`stdin`).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:38:expectTypeOf(await subprocess.pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:40:expectTypeOf(await subprocess.pipe('stdin', pipeOptions)).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:43:expectTypeOf(await subprocess.pipe(subprocess).pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:44:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:45:expectTypeOf(await subprocess.pipe(subprocess, pipeOptions).pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:46:expectTypeOf(await scriptSubprocess.pipe(subprocess, pipeOptions).pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:47:expectTypeOf(await subprocess.pipe(subprocess).pipe(bufferSubprocess, pipeOptions)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:48:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe(bufferSubprocess, pipeOptions)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:50:expectTypeOf(await subprocess.pipe(subprocess).pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:51:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:52:expectTypeOf(await subprocess.pipe(subprocess, pipeOptions).pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:53:expectTypeOf(await scriptSubprocess.pipe(subprocess, pipeOptions).pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:54:expectTypeOf(await subprocess.pipe(subprocess).pipe(pipeOptions)`stdin`).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:55:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe(pipeOptions)`stdin`).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:57:expectTypeOf(await subprocess.pipe(subprocess).pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:58:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:59:expectTypeOf(await subprocess.pipe(subprocess, pipeOptions).pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:60:expectTypeOf(await scriptSubprocess.pipe(subprocess, pipeOptions).pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:61:expectTypeOf(await subprocess.pipe(subprocess).pipe('stdin', pipeOptions)).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:62:expectTypeOf(await scriptSubprocess.pipe(subprocess).pipe('stdin', pipeOptions)).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:64:expectTypeOf(await subprocess.pipe`stdin`.pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:66:expectTypeOf(await subprocess.pipe(pipeOptions)`stdin`.pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:68:expectTypeOf(await subprocess.pipe`stdin`.pipe(bufferSubprocess, pipeOptions)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:71:expectTypeOf(await subprocess.pipe`stdin`.pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:73:expectTypeOf(await subprocess.pipe(pipeOptions)`stdin`.pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:75:expectTypeOf(await subprocess.pipe`stdin`.pipe(pipeOptions)`stdin`).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:78:expectTypeOf(await subprocess.pipe`stdin`.pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:80:expectTypeOf(await subprocess.pipe(pipeOptions)`stdin`.pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:82:expectTypeOf(await subprocess.pipe`stdin`.pipe('stdin', pipeOptions)).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:85:expectTypeOf(await subprocess.pipe('pipe').pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:87:expectTypeOf(await subprocess.pipe('pipe', pipeOptions).pipe(bufferSubprocess)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:89:expectTypeOf(await subprocess.pipe('pipe').pipe(bufferSubprocess, pipeOptions)).toBe<BufferExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:92:expectTypeOf(await subprocess.pipe('pipe').pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:94:expectTypeOf(await subprocess.pipe('pipe', pipeOptions).pipe`stdin`).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:96:expectTypeOf(await subprocess.pipe('pipe').pipe(pipeOptions)`stdin`).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:99:expectTypeOf(await subprocess.pipe('pipe').pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:101:expectTypeOf(await subprocess.pipe('pipe', pipeOptions).pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:103:expectTypeOf(await subprocess.pipe('pipe').pipe('stdin', pipeOptions)).toBe<ShortcutExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:106:await subprocess.pipe(bufferSubprocess, {});
+/work/execa/test-d/pipe.test-d.ts:108:await subprocess.pipe({})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:110:await subprocess.pipe('stdin', {});
+/work/execa/test-d/pipe.test-d.ts:113:expectError(subprocess.pipe(bufferSubprocess).stdout);
+/work/execa/test-d/pipe.test-d.ts:115:expectError(subprocess.pipe`stdin`.stdout);
+/work/execa/test-d/pipe.test-d.ts:117:expectError(subprocess.pipe('stdin').stdout);
+/work/execa/test-d/pipe.test-d.ts:120:expectError(await subprocess.pipe({})({}));
+/work/execa/test-d/pipe.test-d.ts:122:expectError(await subprocess.pipe({})(subprocess));
+/work/execa/test-d/pipe.test-d.ts:123:expectError(await scriptSubprocess.pipe({})(subprocess));
+/work/execa/test-d/pipe.test-d.ts:124:expectError(await subprocess.pipe({})('stdin'));
+/work/execa/test-d/pipe.test-d.ts:127:expectError(subprocess.pipe(createWriteStream('output.txt')));
+/work/execa/test-d/pipe.test-d.ts:129:expectError(subprocess.pipe(false));
+/work/execa/test-d/pipe.test-d.ts:132:expectError(subprocess.pipe(bufferSubprocess, 'stdout'));
+/work/execa/test-d/pipe.test-d.ts:134:expectError(subprocess.pipe('stdout')`stdin`);
+/work/execa/test-d/pipe.test-d.ts:137:await subprocess.pipe(bufferSubprocess, {from: 'stdout'});
+/work/execa/test-d/pipe.test-d.ts:139:await subprocess.pipe({from: 'stdout'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:141:await subprocess.pipe('stdin', {from: 'stdout'});
+/work/execa/test-d/pipe.test-d.ts:144:await subprocess.pipe(bufferSubprocess, {from: 'stderr'});
+/work/execa/test-d/pipe.test-d.ts:146:await subprocess.pipe({from: 'stderr'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:148:await subprocess.pipe('stdin', {from: 'stderr'});
+/work/execa/test-d/pipe.test-d.ts:151:await subprocess.pipe(bufferSubprocess, {from: 'all'});
+/work/execa/test-d/pipe.test-d.ts:153:await subprocess.pipe({from: 'all'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:155:await subprocess.pipe('stdin', {from: 'all'});
+/work/execa/test-d/pipe.test-d.ts:158:await subprocess.pipe(bufferSubprocess, {from: 'fd3'});
+/work/execa/test-d/pipe.test-d.ts:160:await subprocess.pipe({from: 'fd3'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:162:await subprocess.pipe('stdin', {from: 'fd3'});
+/work/execa/test-d/pipe.test-d.ts:165:expectError(subprocess.pipe(bufferSubprocess, {from: 'stdin'}));
+/work/execa/test-d/pipe.test-d.ts:167:expectError(subprocess.pipe({from: 'stdin'})`stdin`);
+/work/execa/test-d/pipe.test-d.ts:169:expectError(subprocess.pipe('stdin', {from: 'stdin'}));
+/work/execa/test-d/pipe.test-d.ts:172:await subprocess.pipe(bufferSubprocess, {to: 'stdin'});
+/work/execa/test-d/pipe.test-d.ts:174:await subprocess.pipe({to: 'stdin'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:176:await subprocess.pipe('stdin', {to: 'stdin'});
+/work/execa/test-d/pipe.test-d.ts:179:await subprocess.pipe(bufferSubprocess, {to: 'fd3'});
+/work/execa/test-d/pipe.test-d.ts:181:await subprocess.pipe({to: 'fd3'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:183:await subprocess.pipe('stdin', {to: 'fd3'});
+/work/execa/test-d/pipe.test-d.ts:186:expectError(subprocess.pipe(bufferSubprocess, {to: 'stdout'}));
+/work/execa/test-d/pipe.test-d.ts:188:expectError(subprocess.pipe({to: 'stdout'})`stdin`);
+/work/execa/test-d/pipe.test-d.ts:190:expectError(subprocess.pipe('stdin', {to: 'stdout'}));
+/work/execa/test-d/pipe.test-d.ts:193:await subprocess.pipe(bufferSubprocess, {unpipeSignal: new AbortController().signal});
+/work/execa/test-d/pipe.test-d.ts:195:await subprocess.pipe({unpipeSignal: new AbortController().signal})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:197:await subprocess.pipe('stdin', {unpipeSignal: new AbortController().signal});
+/work/execa/test-d/pipe.test-d.ts:199:expectError(await subprocess.pipe(bufferSubprocess, {unpipeSignal: true}));
+/work/execa/test-d/pipe.test-d.ts:201:expectError(await subprocess.pipe({unpipeSignal: true})`stdin`);
+/work/execa/test-d/pipe.test-d.ts:203:expectError(await subprocess.pipe('stdin', {unpipeSignal: true}));
+/work/execa/test-d/pipe.test-d.ts:206:expectTypeOf(await subprocess.pipe('stdin')).toBe<EmptyExecaReturnValue>();
+/work/execa/test-d/pipe.test-d.ts:207:await subprocess.pipe('stdin');
+/work/execa/test-d/pipe.test-d.ts:208:await subprocess.pipe(fileUrl);
+/work/execa/test-d/pipe.test-d.ts:209:await subprocess.pipe('stdin', []);
+/work/execa/test-d/pipe.test-d.ts:210:await subprocess.pipe('stdin', stringArray);
+/work/execa/test-d/pipe.test-d.ts:211:await subprocess.pipe('stdin', stringArray, {});
+/work/execa/test-d/pipe.test-d.ts:212:await subprocess.pipe('stdin', stringArray, {from: 'stderr', to: 'stdin', all: true});
+/work/execa/test-d/pipe.test-d.ts:213:await subprocess.pipe('stdin', {from: 'stderr'});
+/work/execa/test-d/pipe.test-d.ts:214:await subprocess.pipe('stdin', {to: 'stdin'});
+/work/execa/test-d/pipe.test-d.ts:215:await subprocess.pipe('stdin', {all: true});
+/work/execa/test-d/pipe.test-d.ts:217:expectError(await subprocess.pipe(stringArray));
+/work/execa/test-d/pipe.test-d.ts:218:expectError(await subprocess.pipe('stdin', 'foo'));
+/work/execa/test-d/pipe.test-d.ts:219:expectError(await subprocess.pipe('stdin', [false]));
+/work/execa/test-d/pipe.test-d.ts:220:expectError(await subprocess.pipe('stdin', [], false));
+/work/execa/test-d/pipe.test-d.ts:221:expectError(await subprocess.pipe('stdin', {other: true}));
+/work/execa/test-d/pipe.test-d.ts:222:expectError(await subprocess.pipe('stdin', [], {other: true}));
+/work/execa/test-d/pipe.test-d.ts:223:expectError(await subprocess.pipe('stdin', {from: 'fd'}));
+/work/execa/test-d/pipe.test-d.ts:224:expectError(await subprocess.pipe('stdin', [], {from: 'fd'}));
+/work/execa/test-d/pipe.test-d.ts:225:expectError(await subprocess.pipe('stdin', {from: 'fdNotANumber'}));
+/work/execa/test-d/pipe.test-d.ts:226:expectError(await subprocess.pipe('stdin', [], {from: 'fdNotANumber'}));
+/work/execa/test-d/pipe.test-d.ts:227:expectError(await subprocess.pipe('stdin', {from: 'other'}));
+/work/execa/test-d/pipe.test-d.ts:228:expectError(await subprocess.pipe('stdin', [], {from: 'other'}));
+/work/execa/test-d/pipe.test-d.ts:229:expectError(await subprocess.pipe('stdin', {to: 'fd'}));
+/work/execa/test-d/pipe.test-d.ts:230:expectError(await subprocess.pipe('stdin', [], {to: 'fd'}));
+/work/execa/test-d/pipe.test-d.ts:231:expectError(await subprocess.pipe('stdin', {to: 'fdNotANumber'}));
+/work/execa/test-d/pipe.test-d.ts:232:expectError(await subprocess.pipe('stdin', [], {to: 'fdNotANumber'}));
+/work/execa/test-d/pipe.test-d.ts:233:expectError(await subprocess.pipe('stdin', {to: 'other'}));
+/work/execa/test-d/pipe.test-d.ts:234:expectError(await subprocess.pipe('stdin', [], {to: 'other'}));
+/work/execa/test-d/pipe.test-d.ts:236:const pipeResult = await subprocess.pipe`stdin`;
+/work/execa/test-d/pipe.test-d.ts:238:const ignorePipeResult = await subprocess.pipe({stdout: 'ignore'})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:246:const shortcutPipeResult = await subprocess.pipe('stdin');
+/work/execa/test-d/pipe.test-d.ts:248:const ignoreShortcutPipeResult = await subprocess.pipe('stdin', {stdout: 'ignore'});
+/work/execa/test-d/pipe.test-d.ts:259:// The `.pipe()` return value forwards the destination subprocess' iteration, stream conversion and IPC methods.
+/work/execa/test-d/pipe.test-d.ts:260:for await (const pipeLine of subprocess.pipe`stdin`) {
+/work/execa/test-d/pipe.test-d.ts:264:for await (const pipeLine of subprocess.pipe`stdin`.iterable()) {
+/work/execa/test-d/pipe.test-d.ts:268:for await (const pipeLine of subprocess.pipe(bufferSubprocess)) {
+/work/execa/test-d/pipe.test-d.ts:272:expectTypeOf(subprocess.pipe`stdin`.readable()).toBe<Readable>();
+/work/execa/test-d/pipe.test-d.ts:273:expectTypeOf(subprocess.pipe`stdin`.readableStream()).toBe<ReadableStream>();
+/work/execa/test-d/pipe.test-d.ts:275:expectTypeOf(subprocess.pipe({all: true})`stdin`.all).toBe<Readable>();
+/work/execa/test-d/pipe.test-d.ts:276:expectTypeOf(subprocess.pipe`stdin`.all).toBe<undefined>();
+/work/execa/test-d/pipe.test-d.ts:278:expectTypeOf(subprocess.pipe`stdin`.sendMessage).toBe<undefined>();
+/work/execa/test-d/pipe.test-d.ts:279:const ipcPipeResult = subprocess.pipe({ipc: true})`stdin`;
+/work/execa/test-d/pipe.test-d.ts:285:expectError(subprocess.pipe`stdin`.writable());
+/work/execa/test-d/pipe.test-d.ts:286:expectError(subprocess.pipe`stdin`.duplex());
+/work/execa/test-d/pipe.test-d.ts:287:expectError(subprocess.pipe`stdin`.writableStream());
+/work/execa/test-d/pipe.test-d.ts:288:expectError(subprocess.pipe`stdin`.transformStream());
+/work/execa/test-d/ipc/get-each.test-d.ts:9:const subprocess = execa('test', {ipc: true});
+/work/execa/test-d/ipc/get-each.test-d.ts:11:for await (const message of subprocess.getEachMessage()) {
+/work/execa/test-d/ipc/get-each.test-d.ts:23:expectError(subprocess.getEachMessage(''));
+/work/execa/test-d/ipc/get-each.test-d.ts:43:subprocess.getEachMessage({reference: true} as const);
+/work/execa/test-d/ipc/get-each.test-d.ts:45:subprocess.getEachMessage({reference: true as boolean});
+/work/execa/test-d/ipc/get-each.test-d.ts:47:expectError(subprocess.getEachMessage({reference: 'true'} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:9:const subprocess = execa('test', {ipc: true});
+/work/execa/test-d/ipc/get-one.test-d.ts:10:expectTypeOf(subprocess.getOneMessage()).toBe<Promise<Message<'advanced'>>>();
+/work/execa/test-d/ipc/get-one.test-d.ts:15:expectError(await subprocess.getOneMessage(''));
+/work/execa/test-d/ipc/get-one.test-d.ts:17:expectError(await subprocess.getOneMessage({}, ''));
+/work/execa/test-d/ipc/get-one.test-d.ts:37:await subprocess.getOneMessage({filter: undefined} as const);
+/work/execa/test-d/ipc/get-one.test-d.ts:38:await subprocess.getOneMessage({filter: (message: Message<'advanced'>) => true} as const);
+/work/execa/test-d/ipc/get-one.test-d.ts:41:await subprocess.getOneMessage({filter: (message: Message<'advanced'> | bigint) => true} as const);
+/work/execa/test-d/ipc/get-one.test-d.ts:42:await subprocess.getOneMessage({filter: () => true} as const);
+/work/execa/test-d/ipc/get-one.test-d.ts:43:expectError(await subprocess.getOneMessage({filter: (message: Message<'advanced'>) => ''} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:45:expectError(await subprocess.getOneMessage({filter(message: Message<'advanced'>) {}} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:46:expectError(await subprocess.getOneMessage({filter: (message: Message<'json'>) => true} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:47:expectError(await subprocess.getOneMessage({filter: (message: '') => true} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:48:expectError(await subprocess.getOneMessage({filter: true} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:62:expectError(await subprocess.getOneMessage({unknownOption: true} as const));
+/work/execa/test-d/ipc/get-one.test-d.ts:65:await subprocess.getOneMessage({reference: true} as const);
+/work/execa/test-d/ipc/get-one.test-d.ts:67:await subprocess.getOneMessage({reference: true as boolean});
+/work/execa/test-d/ipc/get-one.test-d.ts:69:expectError(await subprocess.getOneMessage({reference: 'true'} as const));
+/work/execa/test-d/ipc/send.test-d.ts:10:const subprocess = execa('test', {ipc: true});
+/work/execa/test-d/ipc/send.test-d.ts:11:expectTypeOf(await subprocess.sendMessage('')).toBe<void>();
+/work/execa/test-d/ipc/send.test-d.ts:14:expectError(await subprocess.sendMessage());
+/work/execa/test-d/ipc/send.test-d.ts:16:expectError(await subprocess.sendMessage(undefined));
+/work/execa/test-d/ipc/send.test-d.ts:18:expectError(await subprocess.sendMessage(0n));
+/work/execa/test-d/ipc/send.test-d.ts:20:expectError(await subprocess.sendMessage(Symbol('test')));
+/work/execa/test-d/ipc/send.test-d.ts:46:await subprocess.sendMessage('', {} as const);
+/work/execa/test-d/ipc/send.test-d.ts:48:await subprocess.sendMessage('', {strict: true} as const);
+/work/execa/test-d/ipc/send.test-d.ts:50:await subprocess.sendMessage('', {strict: true as boolean});
+/work/execa/test-d/ipc/send.test-d.ts:52:expectError(await subprocess.sendMessage('', true));
+/work/execa/test-d/ipc/send.test-d.ts:54:expectError(await subprocess.sendMessage('', {strict: 'true'}));
+/work/execa/test-d/ipc/send.test-d.ts:56:expectError(await subprocess.sendMessage('', {unknown: true}));
+/work/execa/test-d/ipc/send.test-d.ts:58:expectError(await subprocess.sendMessage('', {strict: true}, {}));
+/work/execa/lib/convert/duplex.js:20:// Create a `Duplex` stream combining both `subprocess.readable()` and `subprocess.writable()`
+/work/execa/lib/convert/duplex.js:21:export const createDuplex = ({subprocess, concurrentStreams, encoding}, options) => {
+/work/execa/lib/convert/duplex.js:27:	const subprocessStdout = getFromStream(subprocess, from);
+/work/execa/lib/convert/duplex.js:28:	const subprocessStdin = getToStream(subprocess, to);
+/work/execa/lib/convert/duplex.js:29:	const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, 'readableDestroy');
+/work/execa/lib/convert/duplex.js:30:	const {waitWritableFinal, waitWritableDestroy} = addWritableConcurrentStreams(concurrentStreams, subprocessStdin);
+/work/execa/lib/convert/duplex.js:31:	const {readableEncoding, readableObjectMode, readableHighWaterMark} = getReadableOptions(subprocessStdout, binary);
+/work/execa/lib/convert/duplex.js:33:		subprocessStdout,
+/work/execa/lib/convert/duplex.js:34:		subprocess,
+/work/execa/lib/convert/duplex.js:41:		...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
+/work/execa/lib/convert/duplex.js:43:			subprocessStdout,
+/work/execa/lib/convert/duplex.js:44:			subprocessStdin,
+/work/execa/lib/convert/duplex.js:45:			subprocess,
+/work/execa/lib/convert/duplex.js:51:		writableHighWaterMark: subprocessStdin.writableHighWaterMark,
+/work/execa/lib/convert/duplex.js:53:		writableObjectMode: subprocessStdin.writableObjectMode,
+/work/execa/lib/convert/duplex.js:57:		subprocessStdout,
+/work/execa/lib/convert/duplex.js:60:		subprocess,
+/work/execa/lib/convert/duplex.js:61:		subprocessStdin,
+/work/execa/lib/convert/duplex.js:63:	onStdinFinished(subprocessStdin, duplex, subprocessStdout, subprocess);
+/work/execa/lib/convert/duplex.js:67:const onDuplexDestroy = async ({subprocessStdout, subprocessStdin, subprocess, waitReadableDestroy, waitWritableFinal, waitWritableDestroy}, error) => {
+/work/execa/lib/convert/duplex.js:69:		onReadableDestroy({subprocessStdout, subprocess, waitReadableDestroy}, error),
+/work/execa/lib/convert/duplex.js:71:			subprocessStdin,
+/work/execa/lib/convert/duplex.js:72:			subprocess,
+/work/execa/lib/resolve/all-async.js:17:// Unlike `subprocess.all`, this excludes the file descriptors which are not buffered, since their output is not included
+/work/execa/lib/resolve/all-async.js:23:// Read the contents of `subprocess.all` and|or wait for its completion
+/work/execa/lib/resolve/all-async.js:24:export const waitForAllStream = ({subprocess, all, encoding, buffer, maxBuffer, lines, stripFinalNewline, verboseInfo, streamInfo}) => {
+/work/execa/lib/resolve/all-async.js:25:	const {stream, buffer: bufferAll, drainedStream} = getAllStream(subprocess, all, buffer);
+/work/execa/lib/resolve/all-async.js:34:			allFds: getAllFds(subprocess, buffer),
+/work/execa/lib/resolve/all-async.js:36:			allMixed: stream === all && getAllMixed(subprocess, all),
+/work/execa/lib/resolve/all-async.js:42:		// The merged one is then drained, otherwise it would apply backpressure on that file descriptor and hang the subprocess.
+/work/execa/lib/resolve/all-async.js:64:// When `subprocess.stdout` is in objectMode but not `subprocess.stderr` (or the opposite), we need to use both:
+/work/execa/lib/terminate/kill.js:22:// Monkey-patches `subprocess.kill()` to add `forceKillAfterDelay` behavior and `.kill(error)`
+/work/execa/lib/terminate/kill.js:23:export const subprocessKill = (
+/work/execa/lib/terminate/kill.js:59:// Fails right away when calling `subprocess.kill(error)`.
+/work/execa/lib/terminate/kill.js:61:// Uses a deferred promise instead of the `error` event on the subprocess, as this is less intrusive.
+/work/execa/lib/terminate/kill.js:79:// Forcefully terminate a subprocess after a timeout
+/work/execa/lib/resolve/stdio.js:4:// Read the contents of `subprocess.std*` and|or wait for its completion
+/work/execa/lib/resolve/stdio.js:5:export const waitForStdioStreams = ({subprocess, encoding, buffer, maxBuffer, lines, stripFinalNewline, verboseInfo, streamInfo}) => subprocess.stdio.map((stream, fdNumber) => waitForSubprocessStream({
+/work/execa/lib/resolve/stdio.js:18:// Read the contents of `subprocess.std*` or `subprocess.all` and|or wait for its completion
+/work/execa/lib/convert/shared.js:4:export const safeWaitForSubprocessStdin = async subprocessStdin => {
+/work/execa/lib/convert/shared.js:5:	if (subprocessStdin === undefined) {
+/work/execa/lib/convert/shared.js:10:		await waitForSubprocessStdin(subprocessStdin);
+/work/execa/lib/convert/shared.js:14:export const safeWaitForSubprocessStdout = async subprocessStdout => {
+/work/execa/lib/convert/shared.js:15:	if (subprocessStdout === undefined) {
+/work/execa/lib/convert/shared.js:20:		await waitForSubprocessStdout(subprocessStdout);
+/work/execa/lib/convert/shared.js:24:export const waitForSubprocessStdin = async subprocessStdin => {
+/work/execa/lib/convert/shared.js:25:	await finished(subprocessStdin, {cleanup: true, readable: false, writable: true});
+/work/execa/lib/convert/shared.js:28:export const waitForSubprocessStdout = async subprocessStdout => {
+/work/execa/lib/convert/shared.js:29:	await finished(subprocessStdout, {cleanup: true, readable: true, writable: false});
+/work/execa/lib/convert/shared.js:32:// When `readable` or `writable` aborts/errors, the caller awaits the subprocess, for the reason mentioned above.
+/work/execa/lib/convert/shared.js:33:// Then, the error passed to `stream.destroy(error)` is emitted, including when the subprocess has already ended.
+/work/execa/package.json:34:		"subprocess",
+/work/execa/test-d/subprocess/subprocess.test-d.ts:5:const subprocess = execa('unicorns');
+/work/execa/test-d/subprocess/subprocess.test-d.ts:6:expectTypeOf(subprocess).toBeAssignableTo<Subprocess>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:7:expectTypeOf(await subprocess).toBe<Result<{}>>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:9:expectTypeOf(subprocess.pid).toBe<number | undefined>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:10:expectTypeOf(subprocess.nodeChildProcess).toBe<ChildProcess>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:11:subprocess.nodeChildProcess.on('exit', () => undefined);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:12:subprocess.nodeChildProcess.once('exit', () => undefined);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:13:subprocess.nodeChildProcess.ref();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:14:subprocess.nodeChildProcess.unref();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:15:subprocess.nodeChildProcess.send('message');
+/work/execa/test-d/subprocess/subprocess.test-d.ts:16:subprocess.nodeChildProcess.disconnect();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:17:expectTypeOf(subprocess.nodeChildProcess.connected).toBe<boolean>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:18:expectTypeOf(subprocess.nodeChildProcess.exitCode).toBe<number | null>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:19:expectTypeOf(subprocess.nodeChildProcess.signalCode).toBe<NodeJS.Signals | null>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:20:expectTypeOf(subprocess.nodeChildProcess.killed).toBe<boolean>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:21:expectTypeOf(subprocess.nodeChildProcess.spawnargs).toBe<string[]>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:22:expectTypeOf(subprocess.nodeChildProcess.spawnfile).toBe<string>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:23:expectError(subprocess.on('exit', () => undefined));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:24:expectError(subprocess.once('exit', () => undefined));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:25:expectError(subprocess.ref());
+/work/execa/test-d/subprocess/subprocess.test-d.ts:26:expectError(subprocess.unref());
+/work/execa/test-d/subprocess/subprocess.test-d.ts:27:expectError(subprocess.send('message'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:28:expectError(subprocess.disconnect());
+/work/execa/test-d/subprocess/subprocess.test-d.ts:29:expectError(subprocess.connected);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:30:expectError(subprocess.channel);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:31:expectError(subprocess.exitCode);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:32:expectError(subprocess.signalCode);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:33:expectError(subprocess.killed);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:34:expectError(subprocess.spawnargs);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:35:expectError(subprocess.spawnfile);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:37:expectTypeOf(subprocess.kill()).toBe<boolean>();
+/work/execa/test-d/subprocess/subprocess.test-d.ts:38:subprocess.kill('SIGKILL');
+/work/execa/test-d/subprocess/subprocess.test-d.ts:39:subprocess.kill(undefined);
+/work/execa/test-d/subprocess/subprocess.test-d.ts:40:subprocess.kill(new Error('test'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:41:subprocess.kill('SIGKILL', new Error('test'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:42:subprocess.kill(undefined, new Error('test'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:43:expectError(subprocess.kill(null));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:44:expectError(subprocess.kill(0n));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:45:expectError(subprocess.kill('Sigkill'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:46:expectError(subprocess.kill('sigkill'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:47:expectError(subprocess.kill('SIGOTHER'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:48:expectError(subprocess.kill('SIGEMT'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:49:expectError(subprocess.kill('SIGCLD'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:50:expectError(subprocess.kill('SIGRT1'));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:51:expectError(subprocess.kill([new Error('test')]));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:52:expectError(subprocess.kill({message: 'test'}));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:53:expectError(subprocess.kill(undefined, {}));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:54:expectError(subprocess.kill('SIGKILL', {}));
+/work/execa/test-d/subprocess/subprocess.test-d.ts:55:expectError(subprocess.kill(null, new Error('test')));
+/work/execa/lib/terminate/signal.js:17:	: normalizeSignal(signal, '`subprocess.kill()`\'s argument');
+/work/execa/lib/resolve/wait-subprocess.js:17:// Retrieve result of subprocess: exit code, signal, error, streams (stdout/stderr/all)
+/work/execa/lib/resolve/wait-subprocess.js:19:	subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:42:	const exitPromise = waitForExit(subprocess, context);
+/work/execa/lib/resolve/wait-subprocess.js:46:		subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:52:		subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:62:		subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:74:		subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:81:	const originalPromises = waitForOriginalStreams(originalStreams, subprocess, streamInfo);
+/work/execa/lib/resolve/wait-subprocess.js:92:				sendIpcInput(subprocess, ipcInput, ipc),
+/work/execa/lib/resolve/wait-subprocess.js:97:			throwOnSubprocessError(subprocess, controller),
+/work/execa/lib/resolve/wait-subprocess.js:107:				subprocess,
+/work/execa/lib/resolve/wait-subprocess.js:118:		// Closing the output stream does not stop a subprocess that stays alive without writing again.
+/work/execa/lib/resolve/wait-subprocess.js:135:// Transforms replace `subprocess.std*`, which means they are not exposed to users.
+/work/execa/lib/resolve/wait-subprocess.js:137:const waitForOriginalStreams = (originalStreams, subprocess, streamInfo) =>
+/work/execa/lib/resolve/wait-subprocess.js:138:	originalStreams.map((stream, fdNumber) => stream === subprocess.stdio[fdNumber]
+/work/execa/lib/resolve/wait-subprocess.js:143:// The `.pipe()` method automatically ends that stream when `subprocess` ends.
+/work/execa/lib/resolve/wait-subprocess.js:154:// Fails when the subprocess emits an `error` event
+/work/execa/lib/resolve/wait-subprocess.js:155:const throwOnSubprocessError = async (subprocess, {signal}) => {
+/work/execa/lib/resolve/wait-subprocess.js:156:	const [error] = await once(subprocess, 'error', {signal});
+/work/execa/test/convert/duplex.js:40:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:41:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:51:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/duplex.js:55:	const subprocess = execa('noop-stdin-fd.js', [`${fdNumber}`], options);
+/work/execa/test/convert/duplex.js:56:	const stream = subprocess.duplex({from});
+/work/execa/test/convert/duplex.js:60:	await assertSubprocessOutput(subprocess, foobarString, fdNumber);
+/work/execa/test/convert/duplex.js:75:	const subprocess = execa('stdin-fd.js', [`${fdNumber}`], options);
+/work/execa/test/convert/duplex.js:76:	const stream = subprocess.duplex({to});
+/work/execa/test/convert/duplex.js:81:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/duplex.js:89:test('.duplex() abort -> subprocess fail', async () => {
+/work/execa/test/convert/duplex.js:90:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:91:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:99:	assertWritableAborted(subprocess.stdin);
+/work/execa/test/convert/duplex.js:100:	assertReadableAborted(subprocess.stdout);
+/work/execa/test/convert/duplex.js:101:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/duplex.js:102:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/duplex.js:105:test('.duplex() error -> subprocess fail', async () => {
+/work/execa/test/convert/duplex.js:106:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:107:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:114:	assert.equal(subprocess.stdin.errored, cause);
+/work/execa/test/convert/duplex.js:115:	assert.equal(subprocess.stdout.errored, cause);
+/work/execa/test/convert/duplex.js:116:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/duplex.js:117:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/duplex.js:121:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:123:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:131:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/duplex.js:135:	const subprocess = execa('stdin-fail.js');
+/work/execa/test/convert/duplex.js:137:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:147:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/duplex.js:151:	const subprocess = execa('stdin-fail.js');
+/work/execa/test/convert/duplex.js:153:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:172:		await assertSubprocessError(subprocess, {cause: error});
+/work/execa/test/convert/duplex.js:177:	const subprocess = execa('stdin-fail.js');
+/work/execa/test/convert/duplex.js:179:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:191:	await assertSubprocessError(subprocess, {cause: error});
+/work/execa/test/convert/duplex.js:195:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:197:	const stream = subprocess.duplex();
+/work/execa/test/convert/duplex.js:201:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/duplex.js:205:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/duplex.js:206:	const stream = subprocess.duplex();
+/work/execa/types/arguments/fd-options.d.ts:3:// `from` option of `subprocess.readable|duplex|iterable|pipe()`
+/work/execa/types/arguments/fd-options.d.ts:7:// `to` option of `subprocess.writable|duplex|pipe()`
+/work/execa/readme.md:72:- [Pipe multiple subprocesses](#pipe-multiple-subprocesses) better than in shells: retrieve [intermediate results](docs/pipe.md#result), use multiple [sources](docs/pipe.md#multiple-sources-1-destination)/[destinations](docs/pipe.md#1-source-multiple-destinations), [unpipe](docs/pipe.md#unpipe).
+/work/execa/readme.md:75:- Pass any [input](docs/input.md) to the subprocess: [files](#file-input), [strings](#simple-input), [`Uint8Array`s](docs/binary.md#binary-input), [iterables](docs/streams.md#iterables-as-input), [objects](docs/transform.md#object-mode) and almost any [other type](#any-input-type).
+/work/execa/readme.md:76:- Return [almost any type](#any-output-type) from the subprocess, or redirect it to [files](#file-output).
+/work/execa/readme.md:80:- Pass [Node.js streams](docs/streams.md#nodejs-streams) or [web streams](#web-streams) to subprocesses, or [convert](#convert-to-duplex-stream) subprocesses to [a stream](docs/streams.md#converting-a-subprocess-to-a-stream).
+/work/execa/readme.md:81:- [Exchange messages](#exchange-messages) with the subprocess.
+/work/execa/readme.md:82:- Ensure subprocesses exit even when they [intercept termination signals](docs/termination.md#forceful-termination), or when the current process [ends abruptly](docs/termination.md#current-process-exit).
+/work/execa/readme.md:110:- 🔀 [Piping multiple subprocesses](docs/pipe.md)
+/work/execa/readme.md:165:#### Pipe multiple subprocesses
+/work/execa/readme.md:284:const subprocess = execaNode`child.js`;
+/work/execa/readme.md:285:await subprocess.sendMessage('Hello from parent');
+/work/execa/readme.md:286:const message = await subprocess.getOneMessage();
+/work/execa/test-d/subprocess/options-union.test-d.ts:11:const subprocess = execa('unicorns', outputOptions);
+/work/execa/test-d/subprocess/options-union.test-d.ts:12:expectTypeOf(subprocess.stdout).toBe<Readable | null>();
+/work/execa/test-d/subprocess/options-union.test-d.ts:13:expectTypeOf(subprocess.stdio[1]).toBe<Readable | null>();
+/work/execa/test-d/subprocess/options-union.test-d.ts:14:expectError(subprocess.stdout.read());
+/work/execa/lib/terminate/kill-descendants.js:8:// On Unix, this requires spawning the subprocess in its own process group, so we override the
+/work/execa/lib/terminate/kill-descendants.js:16:// Returns the low-level function used to send a signal to the subprocess.
+/work/execa/lib/terminate/kill-descendants.js:18:export const getKillFunction = (subprocess, {killDescendants}) => {
+/work/execa/lib/terminate/kill-descendants.js:21:		`subprocess.pid` is `undefined` when the subprocess failed to spawn, e.g. with `ENOENT`.
+/work/execa/lib/terminate/kill-descendants.js:23:		So, like `ChildProcess.prototype.kill()` does for a subprocess which already exited, nothing is signaled and `false` is returned.
+/work/execa/lib/terminate/kill-descendants.js:25:		const killSubprocess = subprocess.kill.bind(subprocess);
+/work/execa/lib/terminate/kill-descendants.js:26:		return (...arguments_) => (subprocess.pid === undefined ? false : killSubprocess(...arguments_));
+/work/execa/lib/terminate/kill-descendants.js:30:	return killDescendantsFunction.bind(undefined, subprocess);
+/work/execa/lib/terminate/kill-descendants.js:34:Unlike `subprocess.kill()`, signaling a process group or a process tree uses the PID directly, without going through the subprocess' handle. The OS can re-assign that PID once it is not used anymore, and signaling it then would terminate an unrelated process, and on Windows its own descendants too.
+/work/execa/lib/terminate/kill-descendants.js:35:On Unix, a PID stays reserved as long as it is the process group ID of a running process, i.e. as long as any descendant in that group is still running. So signaling the process group after the subprocess exited is still useful, e.g. for the `forceKillAfterDelay` escalation while Execa is waiting on a descendant, or with `subprocess.kill()` to terminate background descendants once the subprocess has settled. Once the whole group exited, the PID can only be signaled if the OS re-assigned it to a new process group leader, which is unlikely, so this is a documented limitation.
+/work/execa/lib/terminate/kill-descendants.js:36:On Windows, there are no process groups: a PID is only reserved while a handle to the process is open, which Node.js closes once the subprocess exits. `taskkill /T` also cannot find the descendants of a process which exited. So the process tree is never signaled once the subprocess exited.
+/work/execa/lib/terminate/kill-descendants.js:38:const isAbandoned = subprocess => subprocess.pid === undefined
+/work/execa/lib/terminate/kill-descendants.js:39:	|| (isWindows && hasExited(subprocess));
+/work/execa/lib/terminate/kill-descendants.js:43:// On Unix, the subprocess is its own process group leader (its PGID equals its PID), since it
+/work/execa/lib/terminate/kill-descendants.js:45:const killDescendantsUnix = (subprocess, signal) => {
+/work/execa/lib/terminate/kill-descendants.js:46:	if (isAbandoned(subprocess)) {
+/work/execa/lib/terminate/kill-descendants.js:51:		return process.kill(-subprocess.pid, signal);
+/work/execa/lib/terminate/kill-descendants.js:55:		return subprocess.kill(signal);
+/work/execa/lib/terminate/kill-descendants.js:60:// It must run while the tree is still intact, so direct subprocess termination is only used as a
+/work/execa/lib/terminate/kill-descendants.js:61:// fallback: killing the direct subprocess first would orphan its descendants before `taskkill` could enumerate them.
+/work/execa/lib/terminate/kill-descendants.js:62:// If `taskkill` is unavailable or fails, the fallback only terminates the direct subprocess.
+/work/execa/lib/terminate/kill-descendants.js:64:const killDescendantsWindows = (subprocess, signal) => {
+/work/execa/lib/terminate/kill-descendants.js:65:	if (isAbandoned(subprocess)) {
+/work/execa/lib/terminate/kill-descendants.js:71:		return subprocess.kill(signal);
+/work/execa/lib/terminate/kill-descendants.js:74:	// This is best-effort: if `taskkill` fails, still try the direct subprocess.
+/work/execa/lib/terminate/kill-descendants.js:75:	execFile(taskkillFile, ['/pid', `${subprocess.pid}`, '/T', '/F'], error => {
+/work/execa/lib/terminate/kill-descendants.js:77:			subprocess.kill(signal);
+/work/execa/lib/methods/template.js:153:	// Only own properties are checked: a polluted `Object.prototype.stdout` must not turn any plain object into a subprocess result.
+/work/execa/lib/methods/template.js:154:	// A failed subprocess result is an error instance instead.
+/work/execa/lib/methods/template.js:161:		throw new TypeError('Unexpected subprocess in template expression. Please use ${await subprocess} instead of ${subprocess}.');
+/work/execa/lib/methods/template.js:179:		throw new TypeError('Missing result.stdout in template expression. This is probably due to the previous subprocess\' "stdout" option.');
+/work/execa/lib/resolve/wait-stream.js:4://  - When the subprocess exits, Node.js automatically calls `subprocess.stdin.destroy()`, which we need to ignore.
+/work/execa/lib/resolve/wait-stream.js:5://  - However, we still need to throw if `subprocess.stdin.destroy()` is called before subprocess exit.
+/work/execa/lib/resolve/wait-stream.js:33:// If `subprocess.stdin` is destroyed before being fully written to, it is considered aborted and should throw an error.
+/work/execa/lib/resolve/wait-stream.js:34:// This can happen for example when user called `subprocess.stdin.destroy()` before `subprocess.stdin.end()`.
+/work/execa/lib/resolve/wait-stream.js:35:// However, Node.js calls `subprocess.stdin.destroy()` on exit for cleanup purposes.
+/work/execa/lib/resolve/wait-stream.js:41:// Therefore `.destroy()` might end before or after subprocess exit, based on OS speed and load.
+/work/execa/lib/resolve/wait-stream.js:42:// The only way to detect this is to spy on `subprocess.stdin._destroy()` by wrapping it.
+/work/execa/lib/resolve/wait-stream.js:43:// If `subprocess.exitCode` or `subprocess.signalCode` is set, it means `.destroy()` is being called by Node.js itself.
+/work/execa/lib/resolve/wait-stream.js:44:// With an input transform, `subprocess.stdin` is that transform, so Node.js destroys it instead of the original `stdin`.
+/work/execa/lib/resolve/wait-stream.js:45:const handleStdinDestroy = (stream, {originalStreams, subprocess}) => {
+/work/execa/lib/resolve/wait-stream.js:48:	if (stream === originalStdin || stream === subprocess.stdin) {
+/work/execa/lib/resolve/wait-stream.js:49:		spyOnStdinDestroy(stream, subprocess, state);
+/work/execa/lib/resolve/wait-stream.js:55:const spyOnStdinDestroy = (subprocessStdin, subprocess, state) => {
+/work/execa/lib/resolve/wait-stream.js:56:	const {_destroy} = subprocessStdin;
+/work/execa/lib/resolve/wait-stream.js:57:	subprocessStdin._destroy = (...destroyArguments) => {
+/work/execa/lib/resolve/wait-stream.js:58:		setStdinCleanedUp(subprocess, state);
+/work/execa/lib/resolve/wait-stream.js:59:		_destroy.call(subprocessStdin, ...destroyArguments);
+/work/execa/lib/resolve/wait-stream.js:69:// An input transform writes to the subprocess' original stream. When that stream is closed first, e.g. when the subprocess exits without reading its input, the transform is aborted.
+/work/execa/lib/resolve/wait-stream.js:104:// For example, `subprocess.stdin` is technically a Duplex, but can only be used as a writable.
+/work/execa/lib/resolve/wait-stream.js:106:// However, while `subprocess.std*` and transforms follow that direction, any stream passed the `std*` option has the opposite direction.
+/work/execa/lib/resolve/wait-stream.js:107:// For example, `subprocess.stdin` is a writable, but the `stdin` option is a readable.
+/work/execa/lib/resolve/wait-stream.js:113:// Breaking out of `for await (const chunk of subprocess.stdout)` aborts it with an `AbortError` instead. However, that error cannot be told apart from an `AbortError` thrown by a transform, which must make the subprocess fail. So this is not supported, and `subprocess.readable()` or `subprocess.iterable()` should be used instead.
+/work/execa/lib/resolve/wait-stream.js:117:// When piping subprocesses, the source subprocess usually decides when to stop piping.
+/work/execa/test/convert/shared.js:20:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/shared.js:21:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:24:	subprocess.kill(cause);
+/work/execa/test/convert/shared.js:27:	assertWritableAborted(subprocess.stdin);
+/work/execa/test/convert/shared.js:28:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/shared.js:29:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/shared.js:31:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/shared.js:34:test('subprocess fail -> .readable() error', () => testSubprocessFail('readable'));
+/work/execa/test/convert/shared.js:35:test('subprocess fail -> .writable() error', () => testSubprocessFail('writable'));
+/work/execa/test/convert/shared.js:36:test('subprocess fail -> .duplex() error', () => testSubprocessFail('duplex'));
+/work/execa/test/convert/shared.js:39:	const subprocess = execa('empty.js');
+/work/execa/test/convert/shared.js:40:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:51:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/shared.js:52:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:54:	subprocess.kill(cause);
+/work/execa/test/convert/shared.js:58:test('Do not need to await subprocess with .readable()', () => testSubprocessError('readable'));
+/work/execa/test/convert/shared.js:59:test('Do not need to await subprocess with .writable()', () => testSubprocessError('writable'));
+/work/execa/test/convert/shared.js:60:test('Do not need to await subprocess with .duplex()', () => testSubprocessError('duplex'));
+/work/execa/test/convert/shared.js:62:// Once the subprocess has ended, the error passed to `stream.destroy(error)` must still be emitted, including when another stream uses the same file descriptor
+/work/execa/test/convert/shared.js:64:	const subprocess = execa(fixtureName, {reject: false});
+/work/execa/test/convert/shared.js:65:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:67:		subprocess[otherMethodName]().on('error', () => {});
+/work/execa/test/convert/shared.js:70:	await subprocess;
+/work/execa/test/convert/shared.js:81:test('.readable() destroy error after the subprocess ended', () => testDestroyAfterExit('readable', 'empty.js'));
+/work/execa/test/convert/shared.js:82:test('.writable() destroy error after the subprocess ended', () => testDestroyAfterExit('writable', 'empty.js'));
+/work/execa/test/convert/shared.js:83:test('.duplex() destroy error after the subprocess ended', () => testDestroyAfterExit('duplex', 'empty.js'));
+/work/execa/test/convert/shared.js:84:test('.readable() destroy error after the subprocess ended, with .duplex()', () => testDestroyAfterExit('readable', 'empty.js', 'duplex'));
+/work/execa/test/convert/shared.js:85:test('.writable() destroy error after the subprocess ended, with .duplex()', () => testDestroyAfterExit('writable', 'empty.js', 'duplex'));
+/work/execa/test/convert/shared.js:86:test('.duplex() destroy error after the subprocess ended, with .writable()', () => testDestroyAfterExit('duplex', 'empty.js', 'writable'));
+/work/execa/test/convert/shared.js:87:test('.duplex() destroy error after the subprocess ended, with .duplex()', () => testDestroyAfterExit('duplex', 'empty.js', 'duplex'));
+/work/execa/test/convert/shared.js:88:test('.readable() destroy error after the subprocess failed, with .duplex()', () => testDestroyAfterExit('readable', 'fail.js', 'duplex'));
+/work/execa/test/convert/shared.js:89:test('.writable() destroy error after the subprocess failed, with .duplex()', () => testDestroyAfterExit('writable', 'fail.js', 'duplex'));
+/work/execa/test/convert/shared.js:90:test('.duplex() destroy error after the subprocess failed, with .writable()', () => testDestroyAfterExit('duplex', 'fail.js', 'writable'));
+/work/execa/test/convert/shared.js:93:test('.writable() write fails when the subprocess fails to spawn', async () => {
+/work/execa/test/convert/shared.js:94:	const subprocess = execa('nonexistent-command-for-execa');
+/work/execa/test/convert/shared.js:95:	const stream = subprocess.writable();
+/work/execa/test/convert/shared.js:110:	assert.equal(error, await assertRejects(subprocess));
+/work/execa/test/convert/shared.js:113:// The subprocess error is more useful than the `EPIPE` error it causes on `stdin`
+/work/execa/test/convert/shared.js:116:	const subprocess = execa('empty.js', {cwd: 'does_not_exist'});
+/work/execa/test/convert/shared.js:117:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:120:	assert.equal(error, await assertRejects(subprocess));
+/work/execa/test/convert/shared.js:124:test('.writable() fails with the subprocess error when the subprocess fails to spawn', () => testSpawnFailureWrite('writable'));
+/work/execa/test/convert/shared.js:125:test('.duplex() fails with the subprocess error when the subprocess fails to spawn', () => testSpawnFailureWrite('duplex'));
+/work/execa/test/convert/shared.js:129:	const subprocess = execa('empty.js');
+/work/execa/test/convert/shared.js:130:	await subprocess;
+/work/execa/test/convert/shared.js:131:	const stream = subprocess[methodName]();
+/work/execa/test/convert/shared.js:141:test('.writable() fails when ending it after the subprocess ended', () => testWriteAfterExit('writable', true));
+/work/execa/test/convert/shared.js:142:test('.duplex() fails when ending it after the subprocess ended', () => testWriteAfterExit('duplex', true));
+/work/execa/test/convert/shared.js:143:test('.writable() fails when ending it later after the subprocess ended', () => testWriteAfterExit('writable', false));
+/work/execa/test/convert/shared.js:144:test('.duplex() fails when ending it later after the subprocess ended', () => testWriteAfterExit('duplex', false));
+/work/execa/test/convert/shared.js:146:test('.writable() fails with the subprocess error when the subprocess fails without reading stdin', async () => {
+/work/execa/test/convert/shared.js:147:	const subprocess = execa('fail.js');
+/work/execa/test/convert/shared.js:148:	const stream = subprocess.writable();
+/work/execa/test/convert/shared.js:151:	assert.equal(error, await assertRejects(subprocess));
+/work/execa/test/convert/shared.js:156:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/shared.js:157:	subprocess.stdin.end();
+/work/execa/test/convert/shared.js:159:		subprocess[methodName](null);
+/work/execa/test/convert/shared.js:161:	await subprocess;
+/work/execa/lib/convert/writable.js:14:// Create a `Writable` stream that forwards to `stdin` and awaits the subprocess
+/work/execa/lib/convert/writable.js:15:export const createWritable = ({subprocess, concurrentStreams}, options) => {
+/work/execa/lib/convert/writable.js:18:	const subprocessStdin = getToStream(subprocess, to);
+/work/execa/lib/convert/writable.js:19:	const {waitWritableFinal, waitWritableDestroy} = addWritableConcurrentStreams(concurrentStreams, subprocessStdin);
+/work/execa/lib/convert/writable.js:21:		...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
+/work/execa/lib/convert/writable.js:23:			subprocessStdin,
+/work/execa/lib/convert/writable.js:24:			subprocess,
+/work/execa/lib/convert/writable.js:28:		highWaterMark: subprocessStdin.writableHighWaterMark,
+/work/execa/lib/convert/writable.js:29:		objectMode: subprocessStdin.writableObjectMode,
+/work/execa/lib/convert/writable.js:31:	onStdinFinished(subprocessStdin, writable, undefined, subprocess);
+/work/execa/lib/convert/writable.js:36:export const addWritableConcurrentStreams = (concurrentStreams, subprocessStdin) => {
+/work/execa/lib/convert/writable.js:37:	const waitWritableFinal = addConcurrentStream(concurrentStreams, subprocessStdin, 'writableFinal');
+/work/execa/lib/convert/writable.js:38:	const waitWritableDestroy = addConcurrentStream(concurrentStreams, subprocessStdin, 'writableDestroy');
+/work/execa/lib/convert/writable.js:42:export const getWritableMethods = (subprocessStdin, subprocess, waitWritableFinal) => ({
+/work/execa/lib/convert/writable.js:43:	write: onWrite.bind(undefined, subprocessStdin),
+/work/execa/lib/convert/writable.js:44:	final: callbackify(onWritableFinal.bind(undefined, subprocessStdin, subprocess, waitWritableFinal)),
+/work/execa/lib/convert/writable.js:48:const onWrite = (subprocessStdin, chunk, encoding, done) => {
+/work/execa/lib/convert/writable.js:49:	if (subprocessStdin.write(chunk, encoding)) {
+/work/execa/lib/convert/writable.js:52:		subprocessStdin.once('drain', done);
+/work/execa/lib/convert/writable.js:56:// Ensures that the writable `final` and readable `end` events awaits the subprocess.
+/work/execa/lib/convert/writable.js:57:// Like this, any subprocess failure is propagated as a stream `error` event, instead of being lost.
+/work/execa/lib/convert/writable.js:58:// The user does not need to `await` the subprocess anymore, but now needs to await the stream completion or error.
+/work/execa/lib/convert/writable.js:59:// When multiple writables are targeting the same stream, they wait for each other, unless the subprocess ends first.
+/work/execa/lib/convert/writable.js:60:const onWritableFinal = async (subprocessStdin, subprocess, waitWritableFinal) => {
+/work/execa/lib/convert/writable.js:61:	if (!await waitForConcurrentStreams(waitWritableFinal, subprocess)) {
+/work/execa/lib/convert/writable.js:65:	if (subprocessStdin.writable) {
+/work/execa/lib/convert/writable.js:66:		subprocessStdin.end();
+/work/execa/lib/convert/writable.js:69:	await subprocess;
+/work/execa/lib/convert/writable.js:72:// When `subprocess.stdin` ends/aborts/errors, do the same on `writable`.
+/work/execa/lib/convert/writable.js:73:export const onStdinFinished = async (subprocessStdin, writable, subprocessStdout, subprocess) => {
+/work/execa/lib/convert/writable.js:75:		await waitForSubprocessStdin(subprocessStdin);
+/work/execa/lib/convert/writable.js:76:		await subprocess;
+/work/execa/lib/convert/writable.js:81:		await safeWaitForSubprocessStdout(subprocessStdout);
+/work/execa/lib/convert/writable.js:83:		destroyOtherStream(writable, !writable.writableFinished, await getSubprocessError(subprocess, error));
+/work/execa/lib/convert/writable.js:87:const getSubprocessError = async (subprocess, error) => {
+/work/execa/lib/convert/writable.js:93:		await subprocess;
+/work/execa/lib/convert/writable.js:94:	} catch (subprocessError) {
+/work/execa/lib/convert/writable.js:95:		return subprocessError;
+/work/execa/lib/convert/writable.js:101:// `EPIPE` happens when the subprocess fails without reading its `stdin`, e.g. when it fails to spawn
+/work/execa/lib/convert/writable.js:106:// When `writable` aborts/errors, do the same on `subprocess.stdin`
+/work/execa/lib/convert/writable.js:107:export const onWritableDestroy = async ({subprocessStdin, subprocess, waitWritableFinal, waitWritableDestroy}, error) => {
+/work/execa/lib/convert/writable.js:108:	await waitForConcurrentStreams(waitWritableFinal, subprocess);
+/work/execa/lib/convert/writable.js:109:	if (await waitForConcurrentStreams(waitWritableDestroy, subprocess)) {
+/work/execa/lib/convert/writable.js:110:		destroyOtherWritable(subprocessStdin, error);
+/work/execa/lib/convert/writable.js:111:		await subprocess;
+/work/execa/types/arguments/options.d.ts:33:	The subprocess inherits the current Node.js [CLI flags](https://nodejs.org/api/cli.html#options) and version. This can be overridden using the `nodeOptions` and `nodePath` options.
+/work/execa/types/arguments/options.d.ts:69:	Current [working directory](https://en.wikipedia.org/wiki/Working_directory) of the subprocess.
+/work/execa/types/arguments/options.d.ts:80:	Unless the `extendEnv` option is `false`, the subprocess also uses the current process' environment variables ([`process.env`](https://nodejs.org/api/process.html#processenv)).
+/work/execa/types/arguments/options.d.ts:87:	If `true`, the subprocess uses both the `env` option and the current process' environment variables ([`process.env`](https://nodejs.org/api/process.html#processenv)).
+/work/execa/types/arguments/options.d.ts:95:	Write some input to the subprocess' [`stdin`](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+/work/execa/types/arguments/options.d.ts:102:	Use a file as input to the subprocess' [`stdin`](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)).
+/work/execa/types/arguments/options.d.ts:109:	How to setup the subprocess' [standard input](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)). This can be `'pipe'`, `'overlapped'`, `'ignore`, `'inherit'`, a file descriptor integer, a Node.js `Readable` stream, a web `ReadableStream`, a `{ file: 'path' }` object, a file URL, an `Iterable`, an `AsyncIterable`, an `Uint8Array`, a generator function, a `Duplex` or a web `TransformStream`.
+/work/execa/types/arguments/options.d.ts:118:	How to setup the subprocess' [standard output](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)). This can be `'pipe'`, `'overlapped'`, `'ignore`, `'inherit'`, a file descriptor integer, a Node.js `Writable` stream, a web `WritableStream`, a `{ file: 'path' }` object, a file URL, a generator function, a `Duplex` or a web `TransformStream`.
+/work/execa/types/arguments/options.d.ts:127:	How to setup the subprocess' [standard error](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)). This can be `'pipe'`, `'overlapped'`, `'ignore`, `'inherit'`, a file descriptor integer, a Node.js `Writable` stream, a web `WritableStream`, a `{ file: 'path' }` object, a file URL, a generator function, a `Duplex` or a web `TransformStream`.
+/work/execa/types/arguments/options.d.ts:147:	Add a `subprocess.all` stream and a `result.all` property. They contain the combined/interleaved output of the subprocess' `stdout` and `stderr`.
+/work/execa/types/arguments/options.d.ts:154:	If the subprocess outputs text, specifies its character encoding, either [`'utf8'`](https://en.wikipedia.org/wiki/UTF-8) or [`'utf16le'`](https://en.wikipedia.org/wiki/UTF-16).
+/work/execa/types/arguments/options.d.ts:169:	Set `result.stdout`, `result.stderr`, `result.all` and `result.stdio` as arrays of strings, splitting the subprocess' output into lines.
+/work/execa/types/arguments/options.d.ts:195:	With synchronous methods, this cannot be enforced per file descriptor while the subprocess runs, since `spawnSync()` only accepts a single value, which limits the total output of all file descriptors. The `maxBuffer.stdout` value is used for it. The other file descriptors' own values are enforced from the output, once the subprocess ended, and cannot be higher than `maxBuffer.stdout`. Also, with synchronous methods, this is measured in bytes instead of characters or lines, for the same reason.
+/work/execa/types/arguments/options.d.ts:197:	When reached, `error.isMaxBuffer` becomes `true` and the subprocess is terminated with the `killSignal` option.
+/work/execa/types/arguments/options.d.ts:213:	Enables exchanging messages with the subprocess using `subprocess.sendMessage(message)`, `subprocess.getOneMessage()` and `subprocess.getEachMessage()`.
+/work/execa/types/arguments/options.d.ts:215:	The subprocess must be a Node.js file.
+/work/execa/types/arguments/options.d.ts:222:	Specify the kind of serialization used for sending messages between subprocesses when using the `ipc` option.
+/work/execa/types/arguments/options.d.ts:229:	Sends an IPC message when the subprocess starts.
+/work/execa/types/arguments/options.d.ts:231:	The subprocess must be a Node.js file. The value's type depends on the `serialization` option.
+/work/execa/types/arguments/options.d.ts:256:	If `timeout` is greater than `0`, the subprocess will be terminated if it runs for longer than that amount of milliseconds. It must be a non-negative integer, up to `2147483647` (about 24.8 days).
+/work/execa/types/arguments/options.d.ts:265:	When the `cancelSignal` is [aborted](https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort), terminate the subprocess using a `SIGTERM` signal.
+/work/execa/types/arguments/options.d.ts:294:	When the `cancelSignal` option is [aborted](https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort), do not send any `SIGTERM`. Instead, abort the [`AbortSignal`](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal) returned by `getCancelSignal()`. The subprocess should use it to terminate gracefully.
+/work/execa/types/arguments/options.d.ts:296:	The subprocess must be a Node.js file.
+/work/execa/types/arguments/options.d.ts:305:	If the subprocess is terminated but does not exit, forcefully exit it by sending [`SIGKILL`](https://en.wikipedia.org/wiki/Signal_(IPC)#SIGKILL). The delay must be a non-negative integer, up to `2147483647` milliseconds (about 24.8 days). When `true`, the default `5000` is used. When `false`, the subprocess is not forcefully exited.
+/work/execa/types/arguments/options.d.ts:314:	Default [signal](https://en.wikipedia.org/wiki/Signal_(IPC)) used to terminate the subprocess.
+/work/execa/types/arguments/options.d.ts:323:	Run the subprocess independently from the current process.
+/work/execa/types/arguments/options.d.ts:330:	Kill the subprocess when the current process exits.
+/work/execa/types/arguments/options.d.ts:337:	When the subprocess is terminated by Execa, also terminate all of its descendant processes, instead of only the subprocess itself.
+/work/execa/types/arguments/options.d.ts:339:	This is useful when the subprocess spawns its own processes, such as when using the `shell` option.
+/work/execa/types/arguments/options.d.ts:341:	On Unix, this spawns the subprocess in its own [process group](https://en.wikipedia.org/wiki/Process_group). On Windows, this uses [`taskkill`](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/taskkill).
+/work/execa/types/arguments/options.d.ts:343:	This is best-effort: descendant processes that create their own process group or session are not terminated. Also, on Windows, descendants are not terminated once the subprocess exited, since its PID might then belong to an unrelated process.
+/work/execa/types/arguments/options.d.ts:350:	Sets the [user identifier](https://en.wikipedia.org/wiki/User_identifier) of the subprocess.
+/work/execa/types/arguments/options.d.ts:357:	Sets the [group identifier](https://en.wikipedia.org/wiki/Group_identifier) of the subprocess.
+/work/execa/types/arguments/options.d.ts:364:	Value of [`argv[0]`](https://nodejs.org/api/process.html#processargv0) sent to the subprocess.
+/work/execa/types/arguments/options.d.ts:388:Some options are related to the subprocess output: `verbose`, `lines`, `stripFinalNewline`, `buffer`, `maxBuffer`. By default, those options apply to all file descriptors (`stdout`, `stderr`, etc.). A plain object can be passed instead to apply them to only `stdout`, `stderr`, `all` (both stdout and stderr), `ipc`, `fd3`, etc.
+/work/execa/types/arguments/options.d.ts:410:Some options are related to the subprocess output: `verbose`, `lines`, `stripFinalNewline`, `buffer`, `maxBuffer`. By default, those options apply to all file descriptors (`stdout`, `stderr`, etc.). A plain object can be passed instead to apply them to only `stdout`, `stderr`, `all` (both stdout and stderr), `ipc`, `fd3`, etc.
+/work/execa/lib/terminate/cancel.js:15:// Terminate the subprocess when aborting the `cancelSignal` option and `gracefulSignal` is `false`
+/work/execa/types/verbose.d.ts:17:	- `'command'`: subprocess start
+/work/execa/types/verbose.d.ts:20:	- `'error'`: subprocess failure
+/work/execa/types/verbose.d.ts:21:	- `'duration'`: subprocess success or failure
+/work/execa/types/verbose.d.ts:41:	Serial number identifying the subprocess within the current process. It is incremented from `'0'`.
+/work/execa/types/verbose.d.ts:43:	This is helpful when multiple subprocesses are running at the same time.
+/work/execa/types/verbose.d.ts:55:	Whether this subprocess is the destination of another subprocess' `pipe()` method. This is `true` when it was spawned using the template string or array syntax of `pipe()`, `false` otherwise.
+/work/execa/types/verbose.d.ts:71:	The options passed to the subprocess.
+/work/execa/types/verbose.d.ts:88:	The options passed to the subprocess.
+/work/execa/lib/methods/node.js:14:// The subprocess must not reuse the current process' `--inspect` port.
+/work/execa/lib/convert/readable.js:16:// Create a `Readable` stream that forwards from `stdout` and awaits the subprocess
+/work/execa/lib/convert/readable.js:17:export const createReadable = ({subprocess, concurrentStreams, encoding}, options) => {
+/work/execa/lib/convert/readable.js:23:	const subprocessStdout = getFromStream(subprocess, from);
+/work/execa/lib/convert/readable.js:24:	const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, 'readableDestroy');
+/work/execa/lib/convert/readable.js:25:	const {readableEncoding, readableObjectMode, readableHighWaterMark} = getReadableOptions(subprocessStdout, binary);
+/work/execa/lib/convert/readable.js:27:		subprocessStdout,
+/work/execa/lib/convert/readable.js:28:		subprocess,
+/work/execa/lib/convert/readable.js:35:		destroy: callbackify(onReadableDestroy.bind(undefined, {subprocessStdout, subprocess, waitReadableDestroy})),
+/work/execa/lib/convert/readable.js:41:		subprocessStdout,
+/work/execa/lib/convert/readable.js:44:		subprocess,
+/work/execa/lib/convert/readable.js:53:export const getReadableMethods = ({subprocessStdout, subprocess, binary, encoding, preserveNewlines}) => {
+/work/execa/lib/convert/readable.js:56:		subprocessStdout,
+/work/execa/lib/convert/readable.js:57:		subprocess,
+/work/execa/lib/convert/readable.js:84:// When `subprocess.stdout` ends/aborts/errors, do the same on `readable`.
+/work/execa/lib/convert/readable.js:85:// Await the subprocess, for the same reason as above.
+/work/execa/lib/convert/readable.js:86:export const onStdoutFinished = async ({subprocessStdout, onStdoutDataDone, readable, subprocess, subprocessStdin}) => {
+/work/execa/lib/convert/readable.js:88:		await waitForSubprocessStdout(subprocessStdout);
+/work/execa/lib/convert/readable.js:89:		await subprocess;
+/work/execa/lib/convert/readable.js:90:		await safeWaitForSubprocessStdin(subprocessStdin);
+/work/execa/lib/convert/readable.js:97:		await safeWaitForSubprocessStdin(subprocessStdin);
+/work/execa/lib/convert/readable.js:98:		destroyOtherReadable(readable, await getPrematureCloseError(subprocess, error));
+/work/execa/lib/convert/readable.js:102:const getPrematureCloseError = async (subprocess, error) => {
+/work/execa/lib/convert/readable.js:108:		await subprocess;
+/work/execa/lib/convert/readable.js:109:	} catch (subprocessError) {
+/work/execa/lib/convert/readable.js:110:		return subprocessError;
+/work/execa/lib/convert/readable.js:116:// When `readable` aborts/errors, do the same on `subprocess.stdout`
+/work/execa/lib/convert/readable.js:117:export const onReadableDestroy = async ({subprocessStdout, subprocess, waitReadableDestroy}, error) => {
+/work/execa/lib/convert/readable.js:118:	if (await waitForConcurrentStreams(waitReadableDestroy, subprocess)) {
+/work/execa/lib/convert/readable.js:119:		// Breaking out of `for await (const chunk of readable)` or cancelling `subprocess.readableStream()` destroys `readable` with an `AbortError`. Like `readable.destroy()`, this aborts `subprocess.stdout` instead of making it fail.
+/work/execa/lib/convert/readable.js:120:		destroyOtherReadable(subprocessStdout, error?.code === 'ABORT_ERR' ? undefined : error);
+/work/execa/lib/convert/readable.js:121:		await subprocess;
+/work/execa/lib/resolve/exit-sync.js:9:	// A file descriptor over its `maxBuffer` does not stop the subprocess, so the timeout that did is reported instead. That file descriptor is still truncated.
+/work/execa/test/convert/writable.js:42:	const subprocess = getWritableSubprocess();
+/work/execa/test/convert/writable.js:43:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:53:	await assertSubprocessOutput(subprocess, foobarString, 2);
+/work/execa/test/convert/writable.js:57:	const subprocess = execa('stdin-fd.js', [`${fdNumber}`], options);
+/work/execa/test/convert/writable.js:58:	const stream = subprocess.writable({to});
+/work/execa/test/convert/writable.js:63:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/writable.js:73:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:74:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:81:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/writable.js:85:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:86:	const stream = subprocess.duplex();
+/work/execa/test/convert/writable.js:93:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/writable.js:97:	const subprocess = hasWrites ? getReadableSubprocess() : execa('empty.js');
+/work/execa/test/convert/writable.js:98:	const stream = subprocess[methodName]();
+/work/execa/test/convert/writable.js:102:	assertWritableAborted(subprocess.stdin);
+/work/execa/test/convert/writable.js:103:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:104:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:105:	await assertSubprocessOutput(subprocess, hasWrites ? foobarString : '');
+/work/execa/test/convert/writable.js:108:test('subprocess early success with no writes -> .writable() abort', () => testEarlySuccess('writable', false));
+/work/execa/test/convert/writable.js:109:test('subprocess early success with no writes -> .duplex() abort', () => testEarlySuccess('duplex', false));
+/work/execa/test/convert/writable.js:110:test('subprocess early success with writes -> .writable() abort', () => testEarlySuccess('writable', true));
+/work/execa/test/convert/writable.js:111:test('subprocess early success with writes -> .duplex() abort', () => testEarlySuccess('duplex', true));
+/work/execa/test/convert/writable.js:113:test('.writable() abort -> subprocess fail', async () => {
+/work/execa/test/convert/writable.js:114:	const subprocess = getWritableSubprocess();
+/work/execa/test/convert/writable.js:115:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:122:	assertWritableAborted(subprocess.stdin);
+/work/execa/test/convert/writable.js:123:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:124:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:125:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/writable.js:128:test('.writable() error -> subprocess fail', async () => {
+/work/execa/test/convert/writable.js:129:	const subprocess = getWritableSubprocess();
+/work/execa/test/convert/writable.js:130:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:137:	assert.equal(subprocess.stdin.errored, cause);
+/work/execa/test/convert/writable.js:138:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:139:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:140:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/writable.js:143:test('.writable() EPIPE error -> subprocess success', async () => {
+/work/execa/test/convert/writable.js:144:	const subprocess = getWritableSubprocess();
+/work/execa/test/convert/writable.js:145:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:152:	assert.equal(subprocess.stdin.errored, error);
+/work/execa/test/convert/writable.js:153:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:154:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:155:	await subprocess;
+/work/execa/test/convert/writable.js:158:test('subprocess.stdin end -> .writable() end + subprocess success', async () => {
+/work/execa/test/convert/writable.js:159:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:160:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:162:	subprocess.stdin.end(foobarString);
+/work/execa/test/convert/writable.js:165:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/writable.js:168:test('subprocess.stdin end -> .duplex() end + subprocess success', async () => {
+/work/execa/test/convert/writable.js:169:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:170:	const stream = subprocess.duplex();
+/work/execa/test/convert/writable.js:172:	subprocess.stdin.end(foobarString);
+/work/execa/test/convert/writable.js:175:	await assertSubprocessOutput(subprocess);
+/work/execa/test/convert/writable.js:179:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:180:	const stream = subprocess[methodName]();
+/work/execa/test/convert/writable.js:182:	subprocess.stdin.destroy();
+/work/execa/test/convert/writable.js:186:	assertWritableAborted(subprocess.stdin);
+/work/execa/test/convert/writable.js:187:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:188:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:189:	const subprocessError = await assertRejects(subprocess);
+/work/execa/test/convert/writable.js:190:	assertLike(subprocessError, prematureClose);
+/work/execa/test/convert/writable.js:191:	assertLike(subprocessError.cause, prematureClose);
+/work/execa/test/convert/writable.js:192:	assertProcessNormalExit(subprocessError);
+/work/execa/test/convert/writable.js:195:test('subprocess.stdin abort -> .writable() error + subprocess fail', () => testStdinAbort('writable'));
+/work/execa/test/convert/writable.js:196:test('subprocess.stdin abort -> .duplex() error + subprocess fail', () => testStdinAbort('duplex'));
+/work/execa/test/convert/writable.js:199:	const subprocess = getReadWriteSubprocess();
+/work/execa/test/convert/writable.js:200:	const stream = subprocess[methodName]();
+/work/execa/test/convert/writable.js:203:	subprocess.stdin.destroy(cause);
+/work/execa/test/convert/writable.js:207:	assert.equal(subprocess.stdin.errored, cause);
+/work/execa/test/convert/writable.js:208:	assert.equal(subprocess.stderr.readableEnded, true);
+/work/execa/test/convert/writable.js:209:	assert.equal(subprocess.stdout.readableEnded, true);
+/work/execa/test/convert/writable.js:210:	await assertSubprocessError(subprocess, error);
+/work/execa/test/convert/writable.js:213:test('subprocess.stdin error -> .writable() error + subprocess fail', () => testStdinError('writable'));
+/work/execa/test/convert/writable.js:214:test('subprocess.stdin error -> .duplex() error + subprocess fail', () => testStdinError('duplex'));
+/work/execa/test/convert/writable.js:217:	const subprocess = getWritableSubprocess();
+/work/execa/test/convert/writable.js:219:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:225:	await assertSubprocessOutput(subprocess, foobarString, 2);
+/work/execa/test/convert/writable.js:229:	const subprocess = execa('noop-stdin-fail.js', ['2']);
+/work/execa/test/convert/writable.js:231:	const stream = subprocess.writable();
+/work/execa/test/convert/writable.js:239:	await assertSubprocessError(subprocess, error);

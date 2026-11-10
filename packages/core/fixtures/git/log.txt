@@ -1,0 +1,805 @@
+commit 247faa0ff0641020e8790475989cee72df85d62b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 16:13:59 2026 +0700
+
+    10.2.1
+
+commit e375b0b94b1cc4b5b6bbc035a14586be31755bd9
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 15:44:20 2026 +0700
+
+    Fix tests
+
+commit 2b6988b1543ff2ed9ab60130e026ee0f84dd6dca
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 14:44:36 2026 +0700
+
+    Fix types compatibility with `exactOptionalPropertyTypes`
+    
+    Fixes #1265
+
+commit e7e0664c25e3a6fa3f2162f3d7f0128a81a4b8f3
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 13:24:12 2026 +0700
+
+    Fix flaky Windows test cleanup of copied executables
+
+commit a605753a476a168e111b6a0654692f22ddf37402
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 12:42:09 2026 +0700
+
+    10.2.0
+
+commit b87aab71b2ac3da1799914a7ef79a36bd2d14c03
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 03:09:16 2026 +0700
+
+    Fix link check in type tests
+    
+    The link checker excludes `file:///test` only, so `file:///input.txt` failed CI.
+
+commit cb8aaf60b64df19ac4f89562ef6ff61d4b9b3e37
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix IPC types for option unions
+    
+    When the options are a union, IPC is now resolved for each member, with its own `buffer` and `serialization` options. `subprocess.sendMessage()`, `result.ipcOutput` and `result.stdio` used the union as a whole instead, so they were typed as if IPC was disabled.
+    
+    The IPC methods are resolved per member on the subprocess type, not inside `HasIpc`, and `$`'s default stdin type no longer recomputes the `stdin` option. Otherwise, options from a generic type parameter made `$(...).stdin` fail with "Expression produces a union type that is too complex to represent".
+
+commit 80b01e90e44edb484bfde3a2a37f4b26441633c5
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix fd-specific option types
+    
+    A descriptor key which is absent must not stop lower-priority keys from applying, while a required key overrides them even when its value is `undefined`.
+
+commit 355d917f1d46ce0d55b7a414ba1de8dae59128f2
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix subprocess stream types for option unions
+    
+    When the options are a union, each member's own stream presence and direction must be resolved separately. `subprocess.all`, `subprocess.stdout` and `subprocess.stderr` were resolved from the union as a whole.
+
+commit 523cf9b7fab0b83a6454d45a41371aa24a567e62
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `execaNode()` result types when the `node` option is `undefined`
+    
+    `execaNode()` forces the `node` option, but the returned type kept the `undefined` value of the call, which made the result's output types wrong.
+
+commit 580b250f1cf4f17bb2197693fc5476f7b6d7cb8e
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Add type tests for `$`'s stdin
+    
+    `$` inherits stdin unless an input source is provided. Its `subprocess.stdin` and `subprocess.stdio[0]` types already reflect this, and now reuse `WithInputSources` to compute it.
+
+commit 236c8312f0238622853b0b404c04721e6773518c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `subprocess.stdin` and `options.stdin` types when an input source is provided
+    
+    A defined `input` or `inputFile` makes stdin use a pipe, even when the `stdin` option is `'inherit'`, a stream or an integer. `'ignore'` cannot be combined with an input source: it throws.
+
+commit f5772f341ae481458c147f5df96799ac13d28f2a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `result` types for fd-specific and union options
+    
+    `result.all`, `result.stdout` and `result.stderr` were resolved from the union of the options as a whole. Also, `result.all` included the output modes of the descriptors which are not buffered.
+
+commit 708fed7dcadd9846e0f689b6528d54715f726932
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix result types for options bound with `execa(options)`
+    
+    Bound options were intersected with the new ones, so the result kept the bound value even when it was overridden or reset with `undefined`.
+    
+    Since `$`'s default `stdin: 'inherit'` now depends on the merged options, `$`'s `subprocess.stdin` and `subprocess.stdio[0]` types are computed from them too.
+
+commit 32b87a14fdc95caa30182221ce298e4ccfbfcfaa
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix flaky `killDescendants` test
+    
+    A descendant's PID can be released by the OS after its pipe ends, so the test must poll for it instead of racing a single delay.
+
+commit 224dd20a5cc5c3bff3b385d324361b64da7ada38
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix zero `maxBuffer` allowing unbounded synchronous output
+    
+    `maxBuffer: 0` disables the limit of `child_process.spawnSync()`, so the subprocess' output was never limited. A zero value must reject the first byte, like it does with asynchronous methods.
+
+commit ed80079bc4e21a259fdc521c5a4b27126b308c9a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix synchronous transforms reordering mixed text and byte chunks
+    
+    Strings were not encoded before the next transform decoded them, so the chunks of a split character were reordered. Synchronous methods now encode strings like `Transform`'s `decodeStrings` option does.
+
+commit 0ba2b6ebaecfb68140817839863fa12c96d2b587
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix failed synchronous transforms exposing raw output and hiding errors
+    
+    The output of a failed synchronous transform was returned as is, which exposed data that the transform was filtering. Also, a generator throwing a falsy value was treated as a success instead of an error.
+
+commit 5ea2900f0dc5cf547da41c428652312632876744
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix object mode when piping to a web `WritableStream`
+    
+    Web streams are re-used when several file descriptors share them, so a `WritableStream` could be wrapped in byte mode and then receive objects, which threw. Web writers accept arbitrary chunks, so they are always wrapped in object mode.
+
+commit f61a6e91f68e8472d1dbfdbff7ce1320b8d73fb0
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix `$` defaults being overridden by explicit `undefined` options
+    
+    `$(... {stdin: undefined})` did not inherit stdin, and `$(... {preferLocal: undefined})` did not use local binaries. Options set to `undefined` should reset to the default value of the method, including on pipe destinations.
+
+commit 5e4345b1cde72c576f592d1bda5f26d89fa93a26
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix invalid `subprocess.duplex()` options blocking later stream cleanup
+    
+    The readable side was registered before the writable side was validated, so an invalid option left a pending wait behind. That made any later `readable()`, `writable()` or `duplex()` call wait forever unless the subprocess ended.
+
+commit d0a5968b5ca1b355755b393896a7f3b583fd2bee
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix invalid file descriptor objects aborting the current process
+    
+    Objects with an `fd` property, such as file handles, were not validated. An invalid descriptor was passed to `node:child_process`, which aborted the current process with a fatal assertion instead of throwing.
+
+commit a2912e5702821cef0cd42873180ff977bc1ec02f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix object-mode chunks being typed as text or bytes when iterating
+    
+    `subprocess` iteration and `subprocess.iterable()` ignored the `objectMode` of the descriptor's transform, so their chunks were typed as `string` or `Uint8Array` instead of the original objects.
+
+commit 8629132ed5b4a78d4d1dd2dc9249b41592716f2b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix `result.all` corrupting objects when only one file descriptor is buffered
+    
+    When only `stdout` or `stderr` is buffered, `result.all` is read from that descriptor's own stream rather than the merged one. It was still converted as if it were mixed, which changed its object-mode chunks.
+
+commit f6de9be4d08389c7dfef167b46c08a72f023ad5d
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix subprocesses hanging after exceeding `maxBuffer`
+    
+    Closing the output stream does not stop a subprocess that stays alive without writing again, so Execa's promise never settled. The subprocess is now terminated with the `killSignal` option when the limit is exceeded, like with synchronous methods and the other termination options. The error reports the real exit of the subprocess, which might have exited on its own before being terminated.
+
+commit e7478724d4ecdb8a1b0e34c8226686fb25bcd46f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix inherited `--print=` flags overriding the Node.js subprocess command
+    
+    `process.execArgv` flags which run code, such as `--print=` and `--eval=`, must not be re-used by the subprocess instead of its file, otherwise it does not run the file. `--eval=` was filtered, `--print=` was not.
+
+commit 9c548333e6cb0041656dd832e30b1d1395bc0e21
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Run input transform `final()` when there is no input source
+    
+    Synchronous input transforms were skipped when no `input`, `inputFile` or `stdin` source was provided, which meant their `final()` did not run and their errors were not reported.
+
+commit cc7bcab5650cb3c95ccb3e5d484159cc748a0133
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 13:56:45 2026 +0700
+
+    10.1.1
+
+commit 5a8dd97233bf674fd6ffa4bc7d244fcafbc894fb
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 13:28:52 2026 +0700
+
+    Fix tests failing on Windows
+
+commit 2633abb20eecf229872223a1e7cea0efe02a4e6a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 11:31:31 2026 +0700
+
+    Fix `execaNode()` and the `node` option missing IPC in their types
+    
+    `execaNode()` and the `node` option enable the `ipc` option by default, but their types did not: `subprocess.sendMessage()` was `undefined`, `result.ipcOutput` was `[]`, and `result.stdio` and `subprocess.stdio` missed the IPC channel's file descriptor.
+    
+    Also, `ipc: undefined` disabled IPC with the `node` option, instead of using the default value.
+
+commit b2c3a54c87586f0441ba7e0178c1eef377a989dc
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 03:43:15 2026 +0700
+
+    Fix `escapedCommand` and `verbose` quoting arguments when using the `shell` option
+    
+    With `shell`, the shell receives the file and arguments joined with spaces, so quoting each argument showed a different command than the one that ran.
+    
+    Fixes #1264
+
+commit 21411470717e96d4415b0d742e6e221703d92d59
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Oct 12 06:01:41 2026 +0700
+
+    Move type tests from `tsd` to `nz`
+
+commit b57d643035053d3bde2662411245ec62aa627837
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 19:49:02 2026 +0700
+
+    Fix wrong-typed options and arguments being silently ignored or coerced
+
+commit 74b854a98cdbb57069de9aa217152d04ac2a06a6
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 04:25:36 2026 +0700
+
+    Fix documentation and types mistakes
+
+commit a2eda67b7860278a7c86cb09f62ae9d80d93c61c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 00:13:54 2026 +0700
+
+    Fix the `verbose` option printing colors when `stderr` is not a terminal
+
+commit 6925cc346370ec31f0b9d5c4eff554ab54095a2f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:58:57 2026 +0700
+
+    Fix `stdin` iterables and input transforms edge cases
+
+commit 5f80cdeda53986d44144c1fad4011b7c382fb388
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:39:38 2026 +0700
+
+    Fix IPC edge cases
+
+commit d3ec10ddddbb7757b1bfe46e52d8ec872c426d2e
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:45:34 2026 +0700
+
+    Fix `.pipe()` and stream conversion edge cases
+
+commit fb92da1e280aad3a4950dc5ea9eb7e7cfb628aed
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:35:39 2026 +0700
+
+    Fix template strings, `parseCommandString()` and `execaNode()` edge cases
+
+commit d9a5689977af191dce377c4d11c248b11dd10438
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:22:53 2026 +0700
+
+    Fix invalid `timeout` and `forceKillAfterDelay` values
+    
+    Timers fire after 1ms when their delay is larger than 2147483647ms (about 24.8 days), so a large `timeout` or `forceKillAfterDelay` terminated the subprocess right away. Such values now throw instead.
+    
+    Fractional `timeout` values were accepted by asynchronous methods, but `spawnSync()` requires an integer, so synchronous methods failed with a raw `ERR_OUT_OF_RANGE` error. Both options now require integers, as their error messages already documented.
+
+commit c4262ff723835a12a5155db9000d1e05cb00b740
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:21:07 2026 +0700
+
+    Fix errors, early errors and `result.all` edge cases
+
+commit 63ddae6aeb6934da06fdb3754647791e58cd87c3
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 22:59:16 2026 +0700
+
+    10.1.0
+
+commit cfac59fc3f026d60b56dcc67df69a67ae4f5b4a9
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 22:32:13 2026 +0700
+
+    Fix CI
+
+commit 1cee524b9cbd726becb17c665a4e2e0ff0129623
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 20:04:26 2026 +0700
+
+    Fix an uncaught error when a file target cannot be opened and the subprocess fails to spawn
+
+commit 15c46cd4c2b6ea529f063a47934543186c56aa27
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 19:29:44 2026 +0700
+
+    Fix `execa()` crashing when spawning fails with `EMFILE` or `ENFILE`
+    
+    Fixes #1262
+
+commit 54d7404b479fed61b0371655e7afe011b2d34f74
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 17:13:30 2026 +0700
+
+    Tweaks
+
+commit bfe4633a3a5d1197f7830cc41056bee11084bff7
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 17:02:57 2026 +0700
+
+    Fix `execaSync()` returning `undefined` output when the subprocess fails to spawn
+    
+    Fixes #1263
+
+commit 93bddc4155190b35902a06314f0779399b819dea
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Oct 5 18:31:59 2026 +0700
+
+    Fix arguments of Windows batch files that read them with `%~1`
+    
+    Like Rust, arguments that do not need quoting are not quoted anymore, so `%1` now receives `-f` instead of `"-f"`.
+    
+    Fixes #1261
+
+commit af6264a995ef9070d8009e205f913276455cbd92
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Oct 3 14:03:36 2026 +0700
+
+    Fix `execaSync()` writing decoded text instead of the output's bytes to files
+    
+    With a `{file}`, `'inherit'` or file descriptor target, synchronous methods wrote the output decoded with the `encoding` option, which was then encoded again as UTF-8. That changed the bytes: invalid UTF-8 became U+FFFD, `utf16le` output became UTF-8, and `hex` or `base64` wrote that text instead of the bytes. Like asynchronous methods, the bytes are now written as is.
+
+commit ecda56b7c36f7aa9a76e36a1dc75fdaad42904f4
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Oct 1 14:53:47 2026 +0700
+
+    Report `null` pipe options as a rejection
+    
+    Like the other invalid `.pipe()` arguments, and like the published version, `null` pipe options now make the returned promise reject instead of throwing synchronously. The destination subprocess is then handled like with an invalid `to` option.
+    
+    Also, the background descendants test cannot hang anymore when the descendant survives, and a test comment now matches which values skip the direction check.
+
+commit 698a1b845eefa38cd7b390a96a00756d856c779f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Sep 28 14:17:35 2026 +0700
+
+    Tweaks
+
+commit 8d3f0a94f45451a713891c991c07806510f2c0a2
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Sep 24 12:16:11 2026 +0700
+
+    Fix `.pipe()` with the `stdio` option and orphaned destination subprocesses
+    
+    Piping forces the destination's `stdin` option to `'pipe'`, which cannot be combined with the `stdio` option. That made `to: 'fd3'` and higher unreachable, since those need `stdio`. Piping now leaves `stdin` alone when `stdio` is set.
+    
+    Also, the destination subprocess is spawned before the `to` option is validated. If validation then failed, the destination kept running, e.g. waiting for its `stdin` forever, which prevented the current process from exiting. Its error also became an unhandled rejection, which crashes the current process. A destination spawned by Execa is now terminated, and its error is handled. A destination subprocess passed by the user is left running, since the user still controls it.
+
+commit e0b5dbc3a9b6980a288eeb565447aed0dcd9dd28
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Sep 24 08:25:44 2026 +0700
+
+    Fix `execaSync()` output transforms
+    
+    With a binary encoding, no line is split, so transforms wrongly ran on the empty output when the subprocess produced none. That empty chunk is now not passed to them.
+    
+    A transform failing on one file descriptor also prevented the other ones from being redirected to their target. Those errors are now collected per file descriptor, so each one keeps writing its own files.
+
+commit 004f3b30b50c70d14cc02e4419b5fd4ceb5ac690
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Sep 23 18:57:15 2026 +0700
+
+    Fix the subprocess promise hanging until the user consumes an output stream
+
+commit 587045a3a92c47a06115aa69f32a43caf9fa2bf9
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Sep 23 18:53:42 2026 +0700
+
+    Fix duplicated or conflicting file descriptor targets
+
+commit c6bd387e14aee002b2a6d7a6182a8263f9022993
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Sep 23 18:22:32 2026 +0700
+
+    Fix invalid `stdio` values being accepted
+
+commit 516a5e20b284c7c6667ff2cc2af12de096be96ff
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 17:22:40 2026 +0700
+
+    Fix synchronous input transforms and `inputFile` errors
+
+commit 758768fa08e615379b411ba8849615b146f467f6
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:24 2026 +0700
+
+    Fix `result.all` and `subprocess.all` when only some file descriptors are buffered
+
+commit b548d8b72fe40ee5f986c44312f9c964da760828
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Sep 25 09:46:38 2026 +0700
+
+    Fix `verbose` discarding IPC messages when its function throws
+
+commit 59de0651d1807381dd88ffb54b779ba9a4c18e23
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 16:46:06 2026 +0700
+
+    Fix the "signal" option being silently ignored by synchronous methods
+
+commit 9c5c71c3d582cb5fa98b9e3112198e64a6800db6
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 08:51:18 2026 +0700
+
+    Fix `killDescendants` signaling unrelated processes once Execa is done with the subprocess
+
+commit 91d9ded63939de61898fa04286cafdf720e15373
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:24 2026 +0700
+
+    Fix the subprocess error being hidden when the current directory was deleted
+
+commit b67f199fb13d33da136e141ce0b8c16139e3ace7
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:24 2026 +0700
+
+    Fix template string tokenization of escape sequences
+
+commit 7c1a63171aefa05a5b56352783a67e55780187cb
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:24 2026 +0700
+
+    Fix shebang parsing reading past the end of a small file
+
+commit 5464d4368fecfafa18146eb6d36f1e497d6bbfdd
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 05:09:38 2026 +0700
+
+    Fix a subprocess which failed to spawn signaling the current process and never ending its streams
+
+commit 9842f1a26debc7ab31c7bdfa7f0256a7ec33c3fc
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 05:01:31 2026 +0700
+
+    Fix the `strict` and `ipcInput` options with the `serialization` option
+
+commit 9547e518c8cbdca3b4c4d2aa5229944b021e1c92
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:23 2026 +0700
+
+    Fix `maxBuffer` being ignored or wrongly applied
+
+commit 6adb3c32b051dd2181f298087c5f3cc5473b1e3c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 04:13:12 2026 +0700
+
+    Fix the `encoding` option and line splitting in transforms
+
+commit 4a0a121f7b504940b18292df94a50d9eeacfb246
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 09:36:23 2026 +0700
+
+    Harden some things
+
+commit 67acf6053c772b85bf2e0cc90f907cc69211946b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Sep 22 04:26:17 2026 +0700
+
+    Fix `extendEnv: false` inheriting `process.env` when `env` is not set
+
+commit 8017b279e19347efaf2587711c2d57dbd4330740
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Jul 31 04:10:08 2026 +0200
+
+    10.0.1
+
+commit e7717338a35aa53196ba3cad1498a1a50cd3905c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Jul 31 04:09:38 2026 +0200
+
+    Fix `preferLocal` argument escaping edge-case on Windows (#1259)
+
+commit 499fe800361e6b383b0085f635a69fd27e6cf447
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Jul 21 19:52:21 2026 +0200
+
+    Meta tweaks
+
+commit e389369f3cd82ae59a8635781ecb9fb20f7cb201
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Jul 17 02:32:30 2026 +0200
+
+    10.0.0
+
+commit 3d9d82004c332ae8e6cad32299a7d33492308104
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Jul 17 02:30:33 2026 +0200
+
+    Improve `taskkill` usage (#1258)
+
+commit 5944b2d176c69591d0eb35a383d0c16758060ae8
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Jul 7 21:27:06 2026 +0200
+
+    Update dev dependencies (#1257)
+
+commit 84fa0ecb3f7ca5f73f2dcbd4d4ec0c65fb6b1146
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Jul 7 13:37:13 2026 +0200
+
+    Add `killDescendants` option to also terminate descendant processes (#1256)
+
+commit ade74bfe0c3fc686d11e9398efdb244c9cb35d29
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Jul 7 00:04:50 2026 +0200
+
+    Add `nodeChildProcess` to subprocess promises and make the subprocess a normal promise (#1255)
+
+commit 29d9cfc0380d3c636bb2ab19fbcae8006739d670
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Jul 6 22:31:10 2026 +0200
+
+    Add `.readableStream()`, `.writableStream()` and `.transformStream()` methods (#1254)
+
+commit 522654a66c62eed2b2e50bb23601d21dea2dec17
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Jul 6 22:26:10 2026 +0200
+
+    Fix flaky test
+
+commit 9a7a1624e2948f6316accca4ecef6eb3fbdca98c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Jul 6 18:29:42 2026 +0200
+
+    Use `which-command` instead of `which` (#1253)
+
+commit c31c94c2c65e1aaf1b4d3295eaf927b910a2dc46
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Jul 6 17:50:51 2026 +0200
+
+    Expose the destination subprocess methods on `.pipe()` (#1252)
+
+commit 4cafc3f702e998bfb52e7063da710142dcab49dd
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Jul 5 02:40:05 2026 +0200
+
+    Move away from `cross-spawn` (#1251)
+
+commit 97dc613c65c641b977af834b4554a2b4d1883167
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Jul 4 16:44:34 2026 +0200
+
+    Document Windows subprocess tree cleanup workaround (#1250)
+
+commit 9fbf5badd081dcf370cb2f81f4309856a6efc526
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Jul 4 16:25:55 2026 +0200
+
+    Generalize `{value, input}` to any direction-ambiguous stdio value (#1249)
+
+commit 4b0edb3f63321dd8833794c410c6caad2ca64b05
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Jul 4 02:03:32 2026 +0200
+
+    Document and test Windows fixes (#1248)
+
+commit 0a7b4f83272ac5b660048af87f76585dee1717c6
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Jul 4 01:43:46 2026 +0200
+
+    Type the `std*` generator transform `chunk` argument (#1247)
+
+commit 487a3a43caac96f64f9211ee2d03ffe777daf64f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Jul 3 10:06:11 2026 +0200
+
+    Add `{value: 'pipe', input: true}` to use an additional file descriptor as input (#1246)
+
+commit dcf611c5cd02c8bc74fc05cd83493d439c4cd806
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Jul 2 14:46:09 2026 +0200
+
+    Remove the old `stdio: [..., 'ipc']` syntax (#1245)
+
+commit 3ced394a395d38371b907b076034e890b4b922a7
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Jul 2 13:08:52 2026 +0200
+
+    Remove `execaCommand()` and `execaCommandSync()` (#1244)
+
+commit 04b4454631d61d5a0543a748d57e31b6159c2d4c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Jul 2 02:55:34 2026 +0200
+
+    Require Node.js 22 (#1243)
+
+commit b88688385d73ffce2cfa3849ec241890a298fe3b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Jul 1 21:33:57 2026 +0200
+
+    Fix fd-specific options to account for `ipc` (#1241)
+
+commit 68986b79d666ecf9f888e38c0cd3f6b75a2b737a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Jul 1 20:47:03 2026 +0200
+
+    Update test coverage for Node.js 26 (#1242)
+
+commit 3ed0544b697fea99a367869a80a69589c026c4a8
+Author: Puneet Dixit <puneetdixit4321@gmail.com>
+Date:   Wed Jul 1 23:12:01 2026 +0530
+
+    Fix input with inherited stdin (#1232)
+
+commit f3a2e8481a1e9138de3895827895c834078b9456
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Thu Jan 29 10:54:56 2026 +0700
+
+    Harden against prototype pollution (#1223)
+
+commit 6ad1a6eeba451ca9a1bcf625b267226e00b06d0d
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Fri Jan 2 22:47:49 2026 +0000
+
+    Document support for multiple inputs (#1222)
+
+commit 1796805af2b653ec6f09986b9e52d6f50e0bbea2
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Fri Jan 2 22:45:23 2026 +0000
+
+    Document `stdio: [..., 'ipc']` support (#1221)
+
+commit 964f650be8ea7655494204afae659ceef43b86ac
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Nov 30 04:18:27 2025 +0700
+
+    Ensure all `d.ts` files are considered as ESM (#1216)
+
+commit 84e1f36b2c31a463e3efbd37c7505da9438a05c9
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Nov 30 03:53:38 2025 +0700
+
+    9.6.1
+
+commit 7891c39441c5a6d0fca4be696c0c1cf0b746fa1e
+Author: Norbert de Langen <ndelangen@me.com>
+Date:   Sat Nov 29 21:52:20 2025 +0100
+
+    Fix `VerboseOption` type not being properly exported (#1215)
+
+commit 103095f2c9a459ae3500fa7d861f162c21a94b3a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Nov 22 17:37:48 2025 +0700
+
+    Meta tweaks
+
+commit 23ec6f0569b3e42af43294dc807494ebe896e980
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Mon Oct 27 02:28:18 2025 +0000
+
+    Fix CI tests related to `.kill(0)` (#1212)
+
+commit 9a2cb79b1120f3b476aa8a452ceaeb71bfa19a2d
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Sep 1 20:09:01 2025 +0700
+
+    Meta tweaks
+
+commit e7cafebf55e19485a9d4bdf5af9ed5d2c82fe0d8
+Author: M.K. <mk-pmb@users.noreply.github.com>
+Date:   Tue Aug 12 21:50:11 2025 +0200
+
+    [docs] TTY control is lost only on the FD that uses mixed inherit. (#1209)
+
+commit 5587ae1dcb9b258b0d9667219100b197de50594f
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Sun Aug 10 23:16:03 2025 +0100
+
+    Fix CI tests (#1207)
+
+commit 3e8fa32d498dcc57f1da447524bdb6b521fbd603
+Author: M.K. <mk-pmb@users.noreply.github.com>
+Date:   Sun Aug 10 20:53:36 2025 +0200
+
+    [docs] A process is not a TTY usually, just connected to one. (#1208)
+
+commit c468672a7f212e9040c4405e99f9428d3253a76a
+Author: M.K. <mk-pmb@users.noreply.github.com>
+Date:   Sun Aug 10 01:17:21 2025 +0200
+
+    [docs] Transforms: Summary: Fix example command and output. (#1206)
+
+commit a31fe55782993f2483d30955a8799ab88e20687c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue May 27 00:58:59 2025 +0300
+
+    9.6.0
+
+commit d49104a49661b3c698d100c2b39000c4ffb7df96
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon May 26 22:15:29 2025 +0300
+
+    Update dependencies
+
+commit 0853f748ca58a1a2f65b4619f92145de9c9a7f0f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri May 9 03:10:24 2025 +0700
+
+    9.5.3
+
+commit 1ac5b91eaaed89cc8b6a3d123e1af42ed65f9c33
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Thu May 8 21:09:38 2025 +0100
+
+    Fix Node 24-specific deprecation warning (#1199)
+
+commit 2f1012fc3e7be6bcf520e3f3f5459cc8aa2769d2
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Thu May 8 20:50:50 2025 +0100
+
+    Fix CI (#1198)
+
+commit ab2e09a9a26c11d61e42d1f5e3736c8df2c12698
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sat Apr 5 02:29:43 2025 +0700
+
+    Meta tweaks
+
+commit d3fd3659f1d48db4b7acb61c313ff72970b280be
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Sat Mar 29 03:28:25 2025 +0000
+
+    Fix CI tests (#1195)
+
+commit 5bbdc15b1779fb8a32ff83e768a8247155bb7e85
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Fri Mar 28 06:09:42 2025 +0000
+
+    Revert "Add a sentence about job search (#1027)" (#1192)
+
+commit 99d1741d2525eca71b986282148bbf2983356428
+Author: ehmicky <ehmicky@gmail.com>
+Date:   Sat Dec 7 23:12:04 2024 +0000
+
+    9.5.2
+
+commit 2aa3b0ceeb76bc9bd5e4e4789d965cc483dba185
+Author: Aaron Dandy <404933+aarondandy@users.noreply.github.com>
+Date:   Sat Dec 7 14:51:25 2024 -0800
+
+    Fixes argument parsing for escaped newlines (#1176)
+    
+    Co-authored-by: user <user@localhost.com>
+
+commit c8cff27a47b6e6f1cfbfec2bf7fa9dcd08cefed1
+Author: ehmicky <ehmicky@gmail.com>
+Date:   Tue Oct 29 07:26:54 2024 +0000
+
+    9.5.1
+
+commit e330bd8194c6b053280adf56fe0740a8adfb912a
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Tue Oct 29 05:48:34 2024 +0000
+
+    Runs CI tests on Node 23 (#1169)
+
+commit e3572d0fd1c9de6bc0d9557c588d8a7c50766985
+Author: ehmicky <ehmicky@users.noreply.github.com>
+Date:   Mon Oct 28 06:29:09 2024 +0000
+
+    Do not write verbose logs synchronously (#1167)

@@ -1,0 +1,166 @@
+   Compiling libc v1.0.0
+   Compiling serde v1.0.1
+   Compiling serde_json v1.0.2
+   Compiling itoa v1.0.3
+   Compiling ryu v1.0.4
+   Compiling memchr v1.0.5
+   Compiling proc-macro2 v1.0.6
+   Compiling quote v1.0.7
+   Compiling syn v1.0.8
+   Compiling tokio v1.0.9
+   Compiling shop v0.1.0 (/work/shop)
+warning: unused variable: `scratch`
+  --> src/handler1.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+   = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `scratch`
+  --> src/handler2.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler3.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler4.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler5.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler6.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler7.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler8.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler9.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler10.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler11.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler12.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler13.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler14.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler15.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler16.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler17.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler18.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler19.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+warning: unused variable: `scratch`
+  --> src/handler20.rs:5:9
+   |
+5  |     let scratch = String::new();
+   |         ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_scratch`
+   |
+
+error[E0308]: mismatched types
+  --> src/routes.rs:12:22
+   |
+12 |     let limit: u32 = q.get("limit");
+   |                ---   ^^^^^^^^^^^^^^ expected `u32`, found `Option<&String>`
+   |                |
+   |                expected due to this
+   |
+   = note: expected type `u32`
+              found enum `Option<&String>`
+
+For more information about this error, try `rustc --explain E0308`.
+warning: `shop` (lib) generated 20 warnings
+error: could not compile `shop` (lib) due to 1 previous error; 20 warnings emitted

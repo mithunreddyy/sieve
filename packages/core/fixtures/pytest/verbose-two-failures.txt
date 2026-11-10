@@ -1,0 +1,219 @@
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/pytest_asyncio/plugin.py:217: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-8.3.5, pluggy-1.6.0 -- /Library/Frameworks/Python.framework/Versions/3.13/bin/python3
+rootdir: /work/py
+plugins: anyio-4.12.1, langsmith-0.7.38, cov-7.1.0, asyncio-0.26.0
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 162 items
+
+tests/test_checkout.py::test_discount_applied_once FAILED                [  0%]
+tests/test_checkout.py::test_reads_discount_from_config FAILED           [  1%]
+tests/test_feature1.py::test_doubles[1-2] PASSED                         [  1%]
+tests/test_feature1.py::test_doubles[2-4] PASSED                         [  2%]
+tests/test_feature1.py::test_doubles[3-6] PASSED                         [  3%]
+tests/test_feature1.py::test_sum PASSED                                  [  3%]
+tests/test_feature10.py::test_doubles[1-2] PASSED                        [  4%]
+tests/test_feature10.py::test_doubles[2-4] PASSED                        [  4%]
+tests/test_feature10.py::test_doubles[3-6] PASSED                        [  5%]
+tests/test_feature10.py::test_sum PASSED                                 [  6%]
+tests/test_feature11.py::test_doubles[1-2] PASSED                        [  6%]
+tests/test_feature11.py::test_doubles[2-4] PASSED                        [  7%]
+tests/test_feature11.py::test_doubles[3-6] PASSED                        [  8%]
+tests/test_feature11.py::test_sum PASSED                                 [  8%]
+tests/test_feature12.py::test_doubles[1-2] PASSED                        [  9%]
+tests/test_feature12.py::test_doubles[2-4] PASSED                        [  9%]
+tests/test_feature12.py::test_doubles[3-6] PASSED                        [ 10%]
+tests/test_feature12.py::test_sum PASSED                                 [ 11%]
+tests/test_feature13.py::test_doubles[1-2] PASSED                        [ 11%]
+tests/test_feature13.py::test_doubles[2-4] PASSED                        [ 12%]
+tests/test_feature13.py::test_doubles[3-6] PASSED                        [ 12%]
+tests/test_feature13.py::test_sum PASSED                                 [ 13%]
+tests/test_feature14.py::test_doubles[1-2] PASSED                        [ 14%]
+tests/test_feature14.py::test_doubles[2-4] PASSED                        [ 14%]
+tests/test_feature14.py::test_doubles[3-6] PASSED                        [ 15%]
+tests/test_feature14.py::test_sum PASSED                                 [ 16%]
+tests/test_feature15.py::test_doubles[1-2] PASSED                        [ 16%]
+tests/test_feature15.py::test_doubles[2-4] PASSED                        [ 17%]
+tests/test_feature15.py::test_doubles[3-6] PASSED                        [ 17%]
+tests/test_feature15.py::test_sum PASSED                                 [ 18%]
+tests/test_feature16.py::test_doubles[1-2] PASSED                        [ 19%]
+tests/test_feature16.py::test_doubles[2-4] PASSED                        [ 19%]
+tests/test_feature16.py::test_doubles[3-6] PASSED                        [ 20%]
+tests/test_feature16.py::test_sum PASSED                                 [ 20%]
+tests/test_feature17.py::test_doubles[1-2] PASSED                        [ 21%]
+tests/test_feature17.py::test_doubles[2-4] PASSED                        [ 22%]
+tests/test_feature17.py::test_doubles[3-6] PASSED                        [ 22%]
+tests/test_feature17.py::test_sum PASSED                                 [ 23%]
+tests/test_feature18.py::test_doubles[1-2] PASSED                        [ 24%]
+tests/test_feature18.py::test_doubles[2-4] PASSED                        [ 24%]
+tests/test_feature18.py::test_doubles[3-6] PASSED                        [ 25%]
+tests/test_feature18.py::test_sum PASSED                                 [ 25%]
+tests/test_feature19.py::test_doubles[1-2] PASSED                        [ 26%]
+tests/test_feature19.py::test_doubles[2-4] PASSED                        [ 27%]
+tests/test_feature19.py::test_doubles[3-6] PASSED                        [ 27%]
+tests/test_feature19.py::test_sum PASSED                                 [ 28%]
+tests/test_feature2.py::test_doubles[1-2] PASSED                         [ 29%]
+tests/test_feature2.py::test_doubles[2-4] PASSED                         [ 29%]
+tests/test_feature2.py::test_doubles[3-6] PASSED                         [ 30%]
+tests/test_feature2.py::test_sum PASSED                                  [ 30%]
+tests/test_feature20.py::test_doubles[1-2] PASSED                        [ 31%]
+tests/test_feature20.py::test_doubles[2-4] PASSED                        [ 32%]
+tests/test_feature20.py::test_doubles[3-6] PASSED                        [ 32%]
+tests/test_feature20.py::test_sum PASSED                                 [ 33%]
+tests/test_feature21.py::test_doubles[1-2] PASSED                        [ 33%]
+tests/test_feature21.py::test_doubles[2-4] PASSED                        [ 34%]
+tests/test_feature21.py::test_doubles[3-6] PASSED                        [ 35%]
+tests/test_feature21.py::test_sum PASSED                                 [ 35%]
+tests/test_feature22.py::test_doubles[1-2] PASSED                        [ 36%]
+tests/test_feature22.py::test_doubles[2-4] PASSED                        [ 37%]
+tests/test_feature22.py::test_doubles[3-6] PASSED                        [ 37%]
+tests/test_feature22.py::test_sum PASSED                                 [ 38%]
+tests/test_feature23.py::test_doubles[1-2] PASSED                        [ 38%]
+tests/test_feature23.py::test_doubles[2-4] PASSED                        [ 39%]
+tests/test_feature23.py::test_doubles[3-6] PASSED                        [ 40%]
+tests/test_feature23.py::test_sum PASSED                                 [ 40%]
+tests/test_feature24.py::test_doubles[1-2] PASSED                        [ 41%]
+tests/test_feature24.py::test_doubles[2-4] PASSED                        [ 41%]
+tests/test_feature24.py::test_doubles[3-6] PASSED                        [ 42%]
+tests/test_feature24.py::test_sum PASSED                                 [ 43%]
+tests/test_feature25.py::test_doubles[1-2] PASSED                        [ 43%]
+tests/test_feature25.py::test_doubles[2-4] PASSED                        [ 44%]
+tests/test_feature25.py::test_doubles[3-6] PASSED                        [ 45%]
+tests/test_feature25.py::test_sum PASSED                                 [ 45%]
+tests/test_feature26.py::test_doubles[1-2] PASSED                        [ 46%]
+tests/test_feature26.py::test_doubles[2-4] PASSED                        [ 46%]
+tests/test_feature26.py::test_doubles[3-6] PASSED                        [ 47%]
+tests/test_feature26.py::test_sum PASSED                                 [ 48%]
+tests/test_feature27.py::test_doubles[1-2] PASSED                        [ 48%]
+tests/test_feature27.py::test_doubles[2-4] PASSED                        [ 49%]
+tests/test_feature27.py::test_doubles[3-6] PASSED                        [ 50%]
+tests/test_feature27.py::test_sum PASSED                                 [ 50%]
+tests/test_feature28.py::test_doubles[1-2] PASSED                        [ 51%]
+tests/test_feature28.py::test_doubles[2-4] PASSED                        [ 51%]
+tests/test_feature28.py::test_doubles[3-6] PASSED                        [ 52%]
+tests/test_feature28.py::test_sum PASSED                                 [ 53%]
+tests/test_feature29.py::test_doubles[1-2] PASSED                        [ 53%]
+tests/test_feature29.py::test_doubles[2-4] PASSED                        [ 54%]
+tests/test_feature29.py::test_doubles[3-6] PASSED                        [ 54%]
+tests/test_feature29.py::test_sum PASSED                                 [ 55%]
+tests/test_feature3.py::test_doubles[1-2] PASSED                         [ 56%]
+tests/test_feature3.py::test_doubles[2-4] PASSED                         [ 56%]
+tests/test_feature3.py::test_doubles[3-6] PASSED                         [ 57%]
+tests/test_feature3.py::test_sum PASSED                                  [ 58%]
+tests/test_feature30.py::test_doubles[1-2] PASSED                        [ 58%]
+tests/test_feature30.py::test_doubles[2-4] PASSED                        [ 59%]
+tests/test_feature30.py::test_doubles[3-6] PASSED                        [ 59%]
+tests/test_feature30.py::test_sum PASSED                                 [ 60%]
+tests/test_feature31.py::test_doubles[1-2] PASSED                        [ 61%]
+tests/test_feature31.py::test_doubles[2-4] PASSED                        [ 61%]
+tests/test_feature31.py::test_doubles[3-6] PASSED                        [ 62%]
+tests/test_feature31.py::test_sum PASSED                                 [ 62%]
+tests/test_feature32.py::test_doubles[1-2] PASSED                        [ 63%]
+tests/test_feature32.py::test_doubles[2-4] PASSED                        [ 64%]
+tests/test_feature32.py::test_doubles[3-6] PASSED                        [ 64%]
+tests/test_feature32.py::test_sum PASSED                                 [ 65%]
+tests/test_feature33.py::test_doubles[1-2] PASSED                        [ 66%]
+tests/test_feature33.py::test_doubles[2-4] PASSED                        [ 66%]
+tests/test_feature33.py::test_doubles[3-6] PASSED                        [ 67%]
+tests/test_feature33.py::test_sum PASSED                                 [ 67%]
+tests/test_feature34.py::test_doubles[1-2] PASSED                        [ 68%]
+tests/test_feature34.py::test_doubles[2-4] PASSED                        [ 69%]
+tests/test_feature34.py::test_doubles[3-6] PASSED                        [ 69%]
+tests/test_feature34.py::test_sum PASSED                                 [ 70%]
+tests/test_feature35.py::test_doubles[1-2] PASSED                        [ 70%]
+tests/test_feature35.py::test_doubles[2-4] PASSED                        [ 71%]
+tests/test_feature35.py::test_doubles[3-6] PASSED                        [ 72%]
+tests/test_feature35.py::test_sum PASSED                                 [ 72%]
+tests/test_feature36.py::test_doubles[1-2] PASSED                        [ 73%]
+tests/test_feature36.py::test_doubles[2-4] PASSED                        [ 74%]
+tests/test_feature36.py::test_doubles[3-6] PASSED                        [ 74%]
+tests/test_feature36.py::test_sum PASSED                                 [ 75%]
+tests/test_feature37.py::test_doubles[1-2] PASSED                        [ 75%]
+tests/test_feature37.py::test_doubles[2-4] PASSED                        [ 76%]
+tests/test_feature37.py::test_doubles[3-6] PASSED                        [ 77%]
+tests/test_feature37.py::test_sum PASSED                                 [ 77%]
+tests/test_feature38.py::test_doubles[1-2] PASSED                        [ 78%]
+tests/test_feature38.py::test_doubles[2-4] PASSED                        [ 79%]
+tests/test_feature38.py::test_doubles[3-6] PASSED                        [ 79%]
+tests/test_feature38.py::test_sum PASSED                                 [ 80%]
+tests/test_feature39.py::test_doubles[1-2] PASSED                        [ 80%]
+tests/test_feature39.py::test_doubles[2-4] PASSED                        [ 81%]
+tests/test_feature39.py::test_doubles[3-6] PASSED                        [ 82%]
+tests/test_feature39.py::test_sum PASSED                                 [ 82%]
+tests/test_feature4.py::test_doubles[1-2] PASSED                         [ 83%]
+tests/test_feature4.py::test_doubles[2-4] PASSED                         [ 83%]
+tests/test_feature4.py::test_doubles[3-6] PASSED                         [ 84%]
+tests/test_feature4.py::test_sum PASSED                                  [ 85%]
+tests/test_feature40.py::test_doubles[1-2] PASSED                        [ 85%]
+tests/test_feature40.py::test_doubles[2-4] PASSED                        [ 86%]
+tests/test_feature40.py::test_doubles[3-6] PASSED                        [ 87%]
+tests/test_feature40.py::test_sum PASSED                                 [ 87%]
+tests/test_feature5.py::test_doubles[1-2] PASSED                         [ 88%]
+tests/test_feature5.py::test_doubles[2-4] PASSED                         [ 88%]
+tests/test_feature5.py::test_doubles[3-6] PASSED                         [ 89%]
+tests/test_feature5.py::test_sum PASSED                                  [ 90%]
+tests/test_feature6.py::test_doubles[1-2] PASSED                         [ 90%]
+tests/test_feature6.py::test_doubles[2-4] PASSED                         [ 91%]
+tests/test_feature6.py::test_doubles[3-6] PASSED                         [ 91%]
+tests/test_feature6.py::test_sum PASSED                                  [ 92%]
+tests/test_feature7.py::test_doubles[1-2] PASSED                         [ 93%]
+tests/test_feature7.py::test_doubles[2-4] PASSED                         [ 93%]
+tests/test_feature7.py::test_doubles[3-6] PASSED                         [ 94%]
+tests/test_feature7.py::test_sum PASSED                                  [ 95%]
+tests/test_feature8.py::test_doubles[1-2] PASSED                         [ 95%]
+tests/test_feature8.py::test_doubles[2-4] PASSED                         [ 96%]
+tests/test_feature8.py::test_doubles[3-6] PASSED                         [ 96%]
+tests/test_feature8.py::test_sum PASSED                                  [ 97%]
+tests/test_feature9.py::test_doubles[1-2] PASSED                         [ 98%]
+tests/test_feature9.py::test_doubles[2-4] PASSED                         [ 98%]
+tests/test_feature9.py::test_doubles[3-6] PASSED                         [ 99%]
+tests/test_feature9.py::test_sum PASSED                                  [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_discount_applied_once __________________________
+
+    def test_discount_applied_once():
+>       assert total([{"qty": 1, "price": 100}], 0.1) == 90
+E       AssertionError: assert 81.0 == 90
+E        +  where 81.0 = total([{'price': 100, 'qty': 1}], 0.1)
+
+tests/test_checkout.py:4: AssertionError
+_______________________ test_reads_discount_from_config ________________________
+
+    def test_reads_discount_from_config():
+>       assert load_config("{discount: 0.1}") == 0.1
+
+tests/test_checkout.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/pricing.py:8: in load_config
+    return json.loads(text)["discount"]
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py:345: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x105a54440>, s = '{discount: 0.1}'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+>           obj, end = self.scan_once(s, idx)
+E           json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py:361: JSONDecodeError
+=========================== short test summary info ============================
+FAILED tests/test_checkout.py::test_discount_applied_once - AssertionError: a...
+FAILED tests/test_checkout.py::test_reads_discount_from_config - json.decoder...
+======================== 2 failed, 160 passed in 0.08s =========================

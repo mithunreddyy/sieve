@@ -1,0 +1,103 @@
+
+/work/js/lint/page1.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page10.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page11.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page12.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page13.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page14.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page15.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page16.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page17.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page18.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page19.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page2.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page20.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page3.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page4.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page5.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page6.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page7.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page8.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+/work/js/lint/page9.js
+  1:10  error  'helper' is defined but never used           no-unused-vars
+  3:9   error  'unused' is assigned a value but never used  no-unused-vars
+  4:42  error  'undefinedThing' is not defined              no-undef
+
+✖ 60 problems (60 errors, 0 warnings)
+

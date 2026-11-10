@@ -1,0 +1,120 @@
+/work/execa/lib/pipe/streaming.js:8:// Instead, its stdout (for the source) or stdin (for the destination) closes.
+/work/execa/lib/pipe/setup.js:15:// Pipe a subprocess' `stdout`/`stderr`/`stdio` into another subprocess' `stdin`
+/work/execa/lib/methods/main-async.js:170:	stdout: nodeChildProcess.stdout,
+/work/execa/lib/methods/template.js:153:	// Only own properties are checked: a polluted `Object.prototype.stdout` must not turn any plain object into a subprocess result.
+/work/execa/lib/methods/template.js:155:	if ((isPlainObject(expression) || isExecaError(expression)) && (Object.hasOwn(expression, 'stdout') || Object.hasOwn(expression, 'isMaxBuffer'))) {
+/work/execa/lib/methods/template.js:168:	// Read the own property only: results with `stdout: 'ignore'` have no `stdout` property, which must not be read from a polluted prototype
+/work/execa/lib/methods/template.js:169:	const stdout = Object.hasOwn(result, 'stdout') ? result.stdout : undefined;
+/work/execa/lib/methods/template.js:170:	if (typeof stdout === 'string') {
+/work/execa/lib/methods/template.js:171:		return stdout;
+/work/execa/lib/methods/template.js:174:	if (isUint8Array(stdout)) {
+/work/execa/lib/methods/template.js:175:		return uint8ArrayToString(stdout);
+/work/execa/lib/methods/template.js:178:	if (stdout === undefined) {
+/work/execa/lib/methods/template.js:179:		throw new TypeError('Missing result.stdout in template expression. This is probably due to the previous subprocess\' "stdout" option.');
+/work/execa/lib/methods/template.js:182:	throw new TypeError(`Unexpected "${getTypeName(stdout)}" stdout in template expression`);
+/work/execa/lib/resolve/all-async.js:6:// `all` interleaves `stdout` and `stderr`
+/work/execa/lib/resolve/all-async.js:7:export const makeAllStream = ({stdout, stderr}, {all}) => {
+/work/execa/lib/resolve/all-async.js:12:	const fileDescriptors = [[stdout, 1], [stderr, 2]].filter(([stream]) => stream);
+/work/execa/lib/resolve/all-async.js:18:export const getAllFds = ({stdout, stderr}, [, bufferStdout, bufferStderr]) => [
+/work/execa/lib/resolve/all-async.js:19:	...(stdout !== null && bufferStdout ? [1] : []),
+/work/execa/lib/resolve/all-async.js:47:const getAllStream = ({stdout, stderr}, all, [, bufferStdout, bufferStderr]) => {
+/work/execa/lib/resolve/all-async.js:61:	return bufferStderr ? {stream: all, buffer} : {stream: stdout, buffer, drainedStream: all};
+/work/execa/lib/resolve/all-async.js:64:// When `subprocess.stdout` is in objectMode but not `subprocess.stderr` (or the opposite), we need to use both:
+/work/execa/lib/resolve/all-async.js:68:const getAllMixed = ({stdout, stderr}, all) => all
+/work/execa/lib/resolve/all-async.js:69:	&& stdout
+/work/execa/lib/resolve/all-async.js:71:	&& stdout.readableObjectMode !== stderr.readableObjectMode;
+/work/execa/lib/resolve/wait-stream.js:105:// Therefore, we need to use the file descriptor's direction (`stdin` is input, `stdout` is output, etc.).
+/work/execa/lib/resolve/wait-stream.js:113:// Breaking out of `for await (const chunk of subprocess.stdout)` aborts it with an `AbortError` instead. However, that error cannot be told apart from an `AbortError` thrown by a transform, which must make the subprocess fail. So this is not supported, and `subprocess.readable()` or `subprocess.iterable()` should be used instead.
+/work/execa/lib/resolve/wait-subprocess.js:17:// Retrieve result of subprocess: exit code, signal, error, streams (stdout/stderr/all)
+/work/execa/lib/resolve/wait-subprocess.js:142:// Some `stdin`/`stdout`/`stderr` options create a stream, e.g. when passing a file path.
+/work/execa/lib/resolve/all-sync.js:7:export const getAllSyncFds = ([, stdout, stderr]) => [
+/work/execa/lib/resolve/all-sync.js:8:	...(stdout === undefined ? [] : [1]),
+/work/execa/lib/resolve/all-sync.js:13:export const getAllSync = ([, stdout, stderr], allFds, options) => {
+/work/execa/lib/resolve/all-sync.js:18:	if (stdout === undefined) {
+/work/execa/lib/resolve/all-sync.js:23:		return splitAllLines(stdout, allFds, options);
+/work/execa/lib/resolve/all-sync.js:27:	// A file descriptor which uses the `lines` option is already split with its own `stripFinalNewline` value, like `result.stdout` and `result.stderr` are. The other one is split with the `stripFinalNewline` value of `result.all`.
+/work/execa/lib/resolve/all-sync.js:30:		return [splitAllLines(stdout, allFds, options), splitAllLines(stderr, allFds, options)].flat();
+/work/execa/lib/resolve/all-sync.js:35:	if (Array.isArray(stdout) || Array.isArray(stderr)) {
+/work/execa/lib/resolve/all-sync.js:36:		return [stdout, stderr].filter(value => value.length > 0).flat();
+/work/execa/lib/resolve/all-sync.js:39:	if (isUint8Array(stdout) && isUint8Array(stderr)) {
+/work/execa/lib/resolve/all-sync.js:40:		return concatUint8Arrays([stdout, stderr]);
+/work/execa/lib/resolve/all-sync.js:43:	return BASE64_ENCODINGS.has(options.encoding) ? concatBase64(stdout, stderr, options.encoding) : `${stdout}${stderr}`;
+/work/execa/lib/resolve/all-sync.js:47:const concatBase64 = (stdout, stderr, encoding) => Buffer.concat([Buffer.from(stdout, encoding), Buffer.from(stderr, encoding)]).toString(encoding);
+/work/execa/lib/io/strip-newline.js:3:// Apply `stripFinalNewline` option, which applies to `result.stdout|stderr|all|stdio[*]`.
+/work/execa/lib/io/contents.js:9:// Retrieve `result.stdout|stderr|all|stdio[*]`
+/work/execa/lib/io/contents.js:70:// When using `buffer: false`, users need to read `subprocess.stdout|stderr|all` right away
+/work/execa/lib/io/contents.js:98:// On failure, `result.stdout|stderr|all` should contain the currently buffered stream
+/work/execa/lib/io/iterate.js:7:// Iterate over lines of `subprocess.stdout`, used by `subprocess.readable|duplex|iterable()`
+/work/execa/lib/io/iterate.js:30:// Iterate over lines of `subprocess.stdout`, used by `result.stdout` and the `verbose: 'full'` option.
+/work/execa/lib/io/max-buffer.js:63:// The native `maxBuffer` option passed to `spawnSync()` does not allow differentiating values per file descriptor, so we use `stdout`'s.
+/work/execa/lib/io/max-buffer.js:64:// Since each other file descriptor's own limit is capped by `stdout`'s, this is also the highest one.
+/work/execa/lib/io/max-buffer.js:67:export const getMaxBufferSync = ([, stdoutMaxBuffer]) => stdoutMaxBuffer === 0 ? Number.MIN_VALUE : stdoutMaxBuffer;
+/work/execa/lib/io/max-buffer.js:71:// Like with asynchronous methods, file descriptors which are not buffered are not limited by their own value. However, when they are piped, e.g. to a file, they still count towards the native limit, which is `stdout`'s value.
+/work/execa/lib/io/max-buffer.js:96:// `spawnSync()` uses `maxBuffer.stdout` as its native `maxBuffer`, so other file descriptors' limits can only be lower than that
+/work/execa/lib/io/output-sync.js:10:// Apply `stdout`/`stderr` options, after spawning, in sync mode
+/work/execa/lib/io/output-sync.js:80:// Applies transform generators to `stdout`/`stderr`
+/work/execa/lib/io/output-sync.js:145:		// A single file descriptor can target the same file twice, e.g. `stdout: [{file}, {file}]`.
+/work/execa/lib/io/output-async.js:7:// Handle `input`, `inputFile`, `stdin`, `stdout` and `stderr` options, after spawning, in async mode
+/work/execa/lib/io/output-async.js:37:// When using transforms, `subprocess.stdin|stdout|stderr|stdio` is directly mutated
+/work/execa/lib/io/output-async.js:53:const SUBPROCESS_STREAM_PROPERTIES = ['stdin', 'stdout', 'stderr'];
+/work/execa/lib/utils/standard-stream.js:4:export const STANDARD_STREAMS = [process.stdin, process.stdout, process.stderr];
+/work/execa/lib/utils/standard-stream.js:5:export const STANDARD_STREAMS_ALIASES = ['stdin', 'stdout', 'stderr'];
+/work/execa/lib/utils/standard-stream.js:8:// `subprocess.all` is created by Execa itself, which then pipes `stdout`/`stderr` into it.
+/work/execa/lib/return/early-error.js:43:	const stdout = createDummyStream();
+/work/execa/lib/return/early-error.js:47:	const stdio = [stdin, stdout, stderr, ...extraStdio];
+/work/execa/lib/return/early-error.js:50:		stdout,
+/work/execa/lib/return/result.js:29:	stdout: stdio[1],
+/work/execa/lib/return/result.js:193:	stdout: stdio[1],
+/work/execa/lib/verbose/log.js:7:// If the subprocess prints on stdout and is using `stdout: 'inherit'`,
+/work/execa/lib/verbose/log.js:12:// However, this only seems to happen when the stdout/stderr target
+/work/execa/lib/verbose/values.js:3:// The `verbose` option can have different values for `stdout`/`stderr`
+/work/execa/lib/verbose/values.js:15:// When using `verbose: {stdout, stderr, fd3, ipc}`:
+/work/execa/lib/verbose/values.js:16://  - `verbose.stdout|stderr|fd3` is used for 'output'
+/work/execa/lib/verbose/values.js:23:// When using `verbose: {stdout, stderr, fd3, ipc}` and logging is not specific to a file descriptor.
+/work/execa/lib/verbose/values.js:26://  - if several functions are defined: stdout > stderr > fd3 > ipc
+/work/execa/lib/verbose/output.js:22:// So we only print stdout and stderr.
+/work/execa/lib/verbose/output.js:43:// When `subprocess.stdout|stderr.pipe()` is called, `verbose` becomes a noop.
+/work/execa/lib/verbose/output.js:45://  - `.pipe()` achieves the same result as using `stdout: 'inherit'`, `stdout: stream`, etc. which also make `verbose` a noop.
+/work/execa/lib/verbose/output.js:46://    For example, `subprocess.stdout.pipe(process.stdin)` would print each line twice.
+/work/execa/lib/verbose/output.js:49:// The pipe into `subprocess.all` is done by Execa itself, so it only counts when `subprocess.all` is itself piped, e.g. `subprocess.all.pipe(process.stdout)`.
+/work/execa/lib/verbose/output.js:53:// When `verbose` is `full`, print stdout|stderr
+/work/execa/lib/stdio/handle.js:19:// Handle `input`, `inputFile`, `stdin`, `stdout` and `stderr` options, before spawning, in async/sync mode
+/work/execa/lib/stdio/handle.js:69:// For example, `stdout: ['ignore']` behaves the same as `stdout: 'ignore'`.
+/work/execa/lib/stdio/type.js:6:// The `stdin`/`stdout`/`stderr` option can be of many types. This detects it.
+/work/execa/lib/stdio/handle-sync.js:6:// Normalize `input`, `inputFile`, `stdin`, `stdout` and `stderr` options, before spawning, in sync mode
+/work/execa/lib/stdio/native.js:12://  - 'inherit' becomes `process.stdin|stdout|stderr`
+/work/execa/lib/stdio/native.js:90:// Node.js does not allow to easily retrieve file descriptors beyond stdin/stdout/stderr as streams.
+/work/execa/lib/stdio/handle-async.js:10:// Handle `input`, `inputFile`, `stdin`, `stdout` and `stderr` options, before spawning, in async mode
+/work/execa/lib/stdio/handle-async.js:18:// For example, `stdout: {file}` creates a file stream, which is piped from/to.
+/work/execa/lib/stdio/stdio-option.js:7:// Add support for `stdin`/`stdout`/`stderr` as an alias for `stdio`.
+/work/execa/lib/stdio/stdio-option.js:65:// Using `buffer: false` with synchronous methods implies `stdout`/`stderr`: `ignore`.
+/work/execa/lib/stdio/stdio-option.js:67:// This is only done for `stdout`/`stderr`, since `ignore` redirects them to `/dev/null`.
+/work/execa/lib/stdio/stdio-option.js:88:// On `stdout`/`stderr`, the direction is always output, so `input: true` is ignored and the pipe stays output.
+/work/execa/lib/stdio/direction.js:9:// For `stdio[fdNumber]` beyond stdin/stdout/stderr, we need to guess whether the value passed is intended for inputs or outputs.
+/work/execa/lib/stdio/direction.js:35:// It takes precedence over guessing, but not over the fixed direction of `stdin`/`stdout`/`stderr`.
+/work/execa/lib/stdio/direction.js:47:// `stdin`/`stdout`/`stderr` have a fixed direction, which each value must not contradict.
+/work/execa/lib/stdio/direction.js:68:// `stdin`/`stdout`/`stderr` have a known direction
+/work/execa/lib/stdio/direction.js:111:	if ([1, 2, process.stdout, process.stderr].includes(value)) {
+/work/execa/lib/stdio/duplicate.js:30:// For example `{stdout: {file: './output.txt'}, stderr: {file: './output.txt'}}`.
+/work/execa/lib/stdio/duplicate.js:31:// The same applies to two items of a single file descriptor, e.g. `{stdout: [{file: './output.txt'}, {file: './output.txt'}]}`.
+/work/execa/lib/stdio/duplicate.js:118:// For example, this could result in `subprocess.stdout` and `subprocess.stderr` being the same value.
+/work/execa/lib/stdio/duplicate.js:119:// This means reading from either would get data from both stdout and stderr.
+/work/execa/lib/transform/object-mode.js:31:// Retrieve the `objectMode` of a file descriptor, e.g. `stdout` or `stderr`
+/work/execa/lib/transform/encoding-transform.js:9:- `subprocess.stdout|stderr` emits Buffers
+/work/execa/lib/arguments/specific.js:6:// Some options can have different values for `stdout`/`stderr`/`fd3`.
+/work/execa/lib/arguments/specific.js:8:// For example, `{verbose: {stdout: 'none', stderr: 'full'}}` becomes `{verbose: ['none', 'none', 'full']}`
+/work/execa/lib/arguments/specific.js:51:// Ensure priority order when setting both `stdout`/`stderr`, `fd1`/`fd2`, and `all`
+/work/execa/lib/arguments/specific.js:55:	if (fdName === 'stdout' || fdName === 'stderr') {
+/work/execa/lib/arguments/specific.js:70:It must be "${optionName}.stdout", "${optionName}.stderr", "${optionName}.all", "${optionName}.ipc", or "${optionName}.fd3", "${optionName}.fd4" (and so on).`);
+/work/execa/lib/arguments/specific.js:126:// List of options which can have different values for `stdout`/`stderr`
+/work/execa/lib/arguments/fd-options.js:18:export const getFromStream = (source, from = 'stdout') => {
+/work/execa/lib/arguments/fd-options.js:48:		: {validOptions: '"stdout", "stderr", "all"', defaultValue: 'stdout'};
+/work/execa/lib/arguments/fd-options.js:81:const getInvalidStdioOption = (fdNumber, {stdin, stdout, stderr, stdio}) => {
+/work/execa/lib/arguments/fd-options.js:88:	if (usedDescriptor === 1 && stdout !== undefined) {
+/work/execa/lib/arguments/fd-options.js:89:		return {optionName: 'stdout', optionValue: stdout};
+/work/execa/lib/convert/readable.js:16:// Create a `Readable` stream that forwards from `stdout` and awaits the subprocess
+/work/execa/lib/convert/readable.js:22:	// Retrieve `stdout` (or other stream depending on `from`)
+/work/execa/lib/convert/readable.js:72:// Forwards data from `stdout` to `readable`
+/work/execa/lib/convert/readable.js:84:// When `subprocess.stdout` ends/aborts/errors, do the same on `readable`.
+/work/execa/lib/convert/readable.js:116:// When `readable` aborts/errors, do the same on `subprocess.stdout`
+/work/execa/lib/convert/readable.js:119:		// Breaking out of `for await (const chunk of readable)` or cancelling `subprocess.readableStream()` destroys `readable` with an `AbortError`. Like `readable.destroy()`, this aborts `subprocess.stdout` instead of making it fail.

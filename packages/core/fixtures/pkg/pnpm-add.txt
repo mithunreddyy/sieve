@@ -1,0 +1,10 @@
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Packages: +131
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 131, reused 131, downloaded 0, added 131, done
+
+dependencies:
++ express 4.22.3
++ webpack 5.112.2
+
+Done in 203ms using pnpm v12.16.1

@@ -1,0 +1,1112 @@
+E401 [*] Multiple imports on one line
+ --> app/legacy1.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f1(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy1.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f1(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy1.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f1(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy1.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f1(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy1.py:4:5
+  |
+2 | from typing import *
+3 | def f1(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy1.py:5:13
+  |
+3 | def f1(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy1.py:5:17
+  |
+3 | def f1(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy10.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f10(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy10.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f10(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy10.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f10(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy10.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f10(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy10.py:4:5
+  |
+2 | from typing import *
+3 | def f10(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy10.py:5:13
+  |
+3 | def f10(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy10.py:5:17
+  |
+3 | def f10(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy11.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f11(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy11.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f11(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy11.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f11(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy11.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f11(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy11.py:4:5
+  |
+2 | from typing import *
+3 | def f11(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy11.py:5:13
+  |
+3 | def f11(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy11.py:5:17
+  |
+3 | def f11(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy12.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f12(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy12.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f12(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy12.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f12(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy12.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f12(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy12.py:4:5
+  |
+2 | from typing import *
+3 | def f12(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy12.py:5:13
+  |
+3 | def f12(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy12.py:5:17
+  |
+3 | def f12(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy13.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f13(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy13.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f13(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy13.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f13(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy13.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f13(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy13.py:4:5
+  |
+2 | from typing import *
+3 | def f13(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy13.py:5:13
+  |
+3 | def f13(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy13.py:5:17
+  |
+3 | def f13(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy14.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f14(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy14.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f14(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy14.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f14(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy14.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f14(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy14.py:4:5
+  |
+2 | from typing import *
+3 | def f14(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy14.py:5:13
+  |
+3 | def f14(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy14.py:5:17
+  |
+3 | def f14(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy15.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f15(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy15.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f15(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy15.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f15(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy15.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f15(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy15.py:4:5
+  |
+2 | from typing import *
+3 | def f15(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy15.py:5:13
+  |
+3 | def f15(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy15.py:5:17
+  |
+3 | def f15(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy2.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f2(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy2.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f2(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy2.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f2(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy2.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f2(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy2.py:4:5
+  |
+2 | from typing import *
+3 | def f2(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy2.py:5:13
+  |
+3 | def f2(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy2.py:5:17
+  |
+3 | def f2(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy3.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f3(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy3.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f3(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy3.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f3(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy3.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f3(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy3.py:4:5
+  |
+2 | from typing import *
+3 | def f3(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy3.py:5:13
+  |
+3 | def f3(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy3.py:5:17
+  |
+3 | def f3(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy4.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f4(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy4.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f4(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy4.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f4(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy4.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f4(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy4.py:4:5
+  |
+2 | from typing import *
+3 | def f4(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy4.py:5:13
+  |
+3 | def f4(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy4.py:5:17
+  |
+3 | def f4(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy5.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f5(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy5.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f5(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy5.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f5(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy5.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f5(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy5.py:4:5
+  |
+2 | from typing import *
+3 | def f5(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy5.py:5:13
+  |
+3 | def f5(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy5.py:5:17
+  |
+3 | def f5(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy6.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f6(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy6.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f6(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy6.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f6(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy6.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f6(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy6.py:4:5
+  |
+2 | from typing import *
+3 | def f6(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy6.py:5:13
+  |
+3 | def f6(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy6.py:5:17
+  |
+3 | def f6(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy7.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f7(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy7.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f7(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy7.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f7(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy7.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f7(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy7.py:4:5
+  |
+2 | from typing import *
+3 | def f7(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy7.py:5:13
+  |
+3 | def f7(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy7.py:5:17
+  |
+3 | def f7(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy8.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f8(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy8.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f8(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy8.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f8(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy8.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f8(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy8.py:4:5
+  |
+2 | from typing import *
+3 | def f8(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy8.py:5:13
+  |
+3 | def f8(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy8.py:5:17
+  |
+3 | def f8(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+E401 [*] Multiple imports on one line
+ --> app/legacy9.py:1:1
+  |
+1 | import os, sys
+  | ^^^^^^^^^^^^^^
+2 | from typing import *
+3 | def f9(x):
+  |
+help: Split imports
+
+F401 [*] `os` imported but unused
+ --> app/legacy9.py:1:8
+  |
+1 | import os, sys
+  |        ^^
+2 | from typing import *
+3 | def f9(x):
+  |
+help: Remove unused import
+
+F401 [*] `sys` imported but unused
+ --> app/legacy9.py:1:12
+  |
+1 | import os, sys
+  |            ^^^
+2 | from typing import *
+3 | def f9(x):
+  |
+help: Remove unused import
+
+F403 `from typing import *` used; unable to detect undefined names
+ --> app/legacy9.py:2:1
+  |
+1 | import os, sys
+2 | from typing import *
+  | ^^^^^^^^^^^^^^^^^^^^
+3 | def f9(x):
+4 |     l = [1,2,3]
+  |
+
+E741 Ambiguous variable name: `l`
+ --> app/legacy9.py:4:5
+  |
+2 | from typing import *
+3 | def f9(x):
+4 |     l = [1,2,3]
+  |     ^
+5 |     if x == None: return l
+6 |     except_value = eval("x")
+  |
+
+E711 Comparison to `None` should be `cond is None`
+ --> app/legacy9.py:5:13
+  |
+3 | def f9(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |             ^^^^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+help: Replace with `cond is None`
+
+E701 Multiple statements on one line (colon)
+ --> app/legacy9.py:5:17
+  |
+3 | def f9(x):
+4 |     l = [1,2,3]
+5 |     if x == None: return l
+  |                 ^
+6 |     except_value = eval("x")
+7 |     return except_value
+  |
+
+Found 105 errors.
+[*] 45 fixable with the `--fix` option (15 hidden fixes can be enabled with the `--unsafe-fixes` option).

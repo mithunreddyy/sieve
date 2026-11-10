@@ -1,0 +1,26 @@
+
+Randomized with seed 41817
+......................................................................F.................................................
+
+Failures:
+
+  1) Cart#total applies the discount once
+     Failure/Error: expect(cart.total(0.1)).to eq(90)
+
+       expected: 90
+            got: 81.0
+
+       (compared using ==)
+     # ./spec/cart_spec.rb:12:in `block (3 levels) in <top (required)>'
+     # /usr/local/bundle/gems/rspec-core-3.13.2/lib/rspec/core/example.rb:263:in `instance_exec'
+     # /usr/local/bundle/gems/rspec-core-3.13.2/lib/rspec/core/example.rb:263:in `block in run'
+     # /usr/local/bundle/gems/rspec-core-3.13.2/lib/rspec/core/hooks.rb:486:in `block in run'
+
+Finished in 0.0421 seconds (files took 0.21 seconds to load)
+120 examples, 1 failure
+
+Failed examples:
+
+rspec ./spec/cart_spec.rb:11 # Cart#total applies the discount once
+
+Randomized with seed 41817

@@ -1,0 +1,16 @@
+{
+  "name": "@sieve/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "sieve": "./src/main.ts"
+  },
+  "dependencies": {
+    "@sieve/protocol": "workspace:*",
+    "@sieve/core": "workspace:*",
+    "@sieve/daemon": "workspace:*",
+    "@sieve/mcp": "workspace:*",
+    "@sieve/adapter-claude-code": "workspace:*"
+  }
+}

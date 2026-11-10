@@ -1,0 +1,98 @@
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/pytest_asyncio/plugin.py:217: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform darwin -- Python 3.13.7, pytest-8.3.5, pluggy-1.6.0
+rootdir: /work/py
+plugins: anyio-4.12.1, langsmith-0.7.38, cov-7.1.0, asyncio-0.26.0
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 162 items
+
+tests/test_checkout.py FF                                                [  1%]
+tests/test_feature1.py ....                                              [  3%]
+tests/test_feature10.py ....                                             [  6%]
+tests/test_feature11.py ....                                             [  8%]
+tests/test_feature12.py ....                                             [ 11%]
+tests/test_feature13.py ....                                             [ 13%]
+tests/test_feature14.py ....                                             [ 16%]
+tests/test_feature15.py ....                                             [ 18%]
+tests/test_feature16.py ....                                             [ 20%]
+tests/test_feature17.py ....                                             [ 23%]
+tests/test_feature18.py ....                                             [ 25%]
+tests/test_feature19.py ....                                             [ 28%]
+tests/test_feature2.py ....                                              [ 30%]
+tests/test_feature20.py ....                                             [ 33%]
+tests/test_feature21.py ....                                             [ 35%]
+tests/test_feature22.py ....                                             [ 38%]
+tests/test_feature23.py ....                                             [ 40%]
+tests/test_feature24.py ....                                             [ 43%]
+tests/test_feature25.py ....                                             [ 45%]
+tests/test_feature26.py ....                                             [ 48%]
+tests/test_feature27.py ....                                             [ 50%]
+tests/test_feature28.py ....                                             [ 53%]
+tests/test_feature29.py ....                                             [ 55%]
+tests/test_feature3.py ....                                              [ 58%]
+tests/test_feature30.py ....                                             [ 60%]
+tests/test_feature31.py ....                                             [ 62%]
+tests/test_feature32.py ....                                             [ 65%]
+tests/test_feature33.py ....                                             [ 67%]
+tests/test_feature34.py ....                                             [ 70%]
+tests/test_feature35.py ....                                             [ 72%]
+tests/test_feature36.py ....                                             [ 75%]
+tests/test_feature37.py ....                                             [ 77%]
+tests/test_feature38.py ....                                             [ 80%]
+tests/test_feature39.py ....                                             [ 82%]
+tests/test_feature4.py ....                                              [ 85%]
+tests/test_feature40.py ....                                             [ 87%]
+tests/test_feature5.py ....                                              [ 90%]
+tests/test_feature6.py ....                                              [ 92%]
+tests/test_feature7.py ....                                              [ 95%]
+tests/test_feature8.py ....                                              [ 97%]
+tests/test_feature9.py ....                                              [100%]
+
+=================================== FAILURES ===================================
+__________________________ test_discount_applied_once __________________________
+
+    def test_discount_applied_once():
+>       assert total([{"qty": 1, "price": 100}], 0.1) == 90
+E       AssertionError: assert 81.0 == 90
+E        +  where 81.0 = total([{'price': 100, 'qty': 1}], 0.1)
+
+tests/test_checkout.py:4: AssertionError
+_______________________ test_reads_discount_from_config ________________________
+
+    def test_reads_discount_from_config():
+>       assert load_config("{discount: 0.1}") == 0.1
+
+tests/test_checkout.py:7: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+app/pricing.py:8: in load_config
+    return json.loads(text)["discount"]
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/__init__.py:346: in loads
+    return _default_decoder.decode(s)
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py:345: in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <json.decoder.JSONDecoder object at 0x1081c0440>, s = '{discount: 0.1}'
+idx = 0
+
+    def raw_decode(self, s, idx=0):
+        """Decode a JSON document from ``s`` (a ``str`` beginning with
+        a JSON document) and return a 2-tuple of the Python
+        representation and the index in ``s`` where the document ended.
+    
+        This can be used to decode a JSON document from a string that may
+        have extraneous data at the end.
+    
+        """
+        try:
+>           obj, end = self.scan_once(s, idx)
+E           json.decoder.JSONDecodeError: Expecting property name enclosed in double quotes: line 1 column 2 (char 1)
+
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/json/decoder.py:361: JSONDecodeError
+=========================== short test summary info ============================
+FAILED tests/test_checkout.py::test_discount_applied_once - AssertionError: a...
+FAILED tests/test_checkout.py::test_reads_discount_from_config - json.decoder...
+======================== 2 failed, 160 passed in 0.10s =========================

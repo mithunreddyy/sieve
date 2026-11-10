@@ -1,0 +1,31 @@
+vitest/default-two-failures.txt	npx vitest run	captured	vitest vitest/3.2.7 darwin-arm64 node-v26.12.1
+vitest/verbose-two-failures.txt	npx vitest run --reporter=verbose	captured	vitest vitest/3.2.7 darwin-arm64 node-v26.12.1
+vitest/all-pass.txt	npx vitest run	captured	vitest vitest/3.2.7 darwin-arm64 node-v26.12.1
+jest/default-two-failures.txt	npx jest	captured	jest 30.5.2
+jest/verbose-two-failures.txt	npx jest --verbose	captured	jest 30.5.2
+bun-test/one-failure.txt	bun test	captured	bun 1.4.4
+tsc/many-duplicates.txt	npx tsc --noEmit	captured	tsc Version 5.9.3
+eslint/stylish-repeated.txt	npx eslint .	captured	eslint v9.39.5
+biome/lint-repeated.txt	npx biome lint .	captured	Version: 2.6.6
+pytest/default-two-failures.txt	pytest	captured	pytest 8.3.5
+pytest/verbose-two-failures.txt	pytest -v	captured	pytest 8.3.5
+junit/pytest-two-failures.txt	cat junit.xml	captured	pytest 8.3.5 --junitxml
+mypy/many-duplicates.txt	mypy --strict app	captured	mypy 1.20.2 (compiled: yes)
+ruff/many-duplicates.txt	ruff check app	captured	ruff 0.15.12
+pkg/pip-install.txt	pip install requests rich	captured	pip 26.2.2
+pkg/npm-install-deprecated.txt	npm install request node-sass-middleware	captured	npm 11.20.0
+pkg/pnpm-add.txt	pnpm add express webpack	captured	pnpm 12.16.1
+logs/npm-silly.txt	npm install --loglevel silly express	captured	npm 11.20.0
+go-test/verbose-one-failure.txt	go test -v ./...	captured	go version go1.27.3 darwin/arm64
+go-test/default-one-failure.txt	go test ./...	captured	go version go1.27.3 darwin/arm64
+go-test/panic.txt	go test ./...	captured	go version go1.27.3 darwin/arm64
+clang/repeated.txt	clang -Wall -Wextra -c mod*.c	captured	Apple clang version 21.0.0 (clang-2100.3.34.2)
+git/log.txt	git log -n 120	captured	git version 2.56.0
+git/log-stat.txt	git log --stat -n 40	captured	git version 2.56.0
+git/diff-range.txt	git diff HEAD~25 HEAD	captured	git version 2.56.0
+git/status-many.txt	git status	captured	git version 2.56.0
+search/rg-many.txt	rg -n subprocess	captured	ripgrep 15.2.0
+search/grep-many.txt	grep -rn stdout lib	captured	grep (bsd)
+json/npm-view.txt	npm view zod@3.23.8 --json	captured	npm 11.20.0
+json/github-issues.txt	curl api.github.com/repos/sindresorhus/execa/issues	captured	GitHub REST API
+html/node-path-docs.txt	curl https://nodejs.org/api/path.html	captured	nodejs.org (MIT)

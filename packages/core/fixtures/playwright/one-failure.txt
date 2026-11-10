@@ -1,0 +1,76 @@
+
+Running 48 tests using 4 workers
+
+  ✓  1 [chromium] › tests/home.spec.ts:3:5 › home › case 0 (300ms)
+  ✓  2 [chromium] › tests/home.spec.ts:9:5 › home › case 1 (337ms)
+  ✓  3 [chromium] › tests/home.spec.ts:15:5 › home › case 2 (374ms)
+  ✓  4 [chromium] › tests/home.spec.ts:21:5 › home › case 3 (411ms)
+  ✓  5 [chromium] › tests/home.spec.ts:27:5 › home › case 4 (448ms)
+  ✓  6 [chromium] › tests/home.spec.ts:33:5 › home › case 5 (485ms)
+  ✓  7 [chromium] › tests/home.spec.ts:39:5 › home › case 6 (522ms)
+  ✓  8 [chromium] › tests/home.spec.ts:45:5 › home › case 7 (559ms)
+  ✓  9 [chromium] › tests/search.spec.ts:3:5 › search › case 0 (300ms)
+  ✓  10 [chromium] › tests/search.spec.ts:9:5 › search › case 1 (337ms)
+  ✓  11 [chromium] › tests/search.spec.ts:15:5 › search › case 2 (374ms)
+  ✓  12 [chromium] › tests/search.spec.ts:21:5 › search › case 3 (411ms)
+  ✓  13 [chromium] › tests/search.spec.ts:27:5 › search › case 4 (448ms)
+  ✓  14 [chromium] › tests/search.spec.ts:33:5 › search › case 5 (485ms)
+  ✓  15 [chromium] › tests/search.spec.ts:39:5 › search › case 6 (522ms)
+  ✓  16 [chromium] › tests/search.spec.ts:45:5 › search › case 7 (559ms)
+  ✓  17 [chromium] › tests/cart.spec.ts:3:5 › cart › case 0 (300ms)
+  ✓  18 [chromium] › tests/cart.spec.ts:9:5 › cart › case 1 (337ms)
+  ✓  19 [chromium] › tests/cart.spec.ts:15:5 › cart › case 2 (374ms)
+  ✓  20 [chromium] › tests/cart.spec.ts:21:5 › cart › case 3 (411ms)
+  ✓  21 [chromium] › tests/cart.spec.ts:27:5 › cart › case 4 (448ms)
+  ✓  22 [chromium] › tests/cart.spec.ts:33:5 › cart › case 5 (485ms)
+  ✓  23 [chromium] › tests/cart.spec.ts:39:5 › cart › case 6 (522ms)
+  ✓  24 [chromium] › tests/cart.spec.ts:45:5 › cart › case 7 (559ms)
+  ✓  25 [chromium] › tests/account.spec.ts:3:5 › account › case 0 (300ms)
+  ✓  26 [chromium] › tests/account.spec.ts:9:5 › account › case 1 (337ms)
+  ✓  27 [chromium] › tests/account.spec.ts:15:5 › account › case 2 (374ms)
+  ✓  28 [chromium] › tests/account.spec.ts:21:5 › account › case 3 (411ms)
+  ✓  29 [chromium] › tests/account.spec.ts:27:5 › account › case 4 (448ms)
+  ✓  30 [chromium] › tests/account.spec.ts:33:5 › account › case 5 (485ms)
+  ✓  31 [chromium] › tests/account.spec.ts:39:5 › account › case 6 (522ms)
+  ✓  32 [chromium] › tests/account.spec.ts:45:5 › account › case 7 (559ms)
+  ✓  33 [chromium] › tests/checkout.spec.ts:3:5 › checkout › case 0 (300ms)
+  ✓  34 [chromium] › tests/checkout.spec.ts:9:5 › checkout › case 1 (337ms)
+  ✘  35 [chromium] › tests/checkout.spec.ts:10:5 › checkout › pays with saved card (5.1s)
+  ✓  36 [chromium] › tests/checkout.spec.ts:21:5 › checkout › case 3 (411ms)
+  ✓  37 [chromium] › tests/checkout.spec.ts:27:5 › checkout › case 4 (448ms)
+  ✓  38 [chromium] › tests/checkout.spec.ts:33:5 › checkout › case 5 (485ms)
+  ✓  39 [chromium] › tests/checkout.spec.ts:39:5 › checkout › case 6 (522ms)
+  ✓  40 [chromium] › tests/checkout.spec.ts:45:5 › checkout › case 7 (559ms)
+  ✓  41 [chromium] › tests/orders.spec.ts:3:5 › orders › case 0 (300ms)
+  ✓  42 [chromium] › tests/orders.spec.ts:9:5 › orders › case 1 (337ms)
+  ✓  43 [chromium] › tests/orders.spec.ts:15:5 › orders › case 2 (374ms)
+  ✓  44 [chromium] › tests/orders.spec.ts:21:5 › orders › case 3 (411ms)
+  ✓  45 [chromium] › tests/orders.spec.ts:27:5 › orders › case 4 (448ms)
+  ✓  46 [chromium] › tests/orders.spec.ts:33:5 › orders › case 5 (485ms)
+  ✓  47 [chromium] › tests/orders.spec.ts:39:5 › orders › case 6 (522ms)
+  ✓  48 [chromium] › tests/orders.spec.ts:45:5 › orders › case 7 (559ms)
+
+
+  1) [chromium] › tests/checkout.spec.ts:10:5 › checkout › pays with saved card ─────────────────
+
+    Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+
+    Locator: getByRole('button', { name: 'Pay' })
+    Expected: visible
+    Received: <element(s) not found>
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Pay' })
+
+       9 | test('pays with saved card', async ({ page }) => {
+      10 |   await page.goto('/checkout');
+    > 11 |   await expect(page.getByRole('button', { name: 'Pay' })).toBeVisible();
+         |                                                           ^
+      12 | });
+
+        at /work/tests/checkout.spec.ts:11:59
+
+
+  1 failed
+    [chromium] › tests/checkout.spec.ts:10:5 › checkout › pays with saved card
+  47 passed (12.3s)

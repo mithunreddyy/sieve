@@ -1,0 +1,25 @@
+bun test v1.4.4 (38afee6c8)
+
+broken.test.ts:
+1 | import { expect, test } from "bun:test";
+2 | test("rounds the total", () => {
+3 |   expect({ total: 80.99, items: 3 }).toEqual({ total: 81, items: 3 });
+                                         ^
+error: expect(received).toEqual(expected)
+
+@@ -2,3 +2,3 @@
+    "items": 3,
+-   "total": 81,
++   "total": 80.99,
+  }
+
+- Expected  - 1
++ Received  + 1
+
+      at <anonymous> (/work/js/bt/broken.test.ts:3:38)
+(fail) rounds the total [7.87ms]
+
+ 90 pass
+ 1 fail
+ 91 expect() calls
+Ran 91 tests across 31 files. [34.00ms]

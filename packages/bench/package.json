@@ -1,0 +1,11 @@
+{
+  "name": "@sieve/bench",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@sieve/protocol": "workspace:*",
+    "@sieve/core": "workspace:*",
+    "@sieve/daemon": "workspace:*"
+  }
+}

@@ -1,0 +1,782 @@
+page1.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render1(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page1.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render1(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render1(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page10.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render10(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page10.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render10(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render10(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page11.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render11(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render11(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page11.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render11(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page12.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render12(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page12.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render12(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render12(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page13.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render13(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page13.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render13(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render13(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page14.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render14(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page14.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render14(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render14(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page15.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render15(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page15.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render15(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render15(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page16.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render16(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page16.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render16(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render16(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page17.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render17(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page17.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render17(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render17(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page18.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render18(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page18.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render18(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render18(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page19.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render19(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page19.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render19(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render19(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page2.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render2(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page2.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render2(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render2(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page20.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render20(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page20.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render20(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render20(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page3.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render3(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page3.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render3(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render3(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page4.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render4(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page4.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render4(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render4(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page5.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render5(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page5.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render5(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render5(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page6.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render6(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page6.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render6(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render6(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page7.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render7(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page7.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render7(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render7(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page8.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render8(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+page8.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render8(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render8(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page9.js:3:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ import { helper } from "./util.js";
+    2 │ export function render9(props) {
+  > 3 │   const unused = props.title;
+      │         ^^^^^^
+    4 │   if (props.count == null) { console.log(undefinedThing); }
+    5 │   return props.count;
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   import { helper } from "./util.js";
+    2 2 │   export function render9(props) {
+    3   │ - ··const·unused·=·props.title;
+      3 │ + ··const·_unused·=·props.title;
+    4 4 │     if (props.count == null) { console.log(undefinedThing); }
+    5 5 │     return props.count;
+  
+
+page9.js:1:8 lint/correctness/noUnusedImports  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This import is unused.
+  
+  > 1 │ import { helper } from "./util.js";
+      │        ^^^^^^^^^^
+    2 │ export function render9(props) {
+    3 │   const unused = props.title;
+  
+  i Unused imports might be the result of an incomplete refactoring.
+  
+  i Unsafe fix: Remove the unused imports.
+  
+    1 │ import·{·helper·}·from·"./util.js";
+      │ -----------------------------------
+
+Checked 21 files in 10ms. No fixes applied.
+Found 40 warnings.

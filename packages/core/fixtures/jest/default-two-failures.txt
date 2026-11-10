@@ -1,0 +1,74 @@
+FAIL ./checkout.test.js
+  ● checkout › applies the discount once
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 90
+    Received: 81
+
+      2 | describe("checkout", () => {
+      3 |   test("applies the discount once", () => {
+    > 4 |     expect(total([{ qty: 1, price: 100 }], 0.1)).toBe(90);
+        |                                                  ^
+      5 |   });
+      6 |   test("reads the quantity", () => {
+      7 |     expect(parseQty("{qty: 2}")).toBe(2);
+
+      at Object.toBe (checkout.test.js:4:50)
+
+  ● checkout › reads the quantity
+
+    SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+        at JSON.parse (<anonymous>)
+
+      3 |   return Math.round(sum * (1 - discount) * (1 - discount) * 100) / 100;
+      4 | }
+    > 5 | function parseQty(raw) { return JSON.parse(raw).qty; }
+        |                                      ^
+      6 | module.exports = { total, parseQty };
+      7 |
+
+      at parse (cart.js:5:38)
+      at Object.parseQty (checkout.test.js:7:12)
+
+
+Summary of all failing tests
+FAIL ./checkout.test.js
+  ● checkout › applies the discount once
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 90
+    Received: 81
+
+      2 | describe("checkout", () => {
+      3 |   test("applies the discount once", () => {
+    > 4 |     expect(total([{ qty: 1, price: 100 }], 0.1)).toBe(90);
+        |                                                  ^
+      5 |   });
+      6 |   test("reads the quantity", () => {
+      7 |     expect(parseQty("{qty: 2}")).toBe(2);
+
+      at Object.toBe (checkout.test.js:4:50)
+
+  ● checkout › reads the quantity
+
+    SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)
+        at JSON.parse (<anonymous>)
+
+      3 |   return Math.round(sum * (1 - discount) * (1 - discount) * 100) / 100;
+      4 | }
+    > 5 | function parseQty(raw) { return JSON.parse(raw).qty; }
+        |                                      ^
+      6 | module.exports = { total, parseQty };
+      7 |
+
+      at parse (cart.js:5:38)
+      at Object.parseQty (checkout.test.js:7:12)
+
+
+Test Suites: 1 failed, 30 passed, 31 total
+Tests:       2 failed, 120 passed, 122 total
+Snapshots:   0 total
+Time:        0.388 s, estimated 1 s
+Ran all test suites.

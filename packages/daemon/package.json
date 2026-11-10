@@ -1,0 +1,15 @@
+{
+  "name": "@sieve/daemon",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sieve/protocol": "workspace:*",
+    "@sieve/core": "workspace:*",
+    "@sieve/adapter-claude-code": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}

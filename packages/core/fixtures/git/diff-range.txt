@@ -1,0 +1,3896 @@
+diff --git a/docs/api.md b/docs/api.md
+index ce15a54..87b5d21 100644
+--- a/docs/api.md
++++ b/docs/api.md
+@@ -385,7 +385,9 @@ _Type:_ [`Writable | null`](https://nodejs.org/api/stream.html#class-streamwrita
+ 
+ The subprocess [`stdin`](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) as a stream.
+ 
+-This is `null` if the [`stdin`](#optionsstdin) option is set to [`'inherit'`](input.md#terminal-input), [`'ignore'`](input.md#ignore-input), [`Readable`](streams.md#input) or [`integer`](input.md#terminal-input).
++This is `null` if neither `input` nor `inputFile` is provided and the [`stdin`](#optionsstdin) option is set to [`'inherit'`](input.md#terminal-input), [`'ignore'`](input.md#ignore-input), [`Readable`](streams.md#input) or [`integer`](input.md#terminal-input).
++
++When `input` or `inputFile` is provided, `stdin` uses a pipe, so this is a `Writable`. The `stdin` option cannot be `'ignore'` then.
+ 
+ [More info.](streams.md#manual-streaming)
+ 
+@@ -427,7 +429,9 @@ _Type:_ [`[Writable | null, Readable | null, Readable | null, ...Array<Writable
+ 
+ The subprocess [`stdin`](#subprocessstdin), [`stdout`](#subprocessstdout), [`stderr`](#subprocessstderr) and [other files descriptors](#optionsstdio) as an array of streams.
+ 
+-Each array item is `null` if the corresponding [`stdin`](#optionsstdin), [`stdout`](#optionsstdout), [`stderr`](#optionsstderr) or [`stdio`](#optionsstdio) option is set to [`'inherit'`](output.md#terminal-output), [`'ignore'`](output.md#ignore-output), [`Stream`](streams.md#output) or [`integer`](output.md#terminal-output).
++Each array item is `null` if the corresponding [`stdin`](#optionsstdin), [`stdout`](#optionsstdout), [`stderr`](#optionsstderr) or [`stdio`](#optionsstdio) option is set to [`'inherit'`](output.md#terminal-output), [`'ignore'`](output.md#ignore-output), [`Stream`](streams.md#output) or [`integer`](output.md#terminal-output). For `stdin`, this only applies when neither `input` nor `inputFile` is provided.
++
++When `input` or `inputFile` is provided, `stdin` uses a pipe, so the first item is a `Writable`. The `stdin` option cannot be `'ignore'` then.
+ 
+ With the [`ipc`](#optionsipc) option, the last item is the subprocess' IPC channel, which is always `null`.
+ 
+@@ -468,6 +472,8 @@ If `true`, iterates over arbitrary chunks of data. Each line is an [`Uint8Array`
+ 
+ This is always `true` when the [`encoding`](#optionsencoding) option is binary.
+ 
++With a [transform in object mode](transform.md#object-mode), each chunk is the object itself, whatever the value of this option.
++
+ More info for [iterables](binary.md#iterable) and [streams](binary.md#streams).
+ 
+ #### readableOptions.preserveNewlines
+@@ -1035,7 +1041,7 @@ By default, this applies to both `stdout` and `stderr`, but [different values ca
+ 
+ With [synchronous methods](execution.md#synchronous-execution), this cannot be enforced per file descriptor while the subprocess runs, since `spawnSync()` only accepts a single value, which limits the total output of all file descriptors. The `maxBuffer.stdout` value is used for it. The other file descriptors' own values are enforced from the output, once the subprocess ended, and cannot be higher than `maxBuffer.stdout`. Also, with synchronous methods, this is measured in bytes instead of [characters or lines](output.md#big-output), for the same reason.
+ 
+-When reached, [`error.isMaxBuffer`](#errorismaxbuffer) becomes `true`.
++When reached, [`error.isMaxBuffer`](#errorismaxbuffer) becomes `true` and the subprocess is terminated with the [`killSignal`](#optionskillsignal) option.
+ 
+ [More info.](output.md#big-output)
+ 
+diff --git a/docs/errors.md b/docs/errors.md
+index 5816d70..9a25874 100644
+--- a/docs/errors.md
++++ b/docs/errors.md
+@@ -56,7 +56,7 @@ The subprocess can fail for other reasons. Some of them can be detected using a
+ - [`error.isCanceled`](api.md#erroriscanceled): [`cancelSignal`](termination.md#canceling) option.
+ - [`error.isGracefullyCanceled`](api.md#errorisgracefullycanceled): `cancelSignal` option, if the [`gracefulCancel`](termination.md#graceful-termination) option is `true`.
+ - [`error.isMaxBuffer`](api.md#errorismaxbuffer): [`maxBuffer`](output.md#big-output) option.
+-- [`error.isTerminated`](api.md#erroristerminated): [signal termination](termination.md#signal-termination). This includes the [`timeout`](termination.md#timeout) and [`forceKillAfterDelay`](termination.md#forceful-termination) options since those terminate the subprocess with a [signal](termination.md#default-signal). This also includes the [`cancelSignal`](termination.md#canceling) option unless the [`gracefulCancel`](termination.md#graceful-termination) option is `true`. This does not include the [`maxBuffer`](output.md#big-output) option.
++- [`error.isTerminated`](api.md#erroristerminated): [signal termination](termination.md#signal-termination). This includes the [`timeout`](termination.md#timeout) and [`forceKillAfterDelay`](termination.md#forceful-termination) options since those terminate the subprocess with a [signal](termination.md#default-signal). This also includes the [`cancelSignal`](termination.md#canceling) option unless the [`gracefulCancel`](termination.md#graceful-termination) option is `true`, and the [`maxBuffer`](output.md#big-output) option, since reaching the limit terminates the subprocess with the [`killSignal`](api.md#optionskillsignal) option, unless the subprocess exits on its own, for example by handling `killSignal`. With [synchronous methods](execution.md#synchronous-execution), the subprocess is only terminated when its total output exceeds `maxBuffer.stdout`.
+ 
+ Otherwise, the subprocess failed because either:
+ - An exception was thrown in a [stream](streams.md) or [transform](transform.md).
+diff --git a/docs/output.md b/docs/output.md
+index c33df93..12fe6f7 100644
+--- a/docs/output.md
++++ b/docs/output.md
+@@ -171,7 +171,7 @@ await execa({stdin: 'ignore', stdout: 'ignore', stderr: 'ignore'})`npm run build
+ 
+ To prevent high memory consumption, a maximum output size can be set using the [`maxBuffer`](api.md#optionsmaxbuffer) option. It defaults to 100MB.
+ 
+-When this threshold is hit, the subprocess fails and [`error.isMaxBuffer`](api.md#errorismaxbuffer) becomes `true`. The truncated output is still available using [`error.stdout`](api.md#resultstdout), [`error.stderr`](api.md#resultstderr) and [`error.ipcOutput`](api.md#resultipcoutput).
++When this threshold is hit, [`error.isMaxBuffer`](api.md#errorismaxbuffer) becomes `true` and the subprocess is terminated with the [`killSignal`](api.md#optionskillsignal) option. The truncated output is still available using [`error.stdout`](api.md#resultstdout), [`error.stderr`](api.md#resultstderr) and [`error.ipcOutput`](api.md#resultipcoutput).
+ 
+ This is measured:
+ - By default: in [characters](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length).
+diff --git a/docs/streams.md b/docs/streams.md
+index aed1eaf..709a734 100644
+--- a/docs/streams.md
++++ b/docs/streams.md
+@@ -54,6 +54,8 @@ const response = await fetch('https://example.com');
+ await execa({stdin: response.body})`npm run build`;
+ ```
+ 
++A `WritableStream` receives each chunk as is: a `Uint8Array`, an object with a [transform in object mode](transform.md#object-mode), or a string with a [`Duplex`](transform.md#duplextransform-streams) that emits strings.
++
+ ## Iterables as input
+ 
+ ```js
+diff --git a/lib/convert/duplex.js b/lib/convert/duplex.js
+index 4961f3e..5034e4f 100644
+--- a/lib/convert/duplex.js
++++ b/lib/convert/duplex.js
+@@ -1,16 +1,17 @@
+ import {Duplex} from 'node:stream';
+ import {callbackify} from 'node:util';
+ import {BINARY_ENCODINGS} from '../arguments/encoding-option.js';
++import {getFromStream, getToStream} from '../arguments/fd-options.js';
+ import {copyOptions, checkBooleanOption} from '../utils/options.js';
++import {addConcurrentStream} from './concurrent.js';
+ import {
+-	getSubprocessStdout,
+ 	getReadableOptions,
+ 	getReadableMethods,
+ 	onStdoutFinished,
+ 	onReadableDestroy,
+ } from './readable.js';
+ import {
+-	getSubprocessStdin,
++	addWritableConcurrentStreams,
+ 	getWritableMethods,
+ 	onStdinFinished,
+ 	onWritableDestroy,
+@@ -22,8 +23,11 @@ export const createDuplex = ({subprocess, concurrentStreams, encoding}, options)
+ 	checkBooleanOption(binaryOption, 'binary');
+ 	checkBooleanOption(preserveNewlines, 'preserveNewlines');
+ 	const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+-	const {subprocessStdout, waitReadableDestroy} = getSubprocessStdout(subprocess, from, concurrentStreams);
+-	const {subprocessStdin, waitWritableFinal, waitWritableDestroy} = getSubprocessStdin(subprocess, to, concurrentStreams);
++	// Validate both directions before registering lifecycle waits, since a thrown option error must not leave a concurrent stream behind.
++	const subprocessStdout = getFromStream(subprocess, from);
++	const subprocessStdin = getToStream(subprocess, to);
++	const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, 'readableDestroy');
++	const {waitWritableFinal, waitWritableDestroy} = addWritableConcurrentStreams(concurrentStreams, subprocessStdin);
+ 	const {readableEncoding, readableObjectMode, readableHighWaterMark} = getReadableOptions(subprocessStdout, binary);
+ 	const {read, onStdoutDataDone} = getReadableMethods({
+ 		subprocessStdout,
+diff --git a/lib/convert/readable.js b/lib/convert/readable.js
+index 8d3eafb..94d4f01 100644
+--- a/lib/convert/readable.js
++++ b/lib/convert/readable.js
+@@ -19,7 +19,9 @@ export const createReadable = ({subprocess, concurrentStreams, encoding}, option
+ 	checkBooleanOption(binaryOption, 'binary');
+ 	checkBooleanOption(preserveNewlines, 'preserveNewlines');
+ 	const binary = binaryOption || BINARY_ENCODINGS.has(encoding);
+-	const {subprocessStdout, waitReadableDestroy} = getSubprocessStdout(subprocess, from, concurrentStreams);
++	// Retrieve `stdout` (or other stream depending on `from`)
++	const subprocessStdout = getFromStream(subprocess, from);
++	const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, 'readableDestroy');
+ 	const {readableEncoding, readableObjectMode, readableHighWaterMark} = getReadableOptions(subprocessStdout, binary);
+ 	const {read, onStdoutDataDone} = getReadableMethods({
+ 		subprocessStdout,
+@@ -44,13 +46,6 @@ export const createReadable = ({subprocess, concurrentStreams, encoding}, option
+ 	return readable;
+ };
+ 
+-// Retrieve `stdout` (or other stream depending on `from`)
+-export const getSubprocessStdout = (subprocess, from, concurrentStreams) => {
+-	const subprocessStdout = getFromStream(subprocess, from);
+-	const waitReadableDestroy = addConcurrentStream(concurrentStreams, subprocessStdout, 'readableDestroy');
+-	return {subprocessStdout, waitReadableDestroy};
+-};
+-
+ export const getReadableOptions = ({readableEncoding, readableObjectMode, readableHighWaterMark}, binary) => binary
+ 	? {readableEncoding, readableObjectMode, readableHighWaterMark}
+ 	: {readableEncoding, readableObjectMode: true, readableHighWaterMark: DEFAULT_OBJECT_HIGH_WATER_MARK};
+diff --git a/lib/convert/writable.js b/lib/convert/writable.js
+index 8ad7e51..b4569a8 100644
+--- a/lib/convert/writable.js
++++ b/lib/convert/writable.js
+@@ -14,7 +14,9 @@ import {
+ // Create a `Writable` stream that forwards to `stdin` and awaits the subprocess
+ export const createWritable = ({subprocess, concurrentStreams}, options) => {
+ 	const {to} = copyOptions(options);
+-	const {subprocessStdin, waitWritableFinal, waitWritableDestroy} = getSubprocessStdin(subprocess, to, concurrentStreams);
++	// Retrieve `stdin` (or other stream depending on `to`)
++	const subprocessStdin = getToStream(subprocess, to);
++	const {waitWritableFinal, waitWritableDestroy} = addWritableConcurrentStreams(concurrentStreams, subprocessStdin);
+ 	const writable = new Writable({
+ 		...getWritableMethods(subprocessStdin, subprocess, waitWritableFinal),
+ 		destroy: callbackify(onWritableDestroy.bind(undefined, {
+@@ -30,12 +32,11 @@ export const createWritable = ({subprocess, concurrentStreams}, options) => {
+ 	return writable;
+ };
+ 
+-// Retrieve `stdin` (or other stream depending on `to`)
+-export const getSubprocessStdin = (subprocess, to, concurrentStreams) => {
+-	const subprocessStdin = getToStream(subprocess, to);
++// Register both writable lifecycle waits for an already validated stream.
++export const addWritableConcurrentStreams = (concurrentStreams, subprocessStdin) => {
+ 	const waitWritableFinal = addConcurrentStream(concurrentStreams, subprocessStdin, 'writableFinal');
+ 	const waitWritableDestroy = addConcurrentStream(concurrentStreams, subprocessStdin, 'writableDestroy');
+-	return {subprocessStdin, waitWritableFinal, waitWritableDestroy};
++	return {waitWritableFinal, waitWritableDestroy};
+ };
+ 
+ export const getWritableMethods = (subprocessStdin, subprocess, waitWritableFinal) => ({
+diff --git a/lib/io/max-buffer.js b/lib/io/max-buffer.js
+index d7917a3..d46e306 100644
+--- a/lib/io/max-buffer.js
++++ b/lib/io/max-buffer.js
+@@ -63,7 +63,8 @@ const getMaxBufferInfo = (error, maxBuffer) => {
+ // The native `maxBuffer` option passed to `spawnSync()` does not allow differentiating values per file descriptor, so we use `stdout`'s.
+ // Since each other file descriptor's own limit is capped by `stdout`'s, this is also the highest one.
+ // Node.js applies it to the total output of all piped file descriptors, not to each of them. When it is hit, the subprocess is killed and a `ENOBUFS` error is thrown.
+-export const getMaxBufferSync = ([, stdoutMaxBuffer]) => stdoutMaxBuffer;
++// Node.js disables its limit at zero, so use the smallest positive value to reject the first output byte.
++export const getMaxBufferSync = ([, stdoutMaxBuffer]) => stdoutMaxBuffer === 0 ? Number.MIN_VALUE : stdoutMaxBuffer;
+ 
+ // File descriptors with a limit lower than `spawnSync()`'s native `maxBuffer` are enforced from the output, after the subprocess exits.
+ // Since no native error was thrown, we create the `ENOBUFS` error ourselves.
+diff --git a/lib/io/output-sync.js b/lib/io/output-sync.js
+index 20fd5e7..af37612 100644
+--- a/lib/io/output-sync.js
++++ b/lib/io/output-sync.js
+@@ -83,7 +83,8 @@ const runOutputGeneratorsSync = (chunks, stdioItems, encoding) => {
+ 		// `error` is set, so that a polluted `Object.prototype.error` is not read when destructuring
+ 		return {chunks: runGeneratorsSync(chunks, stdioItems, encoding, false), error: undefined};
+ 	} catch (error) {
+-		return {chunks, error};
++		// Raw output must not bypass a failed transform, which might be filtering sensitive data.
++		return {chunks: [], error};
+ 	}
+ };
+ 
+diff --git a/lib/methods/create.js b/lib/methods/create.js
+index 462b3fd..c222976 100644
+--- a/lib/methods/create.js
++++ b/lib/methods/create.js
+@@ -50,6 +50,13 @@ const parseArguments = ({mapArguments, firstArgument, nextArguments, deepOptions
+ 		: [firstArgument, ...nextArguments];
+ 	const [initialFile, initialArguments, initialOptions] = normalizeParameters(...callArguments);
+ 	const mergedOptions = mergeOptions(mergeOptions(deepOptions, boundOptions), initialOptions);
++	// Explicit `undefined` resets to the method's default, including on pipe destinations.
++	for (const [optionName, optionValue] of Object.entries(deepOptions)) {
++		if (mergedOptions[optionName] === undefined) {
++			mergedOptions[optionName] = optionValue;
++		}
++	}
++
+ 	// `mapArguments()` returns a plain object, so its result is read from a null-prototype copy.
+ 	// Otherwise a polluted `Object.prototype` would replace every option, or switch the execution mode.
+ 	const {
+diff --git a/lib/methods/script.js b/lib/methods/script.js
+index 7077f5a..ca7d42a 100644
+--- a/lib/methods/script.js
++++ b/lib/methods/script.js
+@@ -11,10 +11,10 @@ export const mapScriptAsync = ({options}) => getScriptOptions(options);
+ const mapScriptSync = ({options}) => ({...getScriptOptions(options), isSync: true});
+ 
+ // `$` is like `execa` but with script-friendly options: `{stdin: 'inherit', preferLocal: true}`
+-const getScriptOptions = options => ({options: {__proto__: null, ...getScriptStdinOption(options), ...options}});
++const getScriptOptions = options => ({options: {__proto__: null, ...options, ...getScriptStdinOption(options)}});
+ 
+-const getScriptStdinOption = ({input, inputFile, stdio}) => input === undefined && inputFile === undefined && stdio === undefined
+-	? {stdin: 'inherit'}
++const getScriptStdinOption = ({stdin = 'inherit', input, inputFile, stdio}) => input === undefined && inputFile === undefined && stdio === undefined
++	? {stdin}
+ 	: {};
+ 
+ // When using $(...).pipe(...), most script-friendly options should apply to both commands.
+diff --git a/lib/resolve/all-async.js b/lib/resolve/all-async.js
+index 18c7f63..33dc43e 100644
+--- a/lib/resolve/all-async.js
++++ b/lib/resolve/all-async.js
+@@ -32,7 +32,8 @@ export const waitForAllStream = ({subprocess, all, encoding, buffer, maxBuffer,
+ 			maxBuffer: maxBuffer[1] + maxBuffer[2],
+ 			lines: lines[1] || lines[2],
+ 			allFds: getAllFds(subprocess, buffer),
+-			allMixed: getAllMixed(subprocess, all),
++			// A single buffered descriptor keeps its own object mode, even when the merged stream has mixed modes.
++			allMixed: stream === all && getAllMixed(subprocess, all),
+ 			stripFinalNewline,
+ 			verboseInfo,
+ 			streamInfo,
+diff --git a/lib/resolve/wait-subprocess.js b/lib/resolve/wait-subprocess.js
+index 2daa416..159c7a2 100644
+--- a/lib/resolve/wait-subprocess.js
++++ b/lib/resolve/wait-subprocess.js
+@@ -1,5 +1,6 @@
+ import {once} from 'node:events';
+ import {isStream as isNodeStream} from 'is-stream';
++import {MaxBufferError} from 'get-stream';
+ import {throwOnTimeout} from '../terminate/timeout.js';
+ import {throwOnCancel} from '../terminate/cancel.js';
+ import {throwOnGracefulCancel} from '../terminate/graceful.js';
+@@ -114,6 +115,11 @@ export const waitForSubprocessResult = async ({
+ 		]);
+ 	} catch (error) {
+ 		context.terminationReason ??= 'other';
++		// Closing the output stream does not stop a subprocess that stays alive without writing again.
++		if (error instanceof MaxBufferError) {
++			kill();
++		}
++
+ 		return Promise.all([
+ 			{error},
+ 			exitPromise,
+diff --git a/lib/stdio/handle-async.js b/lib/stdio/handle-async.js
+index a892549..2127ce7 100644
+--- a/lib/stdio/handle-async.js
++++ b/lib/stdio/handle-async.js
+@@ -68,7 +68,7 @@ const addPropertiesAsync = {
+ 		asyncGenerator: generatorToInputStream,
+ 		fileUrl: ({value}) => ({stream: createReadStream(value)}),
+ 		filePath: ({value: {file}}) => ({stream: createReadStream(file)}),
+-		webStream: ({value}) => ({stream: Readable.fromWeb(value)}),
++		webStream: ({value}, options, objectMode) => ({stream: Readable.fromWeb(value, {objectMode})}),
+ 		iterable: ({value, optionName}, options, objectMode) => ({stream: Readable.from(objectMode ? value : validateIterable(value, optionName))}),
+ 		asyncIterable: ({value, optionName}, options, objectMode) => ({stream: Readable.from(objectMode ? value : validateAsyncIterable(value, optionName))}),
+ 		string: ({value}) => ({stream: readableFromChunk(value)}),
+@@ -78,7 +78,8 @@ const addPropertiesAsync = {
+ 		...addProperties,
+ 		fileUrl: ({value}) => ({stream: createWriteStream(value)}),
+ 		filePath: ({value: {file, append}}) => ({stream: createWriteStream(file, append ? {flags: 'a'} : {})}),
+-		webStream: ({value}) => ({stream: Writable.fromWeb(value)}),
++		// Web writers accept arbitrary chunks, including when a shared writer receives both bytes and objects.
++		webStream: ({value}) => ({stream: Writable.fromWeb(value, {objectMode: true})}),
+ 		iterable: forbiddenIfAsync,
+ 		asyncIterable: forbiddenIfAsync,
+ 		string: forbiddenIfAsync,
+diff --git a/lib/stdio/handle.js b/lib/stdio/handle.js
+index 61af23d..6f3b217 100644
+--- a/lib/stdio/handle.js
++++ b/lib/stdio/handle.js
+@@ -142,10 +142,15 @@ const validateStreams = (stdioItems, isStdioArray) => {
+ 	}
+ };
+ 
+-// A number is a file descriptor. Anything else is not a valid one, and passing it to `node:child_process` aborts the current process with a fatal assertion instead of throwing.
++// File descriptors can be passed as numbers or native objects with an `fd` property. Invalid descriptors can make `node:child_process` abort the current process with a fatal assertion instead of throwing.
+ const validateFileDescriptorStdio = ({type, value, optionName}) => {
+-	if (type === 'native' && typeof value === 'number' && (!Number.isInteger(value) || value < 0 || value > MAX_FILE_DESCRIPTOR)) {
+-		throw new TypeError(`The \`${optionName}\` option must be a non-negative 32-bit integer: got ${value}.`);
++	if (type !== 'native') {
++		return;
++	}
++
++	const fileDescriptor = typeof value === 'number' ? value : value?.fd;
++	if (typeof fileDescriptor === 'number' && (!Number.isInteger(fileDescriptor) || fileDescriptor < 0 || fileDescriptor > MAX_FILE_DESCRIPTOR)) {
++		throw new TypeError(`The \`${optionName}\` option must be a non-negative 32-bit integer: got ${fileDescriptor}.`);
+ 	}
+ };
+ 
+diff --git a/lib/transform/generator.js b/lib/transform/generator.js
+index f892843..2cf0b86 100644
+--- a/lib/transform/generator.js
++++ b/lib/transform/generator.js
+@@ -1,4 +1,5 @@
+ import {Transform, getDefaultHighWaterMark} from 'node:stream';
++import {Buffer} from 'node:buffer';
+ import {getStringEncoding} from '../arguments/encoding-option.js';
+ import {isAsyncGenerator} from '../stdio/type.js';
+ import {getSplitLinesGenerator, getAppendNewlineGenerator} from './split.js';
+@@ -86,6 +87,12 @@ export const runGeneratorsSync = (chunks, stdioItems, encoding, isInput) => {
+ 	const reversedGenerators = isInput ? generators.reverse() : generators;
+ 
+ 	for (const {value, optionName} of reversedGenerators) {
++		// Byte-mode transforms encode strings before decoding them, like Transform's `decodeStrings` option.
++		if (!value.writableObjectMode) {
++			const stringEncoding = getStringEncoding(value.binary, encoding);
++			chunks = chunks.map(chunk => typeof chunk === 'string' ? Buffer.from(chunk, stringEncoding) : chunk);
++		}
++
+ 		const generators = addInternalGenerators(value, encoding, optionName);
+ 		chunks = runTransformSync(generators, chunks);
+ 	}
+diff --git a/lib/transform/run-sync.js b/lib/transform/run-sync.js
+index 8e30b8c..05ac89f 100644
+--- a/lib/transform/run-sync.js
++++ b/lib/transform/run-sync.js
+@@ -7,15 +7,27 @@ export const pushChunksSync = (getChunksSync, getChunksArguments, transformStrea
+ 
+ 		done();
+ 	} catch (error) {
+-		done(error);
++		done(normalizeTransformError(error));
+ 	}
+ };
+ 
++// Match `util.callbackify()` so falsy exceptions cannot be mistaken for callback success or missing errors.
++const normalizeTransformError = error => error || Object.assign(new Error('Promise was rejected with falsy value'), {
++	code: 'ERR_FALSY_VALUE_REJECTION',
++	reason: error,
++});
++
+ // Run synchronous generators with `execaSync()`
+-export const runTransformSync = (generators, chunks) => [
+-	...chunks.flatMap(chunk => [...transformChunkSync(chunk, generators, 0)]),
+-	...finalChunksSync(generators),
+-];
++export const runTransformSync = (generators, chunks) => {
++	try {
++		return [
++			...chunks.flatMap(chunk => [...transformChunkSync(chunk, generators, 0)]),
++			...finalChunksSync(generators),
++		];
++	} catch (error) {
++		throw normalizeTransformError(error);
++	}
++};
+ 
+ export const transformChunkSync = function * (chunk, generators, index) {
+ 	if (index === generators.length) {
+diff --git a/package.json b/package.json
+index b9da1c4..5b0e491 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+ 	"name": "execa",
+-	"version": "10.1.1",
++	"version": "10.2.1",
+ 	"description": "Process execution for humans",
+ 	"license": "MIT",
+ 	"repository": "sindresorhus/execa",
+@@ -19,7 +19,7 @@
+ 		"test": "npm run lint && npm run unit && npm run type",
+ 		"lint": "xo",
+ 		"unit": "c8 --merge-async node --test --test-concurrency=1 --test-timeout=240000 \"test/!(fixtures|helpers)/*.js\"",
+-		"type": "nz && tsc"
++		"type": "nz && tsc --exactOptionalPropertyTypes"
+ 	},
+ 	"files": [
+ 		"index.js",
+diff --git a/test-d/convert/iterable.test-d.ts b/test-d/convert/iterable.test-d.ts
+index 20160cc..3160e15 100644
+--- a/test-d/convert/iterable.test-d.ts
++++ b/test-d/convert/iterable.test-d.ts
+@@ -4,6 +4,91 @@ import {execa} from '../../index.js';
+ const subprocess = execa('unicorns');
+ const bufferSubprocess = execa('unicorns', {encoding: 'buffer', all: true});
+ const hexSubprocess = execa('unicorns', {encoding: 'hex', all: true});
++const objectTransform = {
++	objectMode: true as const,
++	* transform() {
++		yield {value: 'unicorn'};
++	},
++};
++const objectSubprocess = execa('unicorns', {all: true, stdout: objectTransform});
++
++expectTypeOf(objectSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess[Symbol.asyncIterator]()).toBe<AsyncIterableIterator<unknown>>();
++
++const wrappedObjectSubprocess = execa('unicorns', {stdout: {value: objectTransform}});
++expectTypeOf(wrappedObjectSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(wrappedObjectSubprocess[Symbol.asyncIterator]()).toBe<AsyncIterableIterator<unknown>>();
++const wrappedObjectResult = await wrappedObjectSubprocess;
++expectTypeOf(wrappedObjectResult.stdout).toBe<unknown[]>();
++
++const wrappedArraySubprocess = execa('unicorns', {stdout: ['pipe', {value: objectTransform, input: false}] as const});
++expectTypeOf(wrappedArraySubprocess.iterable({binary: true})).toBe<AsyncIterableIterator<unknown>>();
++const wrappedArrayResult = await wrappedArraySubprocess;
++expectTypeOf(wrappedArrayResult.stdout).toBe<string | unknown[]>();
++
++const wrappedStderrSubprocess = execa('unicorns', {all: true, stderr: {value: objectTransform}});
++expectTypeOf(wrappedStderrSubprocess.iterable()).toBe<AsyncIterableIterator<string>>();
++expectTypeOf(wrappedStderrSubprocess.iterable({from: 'stderr'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(wrappedStderrSubprocess.iterable({from: 'all'})).toBe<AsyncIterableIterator<unknown>>();
++const wrappedStderrResult = await wrappedStderrSubprocess;
++expectTypeOf(wrappedStderrResult.stderr).toBe<unknown[]>();
++
++const wrappedFdSubprocess = execa('unicorns', {stdio: ['pipe', 'pipe', 'pipe', {value: objectTransform, input: false}] as const});
++expectTypeOf(wrappedFdSubprocess.iterable({from: 'fd3'})).toBe<AsyncIterableIterator<unknown>>();
++const wrappedFdResult = await wrappedFdSubprocess;
++expectTypeOf(wrappedFdResult.stdio[3]).toBe<unknown[]>();
++
++const wrappedTextSubprocess = execa('unicorns', {stdout: {value: 'pipe'}});
++expectTypeOf(wrappedTextSubprocess.iterable()).toBe<AsyncIterableIterator<string>>();
++const wrappedTextResult = await wrappedTextSubprocess;
++expectTypeOf(wrappedTextResult.stdout).toBe<string>();
++
++expectTypeOf(objectSubprocess.iterable({from: 'stdout'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({from: 'fd1'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({binary: true})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({binary: false, preserveNewlines: true})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({from: 'stderr'})).toBe<AsyncIterableIterator<string>>();
++expectTypeOf(objectSubprocess.iterable({from: 'fd2', binary: true})).toBe<AsyncIterableIterator<Uint8Array>>();
++expectTypeOf(objectSubprocess.iterable({from: 'all'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({from: 'all', binary: true})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectSubprocess.iterable({} as {from?: 'stdout' | 'stderr'; binary?: boolean})).toBe<AsyncIterableIterator<unknown>>();
++
++const objectStderrSubprocess = execa('unicorns', {all: true, stderr: objectTransform});
++expectTypeOf(objectStderrSubprocess.iterable()).toBe<AsyncIterableIterator<string>>();
++expectTypeOf(objectStderrSubprocess[Symbol.asyncIterator]()).toBe<AsyncIterableIterator<string>>();
++expectTypeOf(objectStderrSubprocess.iterable({from: 'stderr'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectStderrSubprocess.iterable({from: 'fd2'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectStderrSubprocess.iterable({from: 'all'})).toBe<AsyncIterableIterator<unknown>>();
++
++const objectFdSubprocess = execa('unicorns', {stdio: ['pipe', 'pipe', 'pipe', objectTransform] as const});
++expectTypeOf(objectFdSubprocess.iterable()).toBe<AsyncIterableIterator<string>>();
++expectTypeOf(objectFdSubprocess.iterable({from: 'fd3'})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectFdSubprocess.iterable({from: 'fd3', binary: true})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectFdSubprocess.iterable({from: 'fd3' as `fd${number}`})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectFdSubprocess.iterable({from: 'fd3' as `fd${number}`, binary: true})).toBe<AsyncIterableIterator<unknown>>();
++
++const objectBufferSubprocess = execa('unicorns', {encoding: 'buffer', stdout: objectTransform});
++const objectHexSubprocess = execa('unicorns', {encoding: 'hex', stdout: objectTransform});
++expectTypeOf(objectBufferSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectBufferSubprocess[Symbol.asyncIterator]()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectBufferSubprocess.iterable({binary: false})).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectBufferSubprocess.iterable({from: 'stderr'})).toBe<AsyncIterableIterator<Uint8Array>>();
++expectTypeOf(objectHexSubprocess.iterable({binary: true})).toBe<AsyncIterableIterator<unknown>>();
++
++const dynamicObjectSubprocess = execa('unicorns', {stdout: {...objectTransform, objectMode: true as boolean}});
++expectTypeOf(dynamicObjectSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++
++const unionObjectSubprocess = execa('unicorns', {} as {stdout: typeof objectTransform} | {stdout: 'pipe'});
++expectTypeOf(unionObjectSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++
++const unionDefaultSubprocess = execa('unicorns', {} as {} | {stdout: typeof objectTransform});
++expectTypeOf(unionDefaultSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++
++const objectPipe = subprocess.pipe('unicorns', {stdout: objectTransform});
++expectTypeOf(objectPipe.iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(objectPipe[Symbol.asyncIterator]()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(subprocess.pipe(objectSubprocess).iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf(subprocess.pipe(objectSubprocess).iterable({from: 'stderr'})).toBe<AsyncIterableIterator<string>>();
+ 
+ const asyncIteration = async () => {
+ 	for await (const line of subprocess) {
+diff --git a/test-d/ipc-options-union.test-d.ts b/test-d/ipc-options-union.test-d.ts
+new file mode 100644
+index 0000000..e5c60ec
+--- /dev/null
++++ b/test-d/ipc-options-union.test-d.ts
+@@ -0,0 +1,101 @@
++import {expectTypeOf, expectError} from 'nz';
++import {
++	execa,
++	execaNode,
++	$,
++	type Message,
++	type Subprocess,
++	type Result,
++	type ExecaError,
++} from '../index.js';
++
++type EnabledSubprocess = Subprocess<{ipc: true}>;
++
++declare const options: {node: true} | {ipcInput: string};
++const subprocess = execa('unicorns', options);
++expectTypeOf(subprocess.sendMessage).toBe<Subprocess<{ipc: true}>['sendMessage']>();
++expectTypeOf(subprocess.getOneMessage).toBe<Subprocess<{ipc: true}>['getOneMessage']>();
++const result = await subprocess;
++expectTypeOf(result.ipcOutput).toBe<Array<Message<'advanced'>>>();
++expectTypeOf(subprocess.getEachMessage).toBe<EnabledSubprocess['getEachMessage']>();
++expectTypeOf(subprocess.sendMessage('hello')).toBe<Promise<void>>();
++expectTypeOf(subprocess.getOneMessage()).toBe<Promise<Message<'advanced'>>>();
++expectTypeOf<Result<typeof options>['ipcOutput']>().toBe<Array<Message<'advanced'>>>();
++expectTypeOf<ExecaError<typeof options>['ipcOutput']>().toBe<Array<Message<'advanced'>>>();
++expectTypeOf(execa(options)`unicorns`.sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++expectTypeOf($(options)`unicorns`.getOneMessage).toBe<EnabledSubprocess['getOneMessage']>();
++
++const piped = execa('unicorns').pipe(subprocess);
++expectTypeOf(piped.getOneMessage).toBe<EnabledSubprocess['getOneMessage']>();
++const pipedResult = await piped;
++expectTypeOf(pipedResult.ipcOutput).toBe<Array<Message<'advanced'>>>();
++
++declare const gracefulOptions: {gracefulCancel: true; cancelSignal: AbortSignal} | {ipcInput: string};
++const gracefulSubprocess = execa('unicorns', gracefulOptions);
++expectTypeOf(gracefulSubprocess.sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++const gracefulResult = await gracefulSubprocess;
++expectTypeOf(gracefulResult.ipcOutput).toBe<Array<Message<'advanced'>>>();
++
++declare const falsyInputOptions: {ipcInput: false} | {node: true};
++expectTypeOf(execa('unicorns', falsyInputOptions).sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++
++declare const maybeOptions: {node: true} | {encoding: 'buffer'};
++const maybeSubprocess = execa('unicorns', maybeOptions);
++expectTypeOf(maybeSubprocess.sendMessage).toBe<EnabledSubprocess['sendMessage'] | undefined>();
++expectTypeOf(maybeSubprocess.getOneMessage).toBe<EnabledSubprocess['getOneMessage'] | undefined>();
++expectTypeOf(maybeSubprocess.getEachMessage).toBe<EnabledSubprocess['getEachMessage'] | undefined>();
++const maybeResult = await maybeSubprocess;
++expectTypeOf(maybeResult.ipcOutput).toBe<Array<Message<'advanced'>> | []>();
++expectError(maybeSubprocess.sendMessage('hello'));
++if (maybeSubprocess.sendMessage) {
++	expectTypeOf(maybeSubprocess.sendMessage('hello')).toBe<Promise<void>>();
++	expectTypeOf(maybeSubprocess.getOneMessage()).toBe<Promise<Message<'advanced'>>>();
++}
++
++declare const jsonOptions: {node: true; serialization: 'json'} | {ipcInput: string; serialization: 'json'};
++const jsonSubprocess = execa('unicorns', jsonOptions);
++expectTypeOf(jsonSubprocess.getOneMessage()).toBe<Promise<Message<'json'>>>();
++const jsonResult = await jsonSubprocess;
++expectTypeOf(jsonResult.ipcOutput).toBe<Array<Message<'json'>>>();
++expectError(jsonSubprocess.sendMessage(Symbol('message')), 'not assignable');
++
++// Explicit IPC precedence and disabled buffering are unchanged by option unions.
++declare const disabledOptions: {node: true; ipc: false} | {encoding: 'buffer'; ipc: false};
++const disabledSubprocess = execa('unicorns', disabledOptions);
++expectTypeOf(disabledSubprocess.sendMessage).toBe<undefined>();
++expectTypeOf(disabledSubprocess.getOneMessage).toBe<undefined>();
++const disabledResult = await disabledSubprocess;
++expectTypeOf(disabledResult.ipcOutput).toBe<[]>();
++expectError(disabledSubprocess.sendMessage('hello'));
++
++declare const explicitOptions: {node: false; ipc: true} | {encoding: 'buffer'; ipc: true};
++expectTypeOf(execa('unicorns', explicitOptions).sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++expectTypeOf(execaNode('unicorns', options).sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++const noBufferSubprocess = execa('unicorns', {...options, buffer: false});
++expectTypeOf(noBufferSubprocess.sendMessage).toBe<EnabledSubprocess['sendMessage']>();
++const noBufferResult = await noBufferSubprocess;
++expectTypeOf(noBufferResult.ipcOutput).toBe<[]>();
++
++declare const absentOptions: {node: false} | {gracefulCancel: false};
++expectTypeOf(execa('unicorns', absentOptions).getEachMessage).toBe<undefined>();
++expectTypeOf<Result<typeof absentOptions>['ipcOutput']>().toBe<[]>();
++
++declare const optionalInputOptions: {ipcInput?: string} | {node: true};
++expectTypeOf(execa('unicorns', optionalInputOptions).sendMessage).toBe<EnabledSubprocess['sendMessage'] | undefined>();
++
++// Each member's own `buffer` and `serialization` options apply to its IPC.
++declare const mixedStdioOptions: {node: true} | {encoding: 'buffer'};
++const mixedStdioResult = await execa('unicorns', mixedStdioOptions);
++expectTypeOf(mixedStdioResult.stdio).toBe<[undefined, string | Uint8Array, string | Uint8Array, undefined] | [undefined, string | Uint8Array, string | Uint8Array]>();
++
++declare const memberBufferOptions: {node: true; buffer: false} | {encoding: 'buffer'};
++const memberBufferResult = await execa('unicorns', memberBufferOptions);
++expectTypeOf(memberBufferResult.ipcOutput).toBe<[]>();
++
++declare const memberSerializationOptions: {node: true; serialization: 'json'} | {ipc: true};
++const memberSerializationSubprocess = execa('unicorns', memberSerializationOptions);
++await memberSerializationSubprocess.sendMessage({message: 'hello'});
++expectError(memberSerializationSubprocess.sendMessage(new Map()));
++expectTypeOf(memberSerializationSubprocess.getOneMessage()).toBe<Promise<Message<'advanced'>>>();
++const memberSerializationResult = await memberSerializationSubprocess;
++expectTypeOf(memberSerializationResult.ipcOutput).toBe<Array<Message<'json'>> | Array<Message<'advanced'>>>();
+diff --git a/test-d/methods/bind-override.test-d.ts b/test-d/methods/bind-override.test-d.ts
+new file mode 100644
+index 0000000..f365128
+--- /dev/null
++++ b/test-d/methods/bind-override.test-d.ts
+@@ -0,0 +1,136 @@
++import {expectTypeOf} from 'nz';
++import {
++	execa,
++	execaSync,
++	execaNode,
++	$,
++	type Options,
++	type SyncOptions,
++	type ResultPromise,
++	type SyncResult,
++} from '../../index.js';
++
++const subprocessResult1 = await execa({lines: true})('unicorns', {lines: false});
++expectTypeOf(subprocessResult1.stdout).toBe<string>();
++expectTypeOf(execaSync({lines: true})({lines: false})`unicorns`.stdout).toBe<string>();
++
++const subprocessResult2 = await execa({lines: true})('unicorns', [], {lines: false});
++expectTypeOf(subprocessResult2.stdout).toBe<string>();
++const subprocessResult3 = await execa({lines: true})({lines: false})`unicorns`;
++expectTypeOf(subprocessResult3.stdout).toBe<string>();
++const subprocessResult4 = await execaNode({lines: true})('unicorns', {lines: false});
++expectTypeOf(subprocessResult4.stdout).toBe<string>();
++const subprocessResult5 = await execaNode({lines: true})('unicorns', [], {lines: false});
++expectTypeOf(subprocessResult5.stdout).toBe<string>();
++const subprocessResult6 = await execaNode({lines: true})({lines: false})`unicorns`;
++expectTypeOf(subprocessResult6.stdout).toBe<string>();
++const subprocessResult7 = await $({lines: true})('unicorns', {lines: false});
++expectTypeOf(subprocessResult7.stdout).toBe<string>();
++const subprocessResult8 = await $({lines: true})('unicorns', [], {lines: false});
++expectTypeOf(subprocessResult8.stdout).toBe<string>();
++const subprocessResult9 = await $({lines: true})({lines: false})`unicorns`;
++expectTypeOf(subprocessResult9.stdout).toBe<string>();
++expectTypeOf(execaSync({lines: true})('unicorns', {lines: false}).stdout).toBe<string>();
++expectTypeOf(execaSync({lines: true})('unicorns', [], {lines: false}).stdout).toBe<string>();
++expectTypeOf($.sync({lines: true})('unicorns', {lines: false}).stdout).toBe<string>();
++expectTypeOf($.sync({lines: true})('unicorns', [], {lines: false}).stdout).toBe<string>();
++expectTypeOf($.sync({lines: true})({lines: false})`unicorns`.stdout).toBe<string>();
++expectTypeOf($({lines: true}).sync({lines: false})`unicorns`.stdout).toBe<string>();
++
++const subprocessResult10 = await execa({lines: false})('unicorns', {lines: true});
++expectTypeOf(subprocessResult10.stdout).toBe<string[]>();
++const subprocessResult11 = await execa({encoding: 'buffer'})('unicorns', {encoding: 'utf8'});
++expectTypeOf(subprocessResult11.stdout).toBe<string>();
++const subprocessResult12 = await execa({encoding: 'utf8'})({encoding: 'buffer'})`unicorns`;
++expectTypeOf(subprocessResult12.stdout).toBe<Uint8Array>();
++const subprocessResult13 = await execa({buffer: false})('unicorns', {buffer: true});
++expectTypeOf(subprocessResult13.stdout).toBe<string>();
++const subprocessResult14 = await execa({all: true})('unicorns', {all: false});
++expectTypeOf(subprocessResult14.all).toBe<undefined>();
++const subprocessResult15 = await execa({stdout: 'ignore'})('unicorns', {stdout: 'pipe'});
++expectTypeOf(subprocessResult15.stdout).toBe<string>();
++
++const deepLinesResult = await execa({lines: {stdout: true, stderr: true}})('unicorns', {lines: {stdout: false}});
++expectTypeOf(deepLinesResult.stdout).toBe<string>();
++expectTypeOf(deepLinesResult.stderr).toBe<string[]>();
++const scalarLinesResult = await execa({lines: {stdout: true, stderr: true}})('unicorns', {lines: false});
++expectTypeOf(scalarLinesResult.stdout).toBe<string>();
++expectTypeOf(scalarLinesResult.stderr).toBe<string>();
++const objectLinesResult = await execa({lines: true})('unicorns', {lines: {stdout: false}});
++expectTypeOf(objectLinesResult.stdout).toBe<string>();
++expectTypeOf(objectLinesResult.stderr).toBe<string>();
++const deepBufferResult = await execa({buffer: {stdout: false, stderr: false}})('unicorns', {buffer: {stdout: true}});
++expectTypeOf(deepBufferResult.stdout).toBe<string>();
++expectTypeOf(deepBufferResult.stderr).toBe<undefined>();
++const subprocessResult16 = await execa({lines: true})('unicorns', {lines: undefined});
++expectTypeOf(subprocessResult16.stdout).toBe<string>();
++const subprocessResult17 = await execa({encoding: 'buffer'})({encoding: undefined})`unicorns`;
++expectTypeOf(subprocessResult17.stdout).toBe<string>();
++const resetFdResult = await execa({lines: {stdout: true, stderr: true}})('unicorns', {lines: {stdout: undefined}});
++expectTypeOf(resetFdResult.stdout).toBe<string>();
++expectTypeOf(resetFdResult.stderr).toBe<string[]>();
++
++const source = execa('unicorns');
++const subprocessResult18 = await source.pipe(execa({lines: true})('unicorns', {lines: false}));
++expectTypeOf(subprocessResult18.stdout).toBe<string>();
++const subprocessResult19 = await source.pipe(execaNode({lines: true})('unicorns', {lines: false}));
++expectTypeOf(subprocessResult19.stdout).toBe<string>();
++const subprocessResult20 = await source.pipe($({lines: true})({lines: false})`unicorns`);
++expectTypeOf(subprocessResult20.stdout).toBe<string>();
++
++// Defaults, non-conflicting options and disjoint descriptor settings are preserved.
++const subprocessResult21 = await execa({lines: true})({})`unicorns`;
++expectTypeOf(subprocessResult21.stdout).toBe<string[]>();
++const subprocessResult22 = await execa({lines: true})('unicorns', {all: true});
++expectTypeOf(subprocessResult22.stdout).toBe<string[]>();
++const disjointLinesResult = await execa({lines: {stdout: true}})('unicorns', {lines: {stderr: true}});
++expectTypeOf(disjointLinesResult.stdout).toBe<string[]>();
++expectTypeOf(disjointLinesResult.stderr).toBe<string[]>();
++const subprocessResult23 = await execa({lines: true})('unicorns', {lines: true});
++expectTypeOf(subprocessResult23.stdout).toBe<string[]>();
++const subprocessResult24 = await execa({buffer: true})('unicorns', {buffer: false});
++expectTypeOf(subprocessResult24.stdout).toBe<undefined>();
++const subprocessResult25 = await execa({all: false})('unicorns', {all: true});
++expectTypeOf(subprocessResult25.all).toBe<string>();
++const subprocessResult26 = await source.pipe('unicorns', {lines: false});
++expectTypeOf(subprocessResult26.stdout).toBe<string>();
++const subprocessResult27 = await source.pipe({lines: false})`unicorns`;
++expectTypeOf(subprocessResult27.stdout).toBe<string>();
++
++const wideOptions: Options = {};
++const wideSyncOptions: SyncOptions = {};
++expectTypeOf(execa({lines: true})(wideOptions)('unicorns')).toBeAssignableTo<ResultPromise>();
++expectTypeOf(execaNode({lines: true})('unicorns', wideOptions)).toBeAssignableTo<ResultPromise>();
++expectTypeOf($({lines: true})('unicorns', wideOptions)).toBeAssignableTo<ResultPromise>();
++expectTypeOf(execaSync({lines: true})('unicorns', wideSyncOptions)).toBeAssignableTo<SyncResult>();
++expectTypeOf($.sync({lines: true})(wideSyncOptions)`unicorns`).toBeAssignableTo<SyncResult>();
++
++const optionalLines: {lines?: false} = {};
++const subprocessResult28 = await execa({lines: true})('unicorns', optionalLines);
++expectTypeOf(subprocessResult28.stdout).toBe<string | string[]>();
++
++const optionalEncoding: {encoding?: 'utf8'} = {};
++const optionalEncodingResult = await execa({encoding: 'buffer'})('unicorns', optionalEncoding);
++expectTypeOf(optionalEncodingResult.stdout).toBe<Uint8Array | string>();
++expectTypeOf(execa({encoding: 'buffer'})('unicorns', optionalEncoding)).toBeAssignableTo<ResultPromise>();
++expectTypeOf(execaSync({encoding: 'buffer'})('unicorns', optionalEncoding).stdout).toBe<Uint8Array | string>();
++expectTypeOf(execaSync({encoding: 'buffer'})('unicorns', optionalEncoding)).toBeAssignableTo<SyncResult>();
++const optionalFdLines: {lines: {stdout?: false}} = {lines: {}};
++const subprocessResult29 = await execa({lines: {stdout: true}})('unicorns', optionalFdLines);
++expectTypeOf(subprocessResult29.stdout).toBe<string | string[]>();
++expectTypeOf($.s({lines: true})({lines: false})`unicorns`.stdout).toBe<string>();
++
++// eslint-disable-next-line @typescript-eslint/consistent-type-definitions
++interface InterfaceLines {
++	stdout: false;
++	[key: `fd${number}`]: boolean | undefined;
++}
++const interfaceLines: InterfaceLines = {stdout: false};
++const interfaceResult = await execa({lines: {stdout: true, stderr: true}})('unicorns', {lines: interfaceLines});
++expectTypeOf(interfaceResult.stdout).toBe<string>();
++expectTypeOf(interfaceResult.stderr).toBe<string[]>();
++
++declare const unionOptions: {lines: false} | {all: true};
++const unionResult = await execa({lines: true})('unicorns', unionOptions);
++expectTypeOf(unionResult.stdout).toBe<string | string[]>();
++expectTypeOf(execaSync({lines: true})(unionOptions)('unicorns').stdout).toBe<string | string[]>();
+diff --git a/test-d/methods/generic-options.test-d.ts b/test-d/methods/generic-options.test-d.ts
+new file mode 100644
+index 0000000..19d8bd1
+--- /dev/null
++++ b/test-d/methods/generic-options.test-d.ts
+@@ -0,0 +1,38 @@
++import {expectTypeOf} from 'nz';
++import {
++	execa,
++	execaSync,
++	execaNode,
++	$,
++	type Options,
++	type SyncOptions,
++	type ResultPromise,
++} from '../../index.js';
++
++// Options from a generic type parameter, e.g. in a wrapper function
++const runGeneric = <OptionsType extends Options>(options: OptionsType) => {
++	execa('unicorns', options).stdin?.write('input');
++	execa(options)`unicorns`.stdin?.write('input');
++	execaNode('unicorns', options).stdin?.write('input');
++	$('unicorns', options).stdin?.write('input');
++	$(options)`unicorns`.stdin?.write('input');
++	$('unicorns', [], options).stdin?.write('input');
++	$(options)`unicorns`.kill();
++	return $('unicorns', options);
++};
++
++expectTypeOf(runGeneric({})).toBeAssignableTo<ResultPromise>();
++
++const runGenericSync = <OptionsType extends SyncOptions>(options: OptionsType) => {
++	execaSync('unicorns', options).command.trim();
++	$.sync('unicorns', options).command.trim();
++};
++
++runGenericSync({});
++
++// Options inferred while the return value has an expected type, e.g. a type annotation
++const scriptSubprocess: ResultPromise = $('unicorns');
++const scriptOptionsSubprocess: ResultPromise = $('unicorns', {node: true});
++const scriptArgumentsSubprocess: ResultPromise = $('unicorns', [], {input: 'input'});
++const getScriptSubprocess = (): ResultPromise => $('unicorns', {cwd: '.'});
++expectTypeOf([scriptSubprocess, scriptOptionsSubprocess, scriptArgumentsSubprocess, getScriptSubprocess()]).toBeAssignableTo<ResultPromise[]>();
+diff --git a/test-d/methods/node-undefined.test-d.ts b/test-d/methods/node-undefined.test-d.ts
+new file mode 100644
+index 0000000..40b3f0a
+--- /dev/null
++++ b/test-d/methods/node-undefined.test-d.ts
+@@ -0,0 +1,57 @@
++import type {Readable, Writable} from 'node:stream';
++import {expectTypeOf} from 'nz';
++import {execaNode, type sendMessage, type getOneMessage} from '../../index.js';
++
++const result = await execaNode('unicorns', {node: undefined});
++expectTypeOf(result.stdout).toBe<string>();
++const argumentsResult = await execaNode('unicorns', [], {node: undefined});
++expectTypeOf(argumentsResult.stdout).toBe<string>();
++const boundResult = await execaNode({node: undefined})`unicorns`;
++expectTypeOf(boundResult.stdout).toBe<string>();
++
++const subprocess = execaNode('unicorns', {node: undefined});
++expectTypeOf(subprocess.stdin).toBe<Writable>();
++expectTypeOf(subprocess.stdout).toBe<Readable>();
++expectTypeOf(subprocess.stdio[3]).toBe<null>();
++expectTypeOf(subprocess.sendMessage).toBeAssignableTo<typeof sendMessage>();
++expectTypeOf(subprocess.getOneMessage).toBeAssignableTo<typeof getOneMessage>();
++expectTypeOf(result.stderr).toBe<string>();
++expectTypeOf(result.failed).toBe<boolean>();
++
++const binaryResult = await execaNode('unicorns', {node: undefined, encoding: 'buffer'});
++expectTypeOf(binaryResult.stdout).toBe<Uint8Array>();
++const linesResult = await execaNode({node: undefined, lines: true})`unicorns`;
++expectTypeOf(linesResult.stdout).toBe<string[]>();
++const reboundResult = await execaNode({node: true})({node: undefined})('unicorns');
++expectTypeOf(reboundResult.stdout).toBe<string>();
++const callOverrideResult = await execaNode({node: true})('unicorns', [], {node: undefined});
++expectTypeOf(callOverrideResult.stdout).toBe<string>();
++
++const optionalNode: {node?: undefined} = {};
++const optionalResult = await execaNode('unicorns', optionalNode);
++expectTypeOf(optionalResult.stdout).toBe<string>();
++expectTypeOf(execaNode(optionalNode)`unicorns`.sendMessage).toBeAssignableTo<typeof sendMessage>();
++declare const nodeOutputOptions: {node: undefined; lines: true} | {node: undefined; encoding: 'buffer'};
++const unionResult = await execaNode('unicorns', nodeOutputOptions);
++expectTypeOf(unionResult.stdout).toBe<string[] | Uint8Array>();
++
++// Omitting `node` or passing `true` preserves output options and the explicit IPC override.
++const defaultResult = await execaNode('unicorns');
++expectTypeOf(defaultResult.stdout).toBe<string>();
++const explicitResult = await execaNode('unicorns', {node: true});
++expectTypeOf(explicitResult.stdout).toBe<string>();
++const explicitBinaryResult = await execaNode('unicorns', {node: true, encoding: 'buffer'});
++expectTypeOf(explicitBinaryResult.stdout).toBe<Uint8Array>();
++const explicitLinesResult = await execaNode({node: true, lines: true})`unicorns`;
++expectTypeOf(explicitLinesResult.stdout).toBe<string[]>();
++expectTypeOf(execaNode('unicorns').sendMessage).toBeAssignableTo<typeof sendMessage>();
++expectTypeOf(execaNode('unicorns', {node: true}).stdio[3]).toBe<null>();
++expectTypeOf(execaNode('unicorns', {ipc: false}).sendMessage).toBe<undefined>();
++expectTypeOf(execaNode('unicorns', {node: true, ipc: false}).sendMessage).toBe<undefined>();
++declare const nodeOptions: {node: undefined} | {node: true};
++const nodeUnionResult = await execaNode('unicorns', nodeOptions);
++expectTypeOf(nodeUnionResult.stdout).toBe<string>();
++
++// `node: false` throws at runtime
++expectTypeOf(execaNode('unicorns', {node: false})).toBe<never>();
++expectTypeOf(execaNode({node: false})`unicorns`).toBe<never>();
+diff --git a/test-d/methods/script-stdin.test-d.ts b/test-d/methods/script-stdin.test-d.ts
+new file mode 100644
+index 0000000..362e681
+--- /dev/null
++++ b/test-d/methods/script-stdin.test-d.ts
+@@ -0,0 +1,46 @@
++import type {Writable} from 'node:stream';
++import {expectTypeOf, expectError} from 'nz';
++import {$, type Options, type ResultPromise} from '../../index.js';
++
++const subprocess = $('unicorns');
++expectTypeOf(subprocess.stdin).toBe<null>();
++expectTypeOf(subprocess.stdio[0]).toBe<null>();
++expectError(subprocess.stdin.write('input'));
++
++expectTypeOf($`unicorns`.stdin).toBe<null>();
++expectTypeOf($({})('unicorns').stdin).toBe<null>();
++expectTypeOf($({stdin: undefined})`unicorns`.stdin).toBe<null>();
++
++expectTypeOf($('unicorns', []).stdin).toBe<null>();
++expectTypeOf($('unicorns', {}).stdio[0]).toBe<null>();
++expectTypeOf($('unicorns', [], {stdin: undefined}).stdin).toBe<null>();
++expectTypeOf($({input: undefined, inputFile: undefined, stdio: undefined})`unicorns`.stdin).toBe<null>();
++expectTypeOf($({encoding: 'buffer'})('unicorns').stdin).toBe<null>();
++expectTypeOf($({})({})('unicorns').stdio[0]).toBe<null>();
++
++declare const input: string | undefined;
++declare const inputFile: URL | undefined;
++declare const stdin: 'pipe' | undefined;
++expectTypeOf($('unicorns', {input}).stdin).toBe<Writable | null>();
++expectTypeOf($({inputFile})`unicorns`.stdio[0]).toBe<Writable | null>();
++expectTypeOf($({stdin})('unicorns').stdin).toBe<Writable | null>();
++expectError($('unicorns', {input}).stdin.write('input'));
++
++// Explicit options already infer the correct stdin stream without the script defaults.
++declare const stdio: 'ignore' | undefined;
++expectTypeOf($('unicorns', [], {stdio}).stdin).toBe<Writable | null>();
++expectTypeOf($('unicorns', {stdin: 'pipe'}).stdin).toBe<Writable>();
++expectTypeOf($('unicorns', [], {stdin: 'pipe'}).stdio[0]).toBe<Writable>();
++expectTypeOf($({stdin: 'pipe'})`unicorns`.stdin).toBe<Writable>();
++expectTypeOf($('unicorns', {input: ''}).stdin).toBe<Writable>();
++expectTypeOf($({inputFile: new URL('file:///test')})('unicorns').stdin).toBe<Writable>();
++expectTypeOf($('unicorns', {stdio: 'pipe'}).stdin).toBe<Writable>();
++expectTypeOf($('unicorns', {stdio: ['pipe', 'pipe', 'pipe']}).stdio[0]).toBe<Writable>();
++expectTypeOf($('unicorns', {stdio: ['ignore', 'pipe', 'pipe']}).stdin).toBe<null>();
++expectTypeOf($({stdin: 'inherit', input: undefined})`unicorns`.stdin).toBe<null>();
++expectTypeOf($({stdin: undefined, stdio: 'ignore'})('unicorns').stdin).toBe<null>();
++expectTypeOf($('unicorns', {input: '', inputFile: undefined, stdio: undefined}).stdin).toBe<Writable>();
++expectTypeOf(await $('unicorns', {encoding: 'buffer'})).toBeAssignableTo<{stdout: Uint8Array}>();
++
++const options: Options = {};
++expectTypeOf($('unicorns', options)).toBeAssignableTo<ResultPromise>();
+diff --git a/test-d/return/fd-optional.test-d.ts b/test-d/return/fd-optional.test-d.ts
+new file mode 100644
+index 0000000..ca48d44
+--- /dev/null
++++ b/test-d/return/fd-optional.test-d.ts
+@@ -0,0 +1,74 @@
++import {expectTypeOf} from 'nz';
++import {
++	execa,
++	execaSync,
++	type ExecaError,
++	type ExecaSyncError,
++} from '../../index.js';
++
++const optionalStdoutLines: {stdout?: false; all: true} = {all: true};
++const stdoutLines = await execa('unicorns', {lines: optionalStdoutLines});
++expectTypeOf(stdoutLines.stdout).toBe<string | string[]>();
++expectTypeOf(stdoutLines.stdio[1]).toBe<string | string[]>();
++const optionalStderrLines: {stderr?: false; all: true} = {all: true};
++const stderrLines = execaSync('unicorns', {lines: optionalStderrLines});
++expectTypeOf(stderrLines.stderr).toBe<string | string[]>();
++expectTypeOf(stderrLines.stdio[2]).toBe<string | string[]>();
++const optionalFd1Lines: {fd1?: false; all: true} = {all: true};
++const fd1Lines = await execa('unicorns', {lines: optionalFd1Lines});
++expectTypeOf(fd1Lines.stdout).toBe<string | string[]>();
++const optionalFd2Lines: {fd2?: false; all: true} = {all: true};
++const fd2Lines = execaSync('unicorns', {lines: optionalFd2Lines});
++expectTypeOf(fd2Lines.stderr).toBe<string | string[]>();
++
++const optionalStdoutBuffer: {stdout?: true; all: false} = {all: false};
++const stdoutBuffer = await execa('unicorns', {buffer: optionalStdoutBuffer});
++expectTypeOf(stdoutBuffer.stdout).toBe<string | undefined>();
++expectTypeOf(stdoutBuffer.stdio[1]).toBe<string | undefined>();
++const optionalStderrBuffer: {stderr?: true; all: false} = {all: false};
++const stderrBuffer = execaSync('unicorns', {buffer: optionalStderrBuffer});
++expectTypeOf(stderrBuffer.stderr).toBe<string | undefined>();
++expectTypeOf(stderrBuffer.stdio[2]).toBe<string | undefined>();
++const optionalFd1Buffer: {fd1?: true; all: false} = {all: false};
++const fd1Buffer = await execa('unicorns', {buffer: optionalFd1Buffer});
++expectTypeOf(fd1Buffer.stdout).toBe<string | undefined>();
++const optionalFd2Buffer: {fd2?: true; all: false} = {all: false};
++const fd2Buffer = execaSync('unicorns', {buffer: optionalFd2Buffer});
++expectTypeOf(fd2Buffer.stderr).toBe<string | undefined>();
++
++const aliasLines: {stdout?: false; fd1: true; all: false} = {fd1: true, all: false};
++const aliasLinesResult = await execa('unicorns', {lines: aliasLines});
++expectTypeOf(aliasLinesResult.stdout).toBe<string | string[]>();
++const chainedLines: {stdout?: false; fd1?: false; all: true} = {all: true};
++const chainedLinesResult = execaSync('unicorns', {lines: chainedLines});
++expectTypeOf(chainedLinesResult.stdout).toBe<string | string[]>();
++const boundLines = await execa({lines: optionalStdoutLines})`unicorns`;
++expectTypeOf(boundLines.stdout).toBe<string | string[]>();
++const boundBuffer = execaSync({buffer: optionalStderrBuffer})('unicorns');
++expectTypeOf(boundBuffer.stderr).toBe<string | undefined>();
++declare const linesError: ExecaError<{lines: typeof optionalStdoutLines}>;
++expectTypeOf(linesError.stdout).toBe<string | string[]>();
++declare const bufferError: ExecaSyncError<{buffer: typeof optionalStderrBuffer}>;
++expectTypeOf(bufferError.stderr).toBe<string | undefined>();
++
++// Required descriptor keys override aliases and `all`, even when their value is explicitly undefined.
++const requiredLines = await execa('unicorns', {lines: {stdout: false, fd1: true, all: true}});
++expectTypeOf(requiredLines.stdout).toBe<string>();
++const requiredAliasLines = execaSync('unicorns', {lines: {fd2: false, all: true}});
++expectTypeOf(requiredAliasLines.stderr).toBe<string>();
++const undefinedLines = await execa('unicorns', {lines: {stdout: undefined, all: true}});
++expectTypeOf(undefinedLines.stdout).toBe<string>();
++const undefinedAliasLines = execaSync('unicorns', {lines: {fd2: undefined, all: true}});
++expectTypeOf(undefinedAliasLines.stderr).toBe<string>();
++const allLines = await execa('unicorns', {lines: {all: true}});
++expectTypeOf(allLines.stdout).toBe<string[]>();
++expectTypeOf(allLines.stderr).toBe<string[]>();
++const requiredBuffer = await execa('unicorns', {buffer: {stdout: true, fd1: false, all: false}});
++expectTypeOf(requiredBuffer.stdout).toBe<string>();
++const undefinedBuffer = execaSync('unicorns', {buffer: {stderr: undefined, all: false}});
++expectTypeOf(undefinedBuffer.stderr).toBe<string>();
++const undefinedAliasBuffer = await execa('unicorns', {buffer: {fd1: undefined, all: false}});
++expectTypeOf(undefinedAliasBuffer.stdout).toBe<string>();
++const allBuffer = execaSync('unicorns', {buffer: {all: false}});
++expectTypeOf(allBuffer.stdout).toBe<undefined>();
++expectTypeOf(allBuffer.stderr).toBe<undefined>();
+diff --git a/test-d/return/options-union.test-d.ts b/test-d/return/options-union.test-d.ts
+new file mode 100644
+index 0000000..722e4a4
+--- /dev/null
++++ b/test-d/return/options-union.test-d.ts
+@@ -0,0 +1,68 @@
++import {expectTypeOf} from 'nz';
++import {
++	execa,
++	execaSync,
++	execaNode,
++	$,
++	type Result,
++	type SyncResult,
++	type ExecaError,
++	type ExecaSyncError,
++} from '../../index.js';
++
++declare const options: {lines: true} | {encoding: 'buffer'};
++const result = await execa('unicorns', options);
++expectTypeOf(result.stdout).toBe<string[] | Uint8Array>();
++expectTypeOf(execaSync('unicorns', options).stdout).toBe<string[] | Uint8Array>();
++expectTypeOf<Result<typeof options>['stdout']>().toBe<string[] | Uint8Array>();
++expectTypeOf(result.stderr).toBe<string[] | Uint8Array>();
++expectTypeOf(result.stdio[1]).toBe<string[] | Uint8Array>();
++expectTypeOf(result.stdio[2]).toBe<string[] | Uint8Array>();
++expectTypeOf<SyncResult<typeof options>['stderr']>().toBe<string[] | Uint8Array>();
++expectTypeOf<ExecaError<typeof options>['stdout']>().toBe<string[] | Uint8Array>();
++expectTypeOf<ExecaSyncError<typeof options>['stderr']>().toBe<string[] | Uint8Array>();
++
++const templateResult = await execa(options)`unicorns`;
++expectTypeOf(templateResult.stdout).toBe<string[] | Uint8Array>();
++expectTypeOf(execaSync(options)`unicorns`.stdout).toBe<string[] | Uint8Array>();
++const nodeResult = await execaNode('unicorns', [], options);
++expectTypeOf(nodeResult.stderr).toBe<string[] | Uint8Array>();
++const scriptResult = await $(options)`unicorns`;
++expectTypeOf(scriptResult.stdout).toBe<string[] | Uint8Array>();
++expectTypeOf($.sync(options)`unicorns`.stdout).toBe<string[] | Uint8Array>();
++
++declare const allOptions: {all: true; lines: true} | {all: true; encoding: 'buffer'};
++const allResult = await execa('unicorns', allOptions);
++expectTypeOf(allResult.all).toBe<string[] | Uint8Array>();
++expectTypeOf(execaSync('unicorns', allOptions).all).toBe<string[] | Uint8Array>();
++expectTypeOf<ExecaError<typeof allOptions>['all']>().toBe<string[] | Uint8Array>();
++
++declare const optionalAllOptions: {all: true; lines: true} | {encoding: 'buffer'};
++expectTypeOf<Result<typeof optionalAllOptions>['all']>().toBe<string[] | undefined>();
++
++declare const bufferOptions: {all: true; buffer: false; lines: true} | {all: true; encoding: 'buffer'};
++expectTypeOf<Result<typeof bufferOptions>['stdout']>().toBe<Uint8Array | undefined>();
++expectTypeOf<Result<typeof bufferOptions>['all']>().toBe<Uint8Array | undefined>();
++
++declare const descriptorOptions: {lines: {stdout: true}} | {encoding: 'buffer'; stderr: 'ignore'};
++const descriptorResult = await execa('unicorns', descriptorOptions);
++expectTypeOf(descriptorResult.stdout).toBe<string[] | Uint8Array>();
++expectTypeOf(descriptorResult.stderr).toBe<string | undefined>();
++expectTypeOf(descriptorResult.stdio[2]).toBe<string | undefined>();
++
++declare const objectOptions: {all: true; stdout: {objectMode: true; transform: (chunk: string) => Generator<object>}} | {all: true; buffer: false};
++expectTypeOf<Result<typeof objectOptions>['stdout']>().toBe<unknown[] | undefined>();
++expectTypeOf<Result<typeof objectOptions>['all']>().toBe<unknown[] | undefined>();
++
++declare const extraFdOptions: {stdio: ['pipe', 'pipe', 'pipe', 'pipe']; lines: {fd3: true}} | {stdio: ['pipe', 'pipe', 'pipe', 'pipe']; encoding: 'buffer'};
++expectTypeOf<Result<typeof extraFdOptions>['stdio'][3]>().toBe<string[] | Uint8Array>();
++
++// Unions with shared option keys and ordinary defaults already preserve their result modes.
++declare const linesOptions: {lines: true} | {lines: false};
++expectTypeOf<Result<typeof linesOptions>['stdout']>().toBe<string | string[]>();
++declare const encodingOptions: {encoding: 'utf8'} | {encoding: 'buffer'};
++expectTypeOf<SyncResult<typeof encodingOptions>['stdout']>().toBe<string | Uint8Array>();
++declare const ignoredOptions: {stdout: 'ignore'} | {stdout: 'pipe'};
++expectTypeOf<Result<typeof ignoredOptions>['stdout']>().toBe<string | undefined>();
++declare const plainOptions: {input: string} | {timeout: number};
++expectTypeOf<Result<typeof plainOptions>['stdout']>().toBe<string>();
+diff --git a/test-d/return/result-all.test-d.ts b/test-d/return/result-all.test-d.ts
+index 165c0e8..52047e2 100644
+--- a/test-d/return/result-all.test-d.ts
++++ b/test-d/return/result-all.test-d.ts
+@@ -9,6 +9,176 @@ import {
+ const allResult = await execa('unicorns', {all: true});
+ expectTypeOf(allResult.all).toBe<string>();
+ 
++const unbufferedObjectOptions = {
++	all: true as const,
++	buffer: {stdout: false as const},
++	stdout: {
++		objectMode: true as const,
++		* transform() {
++			yield {value: 'object'};
++		},
++	},
++};
++const bufferedTextResult = await execa('unicorns', unbufferedObjectOptions);
++expectTypeOf(bufferedTextResult.all).toBe<string>();
++const bufferedTextResultSync = execaSync('unicorns', unbufferedObjectOptions);
++expectTypeOf(bufferedTextResultSync.all).toBe<string>();
++
++const dynamicBufferOptions = {...unbufferedObjectOptions, buffer: {stdout: false as boolean}};
++const dynamicBufferResult = await execa('unicorns', dynamicBufferOptions);
++expectTypeOf(dynamicBufferResult.all).toBe<string | unknown[]>();
++const dynamicBufferResultSync = execaSync('unicorns', dynamicBufferOptions);
++expectTypeOf(dynamicBufferResultSync.all).toBe<string | unknown[]>();
++const dynamicBufferError = new Error('.') as ExecaError<typeof dynamicBufferOptions>;
++expectTypeOf(dynamicBufferError.all).toBe<string | unknown[]>();
++const dynamicBufferErrorSync = new Error('.') as ExecaSyncError<typeof dynamicBufferOptions>;
++expectTypeOf(dynamicBufferErrorSync.all).toBe<string | unknown[]>();
++expectTypeOf(dynamicBufferResult.stdout).toBe<unknown[] | undefined>();
++const bufferedTextError = new Error('.') as ExecaError<typeof unbufferedObjectOptions>;
++expectTypeOf(bufferedTextError.all).toBe<string>();
++const bufferedTextErrorSync = new Error('.') as ExecaSyncError<typeof unbufferedObjectOptions>;
++expectTypeOf(bufferedTextErrorSync.all).toBe<string>();
++
++const unbufferedStderrObjectOptions = {
++	all: true as const,
++	buffer: {stderr: false as const},
++	stderr: unbufferedObjectOptions.stdout,
++};
++const bufferedStdoutTextResult = await execa('unicorns', unbufferedStderrObjectOptions);
++expectTypeOf(bufferedStdoutTextResult.all).toBe<string>();
++const bufferedStdoutTextResultSync = execaSync('unicorns', unbufferedStderrObjectOptions);
++expectTypeOf(bufferedStdoutTextResultSync.all).toBe<string>();
++const bufferedStdoutTextError = new Error('.') as ExecaError<typeof unbufferedStderrObjectOptions>;
++expectTypeOf(bufferedStdoutTextError.all).toBe<string>();
++const bufferedStdoutTextErrorSync = new Error('.') as ExecaSyncError<typeof unbufferedStderrObjectOptions>;
++expectTypeOf(bufferedStdoutTextErrorSync.all).toBe<string>();
++
++const dynamicStderrBufferOptions = {...unbufferedStderrObjectOptions, buffer: {stderr: false as boolean}};
++const dynamicStderrBufferResult = await execa('unicorns', dynamicStderrBufferOptions);
++expectTypeOf(dynamicStderrBufferResult.all).toBe<string | unknown[]>();
++const dynamicStderrBufferResultSync = execaSync('unicorns', dynamicStderrBufferOptions);
++expectTypeOf(dynamicStderrBufferResultSync.all).toBe<string | unknown[]>();
++expectTypeOf(dynamicStderrBufferResult.stderr).toBe<unknown[] | undefined>();
++
++const dynamicBufferBinaryResult = await execa('unicorns', {...dynamicBufferOptions, encoding: 'buffer'});
++expectTypeOf(dynamicBufferBinaryResult.all).toBe<Uint8Array | unknown[]>();
++const dynamicBufferBinaryResultSync = execaSync('unicorns', {...dynamicStderrBufferOptions, encoding: 'buffer'});
++expectTypeOf(dynamicBufferBinaryResultSync.all).toBe<Uint8Array | unknown[]>();
++
++const bufferedBinaryResult = await execa('unicorns', {...unbufferedObjectOptions, encoding: 'buffer'});
++expectTypeOf(bufferedBinaryResult.all).toBe<Uint8Array>();
++const bufferedBinaryResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, encoding: 'buffer'});
++expectTypeOf(bufferedBinaryResultSync.all).toBe<Uint8Array>();
++
++const ignoredStdoutLinesOptions = {
++	all: true as const,
++	buffer: {stdout: false as const},
++	lines: {stdout: true as const},
++};
++const ignoredStdoutLinesResult = await execa('unicorns', ignoredStdoutLinesOptions);
++expectTypeOf(ignoredStdoutLinesResult.all).toBe<string>();
++const ignoredStdoutLinesResultSync = execaSync('unicorns', ignoredStdoutLinesOptions);
++expectTypeOf(ignoredStdoutLinesResultSync.all).toBe<string>();
++const ignoredStdoutLinesError = new Error('.') as ExecaError<typeof ignoredStdoutLinesOptions>;
++expectTypeOf(ignoredStdoutLinesError.all).toBe<string>();
++const ignoredStdoutLinesErrorSync = new Error('.') as ExecaSyncError<typeof ignoredStdoutLinesOptions>;
++expectTypeOf(ignoredStdoutLinesErrorSync.all).toBe<string>();
++
++const ignoredStderrLinesOptions = {
++	all: true as const,
++	buffer: {stderr: false as const},
++	lines: {stderr: true as const},
++};
++const ignoredStderrLinesResult = await execa('unicorns', ignoredStderrLinesOptions);
++expectTypeOf(ignoredStderrLinesResult.all).toBe<string>();
++const ignoredStderrLinesResultSync = execaSync('unicorns', ignoredStderrLinesOptions);
++expectTypeOf(ignoredStderrLinesResultSync.all).toBe<string>();
++const ignoredStderrLinesError = new Error('.') as ExecaError<typeof ignoredStderrLinesOptions>;
++expectTypeOf(ignoredStderrLinesError.all).toBe<string>();
++const ignoredStderrLinesErrorSync = new Error('.') as ExecaSyncError<typeof ignoredStderrLinesOptions>;
++expectTypeOf(ignoredStderrLinesErrorSync.all).toBe<string>();
++
++const dynamicStdoutLinesOptions = {...ignoredStdoutLinesOptions, buffer: {stdout: false as boolean}};
++const dynamicStdoutLinesResult = await execa('unicorns', dynamicStdoutLinesOptions);
++expectTypeOf(dynamicStdoutLinesResult.all).toBe<string | string[]>();
++const dynamicStdoutLinesResultSync = execaSync('unicorns', dynamicStdoutLinesOptions);
++expectTypeOf(dynamicStdoutLinesResultSync.all).toBe<string | string[]>();
++const dynamicStdoutLinesError = new Error('.') as ExecaError<typeof dynamicStdoutLinesOptions>;
++expectTypeOf(dynamicStdoutLinesError.all).toBe<string | string[]>();
++const dynamicStdoutLinesErrorSync = new Error('.') as ExecaSyncError<typeof dynamicStdoutLinesOptions>;
++expectTypeOf(dynamicStdoutLinesErrorSync.all).toBe<string | string[]>();
++
++const dynamicStderrLinesOptions = {...ignoredStderrLinesOptions, buffer: {stderr: false as boolean}};
++const dynamicStderrLinesResult = await execa('unicorns', dynamicStderrLinesOptions);
++expectTypeOf(dynamicStderrLinesResult.all).toBe<string | string[]>();
++const dynamicStderrLinesResultSync = execaSync('unicorns', dynamicStderrLinesOptions);
++expectTypeOf(dynamicStderrLinesResultSync.all).toBe<string | string[]>();
++
++const dynamicBothBufferOptions = {all: true as const, buffer: {stdout: false as boolean, stderr: false as boolean}};
++const dynamicBothBufferResult = await execa('unicorns', dynamicBothBufferOptions);
++expectTypeOf(dynamicBothBufferResult.all).toBe<string | undefined>();
++const dynamicBothBufferResultSync = execaSync('unicorns', dynamicBothBufferOptions);
++expectTypeOf(dynamicBothBufferResultSync.all).toBe<string | undefined>();
++const dynamicBothBufferError = new Error('.') as ExecaError<typeof dynamicBothBufferOptions>;
++expectTypeOf(dynamicBothBufferError.all).toBe<string | undefined>();
++const dynamicBothBufferErrorSync = new Error('.') as ExecaSyncError<typeof dynamicBothBufferOptions>;
++expectTypeOf(dynamicBothBufferErrorSync.all).toBe<string | undefined>();
++
++const dynamicGlobalBufferResult = await execa('unicorns', {all: true, buffer: false as boolean});
++expectTypeOf(dynamicGlobalBufferResult.all).toBe<string | undefined>();
++expectTypeOf(dynamicGlobalBufferResult.stdout).toBe<string | undefined>();
++const dynamicGlobalBufferResultSync = execaSync('unicorns', {all: true, buffer: false as boolean});
++expectTypeOf(dynamicGlobalBufferResultSync.all).toBe<string | undefined>();
++
++const dynamicGlobalObjectBufferResult = await execa('unicorns', {...unbufferedObjectOptions, buffer: false as boolean});
++expectTypeOf(dynamicGlobalObjectBufferResult.all).toBe<unknown[] | undefined>();
++const dynamicGlobalObjectBufferResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, buffer: false as boolean});
++expectTypeOf(dynamicGlobalObjectBufferResultSync.all).toBe<unknown[] | undefined>();
++
++declare const optionalBufferError: ExecaError<{all: true; buffer?: false; stdout: typeof unbufferedObjectOptions.stdout}>;
++expectTypeOf(optionalBufferError.all).toBe<unknown[] | undefined>();
++const undefinedStdoutBufferResult = await execa('unicorns', {...unbufferedObjectOptions, buffer: {stdout: undefined, stderr: false}});
++expectTypeOf(undefinedStdoutBufferResult.all).toBe<unknown[]>();
++
++const dynamicOnlyStdoutBufferResult = await execa('unicorns', {...dynamicBufferOptions, buffer: {stdout: false as boolean, stderr: false}});
++expectTypeOf(dynamicOnlyStdoutBufferResult.all).toBe<unknown[] | undefined>();
++const dynamicOnlyStderrBufferResultSync = execaSync('unicorns', {...dynamicStderrBufferOptions, buffer: {stdout: false, stderr: false as boolean}});
++expectTypeOf(dynamicOnlyStderrBufferResultSync.all).toBe<unknown[] | undefined>();
++
++const ignoredStdoutStreamLinesResult = await execa('unicorns', {all: true, stdout: 'ignore', lines: {stdout: true}});
++expectTypeOf(ignoredStdoutStreamLinesResult.all).toBe<string[]>();
++const ignoredStderrStreamLinesResultSync = execaSync('unicorns', {all: true, stderr: 'ignore', lines: {stderr: true}});
++expectTypeOf(ignoredStderrStreamLinesResultSync.all).toBe<string[]>();
++
++const bufferedLinesResult = await execa('unicorns', {...unbufferedObjectOptions, lines: {stderr: true}});
++expectTypeOf(bufferedLinesResult.all).toBe<string[]>();
++const bufferedLinesResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, lines: {stdout: true}});
++expectTypeOf(bufferedLinesResultSync.all).toBe<string[]>();
++
++const bufferedStdoutObjectResult = await execa('unicorns', {...unbufferedObjectOptions, buffer: {stderr: false}});
++expectTypeOf(bufferedStdoutObjectResult.all).toBe<unknown[]>();
++const bufferedStderrObjectResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, buffer: {stdout: false}});
++expectTypeOf(bufferedStderrObjectResultSync.all).toBe<unknown[]>();
++
++const bothBufferedObjectResult = await execa('unicorns', {...unbufferedObjectOptions, buffer: true});
++expectTypeOf(bothBufferedObjectResult.all).toBe<unknown[]>();
++const bothBufferedObjectResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, buffer: true});
++expectTypeOf(bothBufferedObjectResultSync.all).toBe<unknown[]>();
++
++const neitherBufferedResult = await execa('unicorns', {...unbufferedObjectOptions, buffer: false});
++expectTypeOf(neitherBufferedResult.all).toBe<undefined>();
++const neitherBufferedResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, buffer: false});
++expectTypeOf(neitherBufferedResultSync.all).toBe<undefined>();
++
++const ignoredObjectFd1Result = await execa('unicorns', {...unbufferedObjectOptions, buffer: {fd1: false}});
++expectTypeOf(ignoredObjectFd1Result.all).toBe<string>();
++const ignoredObjectFd2ResultSync = execaSync('unicorns', {...unbufferedStderrObjectOptions, buffer: {fd2: false}});
++expectTypeOf(ignoredObjectFd2ResultSync.all).toBe<string>();
++const ignoredLinesFd1Result = await execa('unicorns', {...ignoredStdoutLinesOptions, buffer: {fd1: false}});
++expectTypeOf(ignoredLinesFd1Result.all).toBe<string>();
++const ignoredLinesFd2ResultSync = execaSync('unicorns', {...ignoredStderrLinesOptions, buffer: {fd2: false}});
++expectTypeOf(ignoredLinesFd2ResultSync.all).toBe<string>();
++
+ const noAllResult = await execa('unicorns');
+ expectTypeOf(noAllResult.all).toBe<undefined>();
+ 
+diff --git a/test-d/subprocess/input-inherit.test-d.ts b/test-d/subprocess/input-inherit.test-d.ts
+new file mode 100644
+index 0000000..891baca
+--- /dev/null
++++ b/test-d/subprocess/input-inherit.test-d.ts
+@@ -0,0 +1,92 @@
++import type {Readable, Writable} from 'node:stream';
++import {expectTypeOf} from 'nz';
++import {execa, $} from '../../index.js';
++
++const inputSubprocess = execa('unicorns', {stdin: 'inherit', input: 'text'});
++expectTypeOf(inputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(inputSubprocess.stdio[0]).toBe<Writable>();
++
++const scriptInputSubprocess = $({stdin: 'inherit', input: 'text'})`unicorns`;
++expectTypeOf(scriptInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(scriptInputSubprocess.stdio[0]).toBe<Writable>();
++
++const inputFileSubprocess = execa('unicorns', {stdin: 'inherit', inputFile: 'input.txt'});
++expectTypeOf(inputFileSubprocess.stdin).toBe<Writable>();
++expectTypeOf(inputFileSubprocess.stdio[0]).toBe<Writable>();
++const scriptInputFileSubprocess = $({stdin: 'inherit', inputFile: new URL('file:///test')})`unicorns`;
++expectTypeOf(scriptInputFileSubprocess.stdin).toBe<Writable>();
++expectTypeOf(scriptInputFileSubprocess.stdio[0]).toBe<Writable>();
++
++const emptyInputSubprocess = execa('unicorns', {stdin: 'inherit', input: ''});
++expectTypeOf(emptyInputSubprocess.stdin).toBe<Writable>();
++const binaryInputSubprocess = execa('unicorns', {stdin: 'inherit', input: new Uint8Array()});
++expectTypeOf(binaryInputSubprocess.stdin).toBe<Writable>();
++const singletonInputSubprocess = execa('unicorns', {stdin: ['inherit'] as const, input: 'text'});
++expectTypeOf(singletonInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(singletonInputSubprocess.stdio[0]).toBe<Writable>();
++const wrappedInputSubprocess = execa('unicorns', {stdin: {value: 'inherit', input: true}, input: 'text'});
++expectTypeOf(wrappedInputSubprocess.stdin).toBe<Writable>();
++const wrappedSingletonInputSubprocess = execa('unicorns', {stdin: [{value: 'inherit'}] as const, inputFile: 'input.txt'});
++expectTypeOf(wrappedSingletonInputSubprocess.stdin).toBe<Writable>();
++const stdioInputSubprocess = execa('unicorns', {stdio: 'inherit', input: 'text'});
++expectTypeOf(stdioInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(stdioInputSubprocess.stdio[0]).toBe<Writable>();
++const tupleInputSubprocess = execa('unicorns', {stdio: ['inherit', 'pipe', 'pipe'] as const, input: 'text'});
++expectTypeOf(tupleInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(tupleInputSubprocess.stdio[0]).toBe<Writable>();
++const wrappedTupleInputSubprocess = execa('unicorns', {stdio: [{value: 'inherit'}, 'pipe', 'pipe'] as const, inputFile: 'input.txt'});
++expectTypeOf(wrappedTupleInputSubprocess.stdin).toBe<Writable>();
++
++const optionalInput: {input?: string} = {};
++const optionalInputSubprocess = execa('unicorns', {stdin: 'inherit', ...optionalInput});
++expectTypeOf(optionalInputSubprocess.stdin).toBe<Writable | null>();
++expectTypeOf(optionalInputSubprocess.stdio[0]).toBe<Writable | null>();
++const optionalScriptInputSubprocess = $({stdin: 'inherit', ...optionalInput})`unicorns`;
++expectTypeOf(optionalScriptInputSubprocess.stdin).toBe<Writable | null>();
++const optionalInputFile: {inputFile?: string} = {};
++const optionalFileSubprocess = execa('unicorns', {stdin: 'inherit', ...optionalInputFile});
++expectTypeOf(optionalFileSubprocess.stdin).toBe<Writable | null>();
++const requiredMaybeInput: {input: string | undefined} = {input: undefined};
++const requiredMaybeInputSubprocess = execa('unicorns', {stdin: 'inherit', ...requiredMaybeInput});
++expectTypeOf(requiredMaybeInputSubprocess.stdin).toBe<Writable | null>();
++const combinedInputSubprocess = execa('unicorns', {stdin: 'inherit', ...optionalInput, inputFile: 'input.txt'});
++expectTypeOf(combinedInputSubprocess.stdin).toBe<Writable>();
++
++// Explicitly undefined input keeps inherited stdin, and input options do not change output descriptors.
++const inheritedSubprocess = execa('unicorns', {stdin: 'inherit'});
++expectTypeOf(inheritedSubprocess.stdin).toBe<null>();
++const undefinedInputSubprocess = execa('unicorns', {stdin: 'inherit', input: undefined, inputFile: undefined});
++expectTypeOf(undefinedInputSubprocess.stdin).toBe<null>();
++expectTypeOf(undefinedInputSubprocess.stdio[0]).toBe<null>();
++const undefinedScriptInputSubprocess = $({stdin: 'inherit', input: undefined, inputFile: undefined})`unicorns`;
++expectTypeOf(undefinedScriptInputSubprocess.stdin).toBe<null>();
++const singletonInheritedSubprocess = execa('unicorns', {stdin: ['inherit'] as const, input: undefined});
++expectTypeOf(singletonInheritedSubprocess.stdin).toBe<null>();
++const wrappedInheritedSubprocess = execa('unicorns', {stdin: {value: 'inherit'}, input: undefined});
++expectTypeOf(wrappedInheritedSubprocess.stdin).toBe<null>();
++const wrappedSingletonInheritedSubprocess = execa('unicorns', {stdin: [{value: 'inherit'}] as const});
++expectTypeOf(wrappedSingletonInheritedSubprocess.stdin).toBe<null>();
++expectTypeOf(stdioInputSubprocess.stdout).toBe<null>();
++expectTypeOf(stdioInputSubprocess.stderr).toBe<null>();
++expectTypeOf(stdioInputSubprocess.stdio[1]).toBe<null>();
++expectTypeOf(stdioInputSubprocess.stdio[2]).toBe<null>();
++expectTypeOf(tupleInputSubprocess.stdout).toBe<Readable>();
++expectTypeOf(tupleInputSubprocess.stderr).toBe<Readable>();
++const inheritedOutputSubprocess = execa('unicorns', {
++	stdin: 'inherit',
++	stdout: 'inherit',
++	stderr: 'inherit',
++	input: 'text',
++});
++expectTypeOf(inheritedOutputSubprocess.stdout).toBe<null>();
++expectTypeOf(inheritedOutputSubprocess.stderr).toBe<null>();
++const extraOutputSubprocess = execa('unicorns', {stdio: ['inherit', 'pipe', 'pipe', 'inherit'] as const, input: 'text'});
++expectTypeOf(extraOutputSubprocess.stdio[3]).toBe<null>();
++
++declare const inputSourceOptions: {stdin: 'inherit'; input: string} | {stdin: 'inherit'; inputFile: string};
++const unionInputSubprocess = execa('unicorns', inputSourceOptions);
++expectTypeOf(unionInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(unionInputSubprocess.stdio[0]).toBe<Writable>();
++const unionScriptInputSubprocess = $(inputSourceOptions)`unicorns`;
++expectTypeOf(unionScriptInputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(unionScriptInputSubprocess.stdio[0]).toBe<Writable>();
+diff --git a/test-d/subprocess/input-native.test-d.ts b/test-d/subprocess/input-native.test-d.ts
+new file mode 100644
+index 0000000..fe5d3c4
+--- /dev/null
++++ b/test-d/subprocess/input-native.test-d.ts
+@@ -0,0 +1,84 @@
++import process from 'node:process';
++import {Readable, type Writable} from 'node:stream';
++import {expectTypeOf} from 'nz';
++import {
++	execa,
++	execaNode,
++	$,
++	type Result,
++} from '../../index.js';
++
++const inputSubprocess = execa('unicorns', {stdin: Readable.from(['first']), input: 'second'});
++expectTypeOf(inputSubprocess.stdin).toBe<Writable>();
++expectTypeOf(inputSubprocess.stdio[0]).toBe<Writable>();
++
++const emptyInputSubprocess = execa('unicorns', {stdin: Readable.from(['first']), input: ''});
++expectTypeOf(emptyInputSubprocess.stdin).toBe<Writable>();
++
++const emptyBinarySubprocess = execa('unicorns', {stdin: Readable.from(['first']), input: new Uint8Array()});
++expectTypeOf(emptyBinarySubprocess.stdin).toBe<Writable>();
++const singletonSubprocess = execa('unicorns', {stdin: [Readable.from(['first'])] as const, input: 'second'});
++expectTypeOf(singletonSubprocess.stdin).toBe<Writable>();
++expectTypeOf(singletonSubprocess.stdio[0]).toBe<Writable>();
++const tupleSubprocess = execa('unicorns', {stdio: [Readable.from(['first']), 'pipe', 'pipe'] as const, input: 'second'});
++expectTypeOf(tupleSubprocess.stdin).toBe<Writable>();
++expectTypeOf(tupleSubprocess.stdio[0]).toBe<Writable>();
++
++const nodeSubprocess = execaNode({stdin: Readable.from(['first']), input: 'second'})`unicorns`;
++expectTypeOf(nodeSubprocess.stdin).toBe<Writable>();
++const scriptSubprocess = $({stdin: Readable.from(['first']), input: 'second'})`unicorns`;
++expectTypeOf(scriptSubprocess.stdin).toBe<Writable>();
++expectTypeOf(scriptSubprocess.stdio[0]).toBe<Writable>();
++
++const fileSubprocess = execa('unicorns', {stdin: Readable.from(['first']), inputFile: 'input.txt'});
++expectTypeOf(fileSubprocess.stdin).toBe<Writable>();
++const fileUrlSubprocess = $({stdin: Readable.from(['first']), inputFile: new URL('file:///test')})`unicorns`;
++expectTypeOf(fileUrlSubprocess.stdin).toBe<Writable>();
++expectTypeOf(fileUrlSubprocess.stdio[0]).toBe<Writable>();
++
++const sharedReadable = Readable.from(['first']);
++const duplicateSubprocess = execa('unicorns', {stdin: sharedReadable, input: sharedReadable});
++expectTypeOf(duplicateSubprocess.stdin).toBe<Writable>();
++
++declare const optionalInput: {input?: string};
++const optionalInputSubprocess = execa('unicorns', {stdin: process.stdin, ...optionalInput});
++expectTypeOf(optionalInputSubprocess.stdin).toBe<Writable | null>();
++expectTypeOf(optionalInputSubprocess.stdio[0]).toBe<Writable | null>();
++declare const optionalInputFile: {inputFile?: URL};
++expectTypeOf(execa('unicorns', {stdin: process.stdin, ...optionalInputFile}).stdin).toBe<Writable | null>();
++declare const maybeInput: Uint8Array | undefined;
++expectTypeOf($({stdin: process.stdin, input: maybeInput})`unicorns`.stdin).toBe<Writable | null>();
++
++declare const inputOptions: {stdin: Readable; input: string} | {stdin: Readable; inputFile: URL};
++const unionSubprocess = execa('unicorns', inputOptions);
++expectTypeOf(unionSubprocess.stdin).toBe<Writable>();
++expectTypeOf(unionSubprocess.stdio[0]).toBe<Writable>();
++
++// Without another input source, native stdin stays unpiped. Transforms and output modes are preserved.
++const nativeSubprocess = execa('unicorns', {stdin: process.stdin});
++expectTypeOf(nativeSubprocess.stdin).toBe<null>();
++const undefinedSubprocess = execa('unicorns', {stdin: process.stdin, input: undefined, inputFile: undefined});
++expectTypeOf(undefinedSubprocess.stdin).toBe<null>();
++expectTypeOf(undefinedSubprocess.stdio[0]).toBe<null>();
++expectTypeOf(tupleSubprocess.stdout).toBe<Readable>();
++expectTypeOf(tupleSubprocess.stderr).toBe<Readable>();
++
++const objectModeOptions = {
++	input: '',
++	stdin: {
++		objectMode: true as const,
++		* transform(chunk: unknown) {
++			yield JSON.stringify(chunk);
++		},
++	},
++	stdout: {
++		objectMode: true as const,
++		* transform() {
++			yield {value: 'output'};
++		},
++	},
++};
++const objectModeSubprocess = execa('unicorns', objectModeOptions);
++expectTypeOf(objectModeSubprocess.stdin).toBe<Writable>();
++expectTypeOf(objectModeSubprocess.iterable()).toBe<AsyncIterableIterator<unknown>>();
++expectTypeOf<Result<typeof objectModeOptions>['stdio'][0]>().toBe<undefined>();
+diff --git a/test-d/subprocess/options-union.test-d.ts b/test-d/subprocess/options-union.test-d.ts
+new file mode 100644
+index 0000000..7c4190b
+--- /dev/null
++++ b/test-d/subprocess/options-union.test-d.ts
+@@ -0,0 +1,59 @@
++import type {Readable, Writable} from 'node:stream';
++import {expectTypeOf, expectError} from 'nz';
++import {
++	execa,
++	execaNode,
++	$,
++	type Subprocess,
++} from '../../index.js';
++
++declare const outputOptions: {stdout: 'ignore'} | {encoding: 'buffer'};
++const subprocess = execa('unicorns', outputOptions);
++expectTypeOf(subprocess.stdout).toBe<Readable | null>();
++expectTypeOf(subprocess.stdio[1]).toBe<Readable | null>();
++expectError(subprocess.stdout.read());
++expectTypeOf<Subprocess<typeof outputOptions>['stdout']>().toBe<Readable | null>();
++expectTypeOf(execa(outputOptions)`unicorns`.stdout).toBe<Readable | null>();
++expectTypeOf(execaNode('unicorns', outputOptions).stdout).toBe<Readable | null>();
++expectTypeOf($(outputOptions)`unicorns`.stdout).toBe<Readable | null>();
++expectTypeOf($(outputOptions)`unicorns`.stdio[1]).toBe<Readable | null>();
++
++declare const stderrOptions: {stderr: 'inherit'} | {encoding: 'buffer'};
++const stderrSubprocess = execa('unicorns', [], stderrOptions);
++expectTypeOf(stderrSubprocess.stderr).toBe<Readable | null>();
++expectTypeOf(stderrSubprocess.stdio[2]).toBe<Readable | null>();
++
++declare const allOptions: {all: true} | {lines: true};
++expectTypeOf(execa('unicorns', allOptions).all).toBe<Readable | undefined>();
++expectTypeOf(execaNode(allOptions)`unicorns`.all).toBe<Readable | undefined>();
++expectTypeOf($(allOptions)`unicorns`.all).toBe<Readable | undefined>();
++
++declare const ignoredAllOptions: {all: true; stdout: 'ignore'; stderr: 'ignore'} | {all: false; encoding: 'buffer'};
++expectTypeOf(execa('unicorns', ignoredAllOptions).all).toBe<undefined>();
++
++declare const mixedAllOptions: {all: true; stdout: 'ignore'; stderr: 'ignore'} | {all: true; stdout: 'pipe'};
++expectTypeOf(execa('unicorns', mixedAllOptions).all).toBe<Readable | undefined>();
++
++declare const descriptorOptions: {stdio: ['pipe', 'pipe', 'pipe', {value: 'pipe'; input: true}]} | {stdio: ['pipe', 'pipe', 'pipe', 'pipe']};
++expectTypeOf(execa('unicorns', descriptorOptions).stdio[3]).toBe<Writable | Readable>();
++
++declare const stdout: 'ignore' | 'pipe';
++const dynamicOutputSubprocess = execa('unicorns', {all: true, stdout, stderr: 'ignore'});
++expectTypeOf(dynamicOutputSubprocess.all).toBe<Readable | undefined>();
++expectError(dynamicOutputSubprocess.all.read());
++expectTypeOf(execaNode({all: true, stdout, stderr: 'ignore'})`unicorns`.all).toBe<Readable | undefined>();
++expectTypeOf($({all: true, stdout, stderr: 'ignore'})`unicorns`.all).toBe<Readable | undefined>();
++
++// Input modes, shared option keys and optional flags already preserve the stream shape.
++declare const ignoredDescriptorOptions: {stdio: ['pipe', 'pipe', 'pipe', {value: 'pipe'; input: true}]} | {stdio: ['pipe', 'pipe', 'pipe', 'ignore']};
++expectTypeOf(execa('unicorns', ignoredDescriptorOptions).stdio[3]).toBe<Writable | null>();
++declare const inputOptions: {stdin: 'ignore'} | {encoding: 'buffer'};
++expectTypeOf(execa('unicorns', inputOptions).stdin).toBe<Writable | null>();
++expectTypeOf(execa('unicorns', inputOptions).stdio[0]).toBe<Writable | null>();
++declare const sharedOutputOptions: {stdout: 'ignore'} | {stdout: 'pipe'};
++expectTypeOf(execa('unicorns', sharedOutputOptions).stdout).toBe<Readable | null>();
++declare const optionalAllOptions: {all?: true};
++expectTypeOf(execa('unicorns', optionalAllOptions).all).toBe<Readable | undefined>();
++expectTypeOf(execa('unicorns', {all: true as boolean}).all).toBe<Readable | undefined>();
++expectTypeOf(execa('unicorns').stdout).toBe<Readable>();
++expectTypeOf(execa('unicorns').stdin).toBe<Writable>();
+diff --git a/test/arguments/command-resolution.js b/test/arguments/command-resolution.js
+index a33912a..4e615fe 100644
+--- a/test/arguments/command-resolution.js
++++ b/test/arguments/command-resolution.js
+@@ -5,6 +5,7 @@ import test from 'node:test';
+ import {
+ 	cp,
+ 	mkdir,
++	rm,
+ 	unlink,
+ 	writeFile,
+ } from 'node:fs/promises';
+@@ -16,6 +17,9 @@ setFixtureDirectory();
+ 
+ const isWindows = process.platform === 'win32';
+ 
++// On Windows, an executable can stay locked for a short time after its process exits, so deleting it can fail with `EBUSY` or `EPERM`
++const removeExecutable = filePath => rm(filePath, {maxRetries: 10});
++
+ // These tests cover the command resolution and argument escaping performed by
+ // `lib/arguments/command-file.js`, which allows running scripts, `.cmd`/`.bat` files
+ // and shebang scripts without a shell, and prevents command injection on Windows.
+@@ -216,7 +220,7 @@ if (isWindows) {
+ 			cp(process.execPath, comPath),
+ 		]);
+ 		t.after(async () => {
+-			await Promise.all([unlink(executablePath), unlink(comPath)]);
++			await Promise.all([removeExecutable(executablePath), removeExecutable(comPath)]);
+ 		});
+ 		const options = {
+ 			preferLocal: true,
+@@ -260,7 +264,7 @@ if (isWindows) {
+ 				process.env[environmentName] = originalValue;
+ 			}
+ 
+-			await Promise.all([unlink(currentDirectoryExecutable), unlink(pathExecutable)]);
++			await Promise.all([removeExecutable(currentDirectoryExecutable), removeExecutable(pathExecutable)]);
+ 		});
+ 
+ 		const options = {
+@@ -340,7 +344,7 @@ if (isWindows) {
+ 		const pathExecutable = path.join(binaryDirectory, `${commandName}.exe`);
+ 		await cp(process.execPath, pathExecutable);
+ 		t.after(async () => {
+-			await unlink(pathExecutable);
++			await removeExecutable(pathExecutable);
+ 		});
+ 		const drive = path.parse(FIXTURES_DIRECTORY).root.slice(0, 2);
+ 		const command = `${drive}${commandName}`;
+diff --git a/test/arguments/local.js b/test/arguments/local.js
+index a843b1e..111de47 100644
+--- a/test/arguments/local.js
++++ b/test/arguments/local.js
+@@ -4,8 +4,8 @@ import path from 'node:path';
+ import process from 'node:process';
+ import {pathToFileURL} from 'node:url';
+ import test from 'node:test';
+-import {assertRejects} from '../helpers/assert.js';
+-import {execa, $} from '../../index.js';
++import {assertRejects, assertThrows} from '../helpers/assert.js';
++import {execa, execaSync, $} from '../../index.js';
+ import {setFixtureDirectory, PATH_KEY} from '../helpers/fixtures-directory.js';
+ 
+ setFixtureDirectory();
+@@ -46,12 +46,78 @@ test('preferLocal: undefined with $.sync', () => {
+ 	assert.doesNotThrow(() => $.sync('c8', ['--version'], {env: pathWithoutC8}));
+ });
+ 
++test('explicit preferLocal: undefined uses the $ default', async () => {
++	await assert.doesNotReject($('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined}));
++});
++
++test('explicit preferLocal: undefined uses the $.sync default', () => {
++	assert.doesNotThrow(() => $.sync('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined}));
++});
++
++test('explicit preferLocal: undefined uses the $.pipe template default', async () => {
++	await assert.doesNotReject($('node', ['--version']).pipe({env: pathWithoutC8, preferLocal: undefined})`c8 --version`);
++});
++
++test('explicit preferLocal: undefined uses the $.pipe array default', async () => {
++	await assert.doesNotReject($('node', ['--version']).pipe('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined}));
++});
++
++test('bound preferLocal: undefined uses the $ template default', async () => {
++	await assert.doesNotReject($({env: pathWithoutC8, preferLocal: undefined})`c8 --version`);
++});
++
++test('bound preferLocal: undefined uses the $.sync template default', () => {
++	assert.doesNotThrow(() => $.sync({env: pathWithoutC8, preferLocal: undefined})`c8 --version`);
++});
++
++const testScriptResetPreferLocal = async execaMethod => {
++	const {exitCode} = await execaMethod({preferLocal: false})('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined});
++	assert.equal(exitCode, 0);
++};
++
++test('undefined resets bound preferLocal: false to the $ default', () => testScriptResetPreferLocal($));
++test('undefined resets bound preferLocal: false to the $.sync default', () => testScriptResetPreferLocal($.sync));
++
++test('rebinding preferLocal: undefined resets to the $ default', async () => {
++	const {exitCode} = await $({env: pathWithoutC8, preferLocal: false})({preferLocal: undefined})`c8 --version`;
++	assert.equal(exitCode, 0);
++});
++
++test('bound source preferLocal: false does not override an undefined pipe destination default', async () => {
++	const {exitCode} = await $({preferLocal: false})('node', ['--version']).pipe('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined});
++	assert.equal(exitCode, 0);
++});
++
++test('preferLocal: false disables the $ default', async () => {
++	await assertRejects($('c8', ['--version'], {env: pathWithoutC8, preferLocal: false}), {message: ENOENT_REGEXP});
++});
++
++test('preferLocal: false disables the $.sync default', () => {
++	assertThrows(() => $.sync('c8', ['--version'], {env: pathWithoutC8, preferLocal: false}), {message: ENOENT_REGEXP});
++});
++
++test('bound preferLocal: false disables the $ default', async () => {
++	await assertRejects($({env: pathWithoutC8, preferLocal: false})`c8 --version`, {message: ENOENT_REGEXP});
++});
++
++test('preferLocal: false disables the $.pipe destination default', async () => {
++	await assertRejects($('node', ['--version']).pipe('c8', ['--version'], {env: pathWithoutC8, preferLocal: false}), {message: ENOENT_REGEXP});
++});
++
++test('preferLocal: undefined resets bound execa options to false', async () => {
++	await assertRejects(execa({preferLocal: true})('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined}), {message: ENOENT_REGEXP});
++});
++
++test('preferLocal: undefined resets bound execaSync options to false', () => {
++	assertThrows(() => execaSync({preferLocal: true})('c8', ['--version'], {env: pathWithoutC8, preferLocal: undefined}), {message: ENOENT_REGEXP});
++});
++
+ test('preferLocal: undefined with execa.pipe`...`', async () => {
+ 	await assertRejects(() => execa('node', ['--version']).pipe({env: pathWithoutC8})`c8 --version`);
+ });
+ 
+ test('preferLocal: undefined with $.pipe`...`', async () => {
+-	await assert.doesNotThrow(() => $('node', ['--version']).pipe({env: pathWithoutC8})`c8 --version`);
++	await assert.doesNotReject($('node', ['--version']).pipe({env: pathWithoutC8})`c8 --version`);
+ });
+ 
+ test('preferLocal: undefined with execa.pipe()', async () => {
+@@ -59,7 +125,7 @@ test('preferLocal: undefined with execa.pipe()', async () => {
+ });
+ 
+ test('preferLocal: undefined with $.pipe()', async () => {
+-	await assert.doesNotThrow(() => $('node', ['--version']).pipe('c8', ['--version'], {env: pathWithoutC8}));
++	await assert.doesNotReject($('node', ['--version']).pipe('c8', ['--version'], {env: pathWithoutC8}));
+ });
+ 
+ test('localDir option', async () => {
+diff --git a/test/arguments/specific.js b/test/arguments/specific.js
+index 247f2e5..4283fdd 100644
+--- a/test/arguments/specific.js
++++ b/test/arguments/specific.js
+@@ -36,3 +36,23 @@ test('buffer: {all, fd1}, sync', () => testPriorityOrder({all: false, fd1: true}
+ test('buffer: {fd2, stderr}, sync', () => testPriorityOrder({fd2: false, stderr: true}, true, true, execaSync));
+ test('buffer: {all, stderr}, sync', () => testPriorityOrder({all: false, stderr: true}, false, true, execaSync));
+ test('buffer: {all, fd2}, sync', () => testPriorityOrder({all: false, fd2: true}, false, true, execaSync));
++
++const testFdKeyPresence = async (fdName, propertyName, execaMethod) => {
++	const absentLines = await execaMethod('noop-both.js', {lines: {all: true}});
++	assert.deepEqual(absentLines[propertyName], [foobarString]);
++	const presentLines = await execaMethod('noop-both.js', {lines: {all: true, [fdName]: false}});
++	assert.equal(presentLines[propertyName], foobarString);
++	const undefinedLines = await execaMethod('noop-both.js', {lines: {all: true, [fdName]: undefined}});
++	assert.equal(undefinedLines[propertyName], foobarString);
++	const absentBuffer = await execaMethod('noop-both.js', {buffer: {all: false}});
++	assert.equal(absentBuffer[propertyName], undefined);
++};
++
++test('fd-specific options preserve priority when stdout is absent or present', () => testFdKeyPresence('stdout', 'stdout', execa));
++test('fd-specific options preserve priority when stderr is absent or present', () => testFdKeyPresence('stderr', 'stderr', execa));
++test('fd-specific options preserve priority when fd1 is absent or present', () => testFdKeyPresence('fd1', 'stdout', execa));
++test('fd-specific options preserve priority when fd2 is absent or present', () => testFdKeyPresence('fd2', 'stderr', execa));
++test('fd-specific options preserve priority when stdout is absent or present, sync', () => testFdKeyPresence('stdout', 'stdout', execaSync));
++test('fd-specific options preserve priority when stderr is absent or present, sync', () => testFdKeyPresence('stderr', 'stderr', execaSync));
++test('fd-specific options preserve priority when fd1 is absent or present, sync', () => testFdKeyPresence('fd1', 'stdout', execaSync));
++test('fd-specific options preserve priority when fd2 is absent or present, sync', () => testFdKeyPresence('fd2', 'stderr', execaSync));
+diff --git a/test/convert/concurrent.js b/test/convert/concurrent.js
+index ae3d2b2..fb738d9 100644
+--- a/test/convert/concurrent.js
++++ b/test/convert/concurrent.js
+@@ -1,6 +1,8 @@
+ import assert from 'node:assert/strict';
+ import {setTimeout} from 'node:timers/promises';
++import {setTimeout as scheduleTimeout} from 'node:timers';
+ import test from 'node:test';
++import {assertRejects} from '../helpers/assert.js';
+ import {execa} from '../../index.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+ import {foobarString} from '../helpers/input.js';
+@@ -17,6 +19,65 @@ import {
+ 
+ setFixtureDirectory();
+ 
++const testInvalidDuplexCleanup = async (options, {method = 'readable', ...subprocessOptions} = {}) => {
++	const subprocess = execa('noop-repeat.js', ['1', foobarString], {...subprocessOptions, buffer: false});
++	const subprocessError = assertRejects(subprocess);
++	let wasCleanupNeeded = false;
++	const cleanup = scheduleTimeout(() => {
++		wasCleanupNeeded = true;
++		subprocess.kill();
++	}, 5000);
++	try {
++		assert.throws(() => {
++			subprocess.duplex(options);
++		}, TypeError);
++		const iterator = subprocess[method]()[Symbol.asyncIterator]();
++		const {done} = await iterator.next();
++		assert.equal(done, false);
++		await iterator.return();
++		const error = await subprocessError;
++		assert.equal(wasCleanupNeeded, false);
++		assert.equal(error.exitCode, 1);
++		assert.equal(error.signal, undefined);
++	} finally {
++		clearTimeout(cleanup);
++		subprocess.kill();
++	}
++};
++
++test('Invalid duplex options do not block later readable cleanup', () => testInvalidDuplexCleanup({to: 'fd9'}));
++test('Invalid duplex writable direction does not block later readable cleanup', () => testInvalidDuplexCleanup({to: 'fd1'}));
++test('Invalid duplex writable name does not block later readable cleanup', () => testInvalidDuplexCleanup({to: 'stdout'}));
++test('Invalid duplex readable descriptor does not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'fd9'}));
++test('Invalid duplex readable direction does not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'fd0'}));
++test('Invalid duplex readable and writable descriptors do not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'fd9', to: 'fd9'}));
++test('Invalid duplex writable descriptor with explicit from does not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'fd1', to: 'fd9'}));
++test('Invalid duplex options do not block later duplex cleanup', () => testInvalidDuplexCleanup({to: 'fd9'}, {method: 'duplex'}));
++test('Invalid duplex ignored stdin does not block later readable cleanup', () => testInvalidDuplexCleanup({}, {stdin: 'ignore'}));
++test('Invalid duplex ignored stderr does not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'stderr'}, {stderr: 'ignore'}));
++test('Invalid duplex missing all does not block later readable cleanup', () => testInvalidDuplexCleanup({from: 'all'}));
++
++const testInvalidDuplexRecovery = async method => {
++	const subprocess = getReadWriteSubprocess({timeout: 5000});
++	for (const options of [{to: 'fd9'}, {from: 'fd9'}, {from: 'fd9', to: 'fd9'}]) {
++		assert.throws(() => {
++			subprocess.duplex(options);
++		}, {message: /file descriptor does not exist/});
++	}
++
++	const writable = subprocess[method]();
++	const readable = method === 'duplex' ? writable : subprocess.readable();
++	writable.end(foobarString);
++	await Promise.all([
++		finishedStream(writable),
++		assertStreamOutput(readable),
++	]);
++	await assertSubprocessOutput(subprocess);
++};
++
++test('Invalid duplex options allow creating a later writable and readable', () => testInvalidDuplexRecovery('writable'));
++test('Invalid duplex options allow creating a later duplex', () => testInvalidDuplexRecovery('duplex'));
++
+ const endStream = async stream => {
+ 	stream.end(foobarString);
+ 	await setTimeout(0);
+diff --git a/test/convert/iterable.js b/test/convert/iterable.js
+index a9c4273..40aa2e6 100644
+--- a/test/convert/iterable.js
++++ b/test/convert/iterable.js
+@@ -4,7 +4,7 @@ import {assertRejects} from '../helpers/assert.js';
+ import {execa} from '../../index.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+ import {foobarString} from '../helpers/input.js';
+-import {fullStdio, assertEpipe} from '../helpers/stdio.js';
++import {fullStdio, assertEpipe, getStdio} from '../helpers/stdio.js';
+ import {
+ 	arrayFromAsync,
+ 	assertWritableAborted,
+@@ -70,6 +70,33 @@ test('Can iterate using Symbol.asyncIterator', async () => {
+ 	assert.deepEqual(lines, noNewlinesChunks);
+ });
+ 
++const testObjectChunks = async (fdNumber, from, binary) => {
++	const chunks = [{value: 'object'}, [1, [2]], new Uint8Array([97, 98]), 'first\nsecond\n', false, 0];
++	const subprocess = execa('noop-fd.js', [`${fdNumber}`, 'x'], {
++		...getStdio(fdNumber, {
++			objectMode: true,
++			binary: true,
++			* transform() {
++				yield * chunks;
++			},
++		}),
++		all: true,
++	});
++	const iterable = from === undefined ? subprocess : subprocess.iterable({from, binary});
++	const output = await arrayFromAsync(iterable);
++	assert.deepEqual(output, chunks);
++	for (const [index, chunk] of chunks.entries()) {
++		assert.equal(output[index], chunk);
++	}
++};
++
++test('Default iteration preserves arbitrary object-mode chunks', () => testObjectChunks(1));
++test('Text iteration preserves arbitrary object-mode chunks', () => testObjectChunks(1, 'stdout', false));
++test('Binary iteration preserves arbitrary object-mode chunks', () => testObjectChunks(1, 'stdout', true));
++test('Iteration preserves arbitrary stderr object-mode chunks', () => testObjectChunks(2, 'stderr', false));
++test('Iteration preserves arbitrary fd3 object-mode chunks', () => testObjectChunks(3, 'fd3', true));
++test('Iteration preserves arbitrary merged object-mode chunks', () => testObjectChunks(1, 'all', false));
++
+ const assertMultipleCalls = async (iterable, iterableTwo) => {
+ 	assert.notEqual(iterable, iterableTwo);
+ 	const lines = await arrayFromAsync(iterable);
+diff --git a/test/fixtures/max-buffer-forever.js b/test/fixtures/max-buffer-forever.js
+index 5dc1235..3a863aa 100755
+--- a/test/fixtures/max-buffer-forever.js
++++ b/test/fixtures/max-buffer-forever.js
+@@ -4,5 +4,15 @@ import {getWriteStream} from '../helpers/fs.js';
+ 
+ const fdNumber = Number(process.argv[2]);
+ const bytes = '.'.repeat(Number(process.argv[3]));
++// The signal is ignored, or makes the subprocess exit with a specific exit code
++const [signal, exitCode] = process.argv.slice(4);
++if (signal !== undefined) {
++	process.on(signal, () => {
++		if (exitCode !== undefined) {
++			process.exit(Number(exitCode));
++		}
++	});
++}
++
+ getWriteStream(fdNumber).write(bytes);
+ setTimeout(() => {}, 1e8);
+diff --git a/test/fixtures/nested-invalid-file-handle.js b/test/fixtures/nested-invalid-file-handle.js
+new file mode 100755
+index 0000000..0a21ba0
+--- /dev/null
++++ b/test/fixtures/nested-invalid-file-handle.js
+@@ -0,0 +1,14 @@
++#!/usr/bin/env node
++import assert from 'node:assert/strict';
++import process from 'node:process';
++import {Writable} from 'node:stream';
++import {execa, execaSync} from '../../index.js';
++import {getStdio} from '../helpers/stdio.js';
++import {getStreamName} from '../../lib/utils/standard-stream.js';
++
++const [method, fileDescriptor, fdNumber = '1', wrapped = 'false', shape = 'object'] = process.argv.slice(2);
++const execaMethod = method === 'sync' ? execaSync : execa;
++const value = shape === 'stream' ? Object.assign(new Writable({write() {}}), {fd: Number(fileDescriptor)}) : {fd: Number(fileDescriptor)};
++assert.throws(() => {
++	execaMethod(process.execPath, ['-e', ''], getStdio(Number(fdNumber), wrapped === 'true' ? {value} : value));
++}, {name: 'TypeError', message: `The \`${getStreamName(Number(fdNumber))}\` option must be a non-negative 32-bit integer: got ${fileDescriptor}.`});
+diff --git a/test/fixtures/stdin-script-undefined.js b/test/fixtures/stdin-script-undefined.js
+new file mode 100755
+index 0000000..bb3c6a0
+--- /dev/null
++++ b/test/fixtures/stdin-script-undefined.js
+@@ -0,0 +1,7 @@
++#!/usr/bin/env node
++import process from 'node:process';
++import {$} from '../../index.js';
++import {FIXTURES_DIRECTORY} from '../helpers/fixtures-directory.js';
++
++const execaMethod = process.argv[2] === 'sync' ? $.sync : $;
++await execaMethod({stdin: undefined, stdout: 'inherit', timeout: 5000})`node ${`${FIXTURES_DIRECTORY}/stdin.js`}`;
+diff --git a/test/helpers/fixtures-directory.js b/test/helpers/fixtures-directory.js
+index cbe29ed..d741df8 100644
+--- a/test/helpers/fixtures-directory.js
++++ b/test/helpers/fixtures-directory.js
+@@ -23,5 +23,7 @@ export const FIXTURES_DIRECTORY = path.resolve(fileURLToPath(FIXTURES_DIRECTORY_
+ // `node`. This is only meant to make writing tests simpler.
+ export const setFixtureDirectory = () => {
+ 	process.env[PATH_KEY] = FIXTURES_DIRECTORY + path.delimiter + process.env[PATH_KEY];
++	// Keep fixture output plain even when the test runner inherits forced colors.
++	process.env.FORCE_COLOR = '0';
+ };
+ 
+diff --git a/test/io/input-option.js b/test/io/input-option.js
+index 7e37287..37dce2b 100644
+--- a/test/io/input-option.js
++++ b/test/io/input-option.js
+@@ -1,7 +1,9 @@
+ import assert from 'node:assert/strict';
+ import {Buffer} from 'node:buffer';
+-import {Writable} from 'node:stream';
++import {unlink, writeFile} from 'node:fs/promises';
++import {Readable, Writable} from 'node:stream';
+ import test from 'node:test';
++import tempfile from 'tempfile';
+ import {assertThrows} from '../helpers/assert.js';
+ import {execa, execaSync} from '../../index.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+@@ -37,6 +39,53 @@ test('input option can be a Buffer - sync', () => testInput(foobarBuffer, runExe
+ test('input option can be used with $', () => testInput('foobar', runScript));
+ test('input option can be used with $.sync', () => testInput('foobar', runScriptSync));
+ 
++const testNativeInputPipe = async (input, expectedLines) => {
++	const subprocess = execa('stdin.js', {stdin: Readable.from(['first\n']), input});
++	assert.ok(subprocess.stdin instanceof Writable);
++	assert.equal(subprocess.stdio[0], subprocess.stdin);
++	const {stdout} = await subprocess;
++	assert.deepEqual(stdout.split('\n').sort(), expectedLines);
++};
++
++test('Native readable stdin with input exposes a pipe and merges both sources', () => testNativeInputPipe('second\n', ['first', 'second']));
++test('Native readable stdin with empty input still exposes a pipe', () => testNativeInputPipe('', ['first']));
++test('Native readable stdin with empty binary input still exposes a pipe', () => testNativeInputPipe(new Uint8Array(), ['first']));
++
++test('Native readable stdin with inputFile exposes a pipe and merges both sources', async t => {
++	const filePath = tempfile();
++	await writeFile(filePath, 'second\n');
++	t.after(() => unlink(filePath));
++	const subprocess = execa('stdin.js', {stdin: Readable.from(['first\n']), inputFile: filePath});
++	assert.ok(subprocess.stdin instanceof Writable);
++	assert.equal(subprocess.stdio[0], subprocess.stdin);
++	const {stdout} = await subprocess;
++	assert.deepEqual(stdout.split('\n').sort(), ['first', 'second']);
++});
++
++test('Reusing a readable for stdin and input exposes a pipe without duplicating its data', async () => {
++	const source = Readable.from(['first\n']);
++	const subprocess = execa('stdin.js', {stdin: source, input: source});
++	assert.ok(subprocess.stdin instanceof Writable);
++	const {stdout} = await subprocess;
++	assert.equal(stdout, 'first');
++});
++
++test('Input sources keep object-mode stdin transforms when exposing a pipe', async () => {
++	const subprocess = execa('stdin.js', {
++		stdin: [Readable.from([{source: 'stdin'}]), {
++			objectMode: true,
++			* transform(chunk) {
++				yield `${JSON.stringify(chunk)}\n`;
++			},
++		}],
++		input: Readable.from([{source: 'input'}]),
++	});
++	assert.ok(subprocess.stdin instanceof Writable);
++	assert.equal(subprocess.stdin.writableObjectMode, true);
++	const {stdout} = await subprocess;
++	assert.deepEqual(stdout.split('\n').map(line => JSON.parse(line).source).sort(), ['input', 'stdin']);
++});
++
+ const testInputIgnoresInheritedStdin = async (optionName, stdioOption, isSync) => {
+ 	const {stdout} = await execa('nested-input-inherit.js', [optionName, JSON.stringify(stdioOption), `${isSync}`], {input: foobarString});
+ 	assert.equal(stdout, foobarString);
+diff --git a/test/io/max-buffer.js b/test/io/max-buffer.js
+index 5fa6968..5ec03c6 100644
+--- a/test/io/max-buffer.js
++++ b/test/io/max-buffer.js
+@@ -1,5 +1,6 @@
+ import assert from 'node:assert/strict';
+ import {Buffer} from 'node:buffer';
++import {platform} from 'node:process';
+ import {readFile, rm} from 'node:fs/promises';
+ import test from 'node:test';
+ import getStream from 'get-stream';
+@@ -17,6 +18,97 @@ setFixtureDirectory();
+ const maxBufferMessage = {message: /maxBuffer exceeded/};
+ const maxBufferCodeSync = {code: 'ENOBUFS'};
+ 
++// Bound the regression even when exceeding maxBuffer does not terminate the subprocess.
++const assertMaxBufferRejects = async subprocess => {
++	const cleanup = setTimeout(() => {
++		subprocess.kill('SIGKILL');
++	}, 5000);
++	try {
++		const error = await assertRejects(subprocess);
++		assert.equal(error.isMaxBuffer, true);
++		return error;
++	} finally {
++		clearTimeout(cleanup);
++	}
++};
++
++const assertMaxBufferTermination = async (subprocess, expectedSignal = 'SIGTERM') => {
++	const error = await assertMaxBufferRejects(subprocess);
++	assert.equal(error.isTerminated, true);
++	assert.equal(error.signal, expectedSignal);
++	assert.equal(error.exitCode, undefined);
++	assert.equal(error.timedOut, false);
++	return error;
++};
++
++const testAliveMaxBuffer = async (fdNumber, options = {}) => {
++	const error = await assertMaxBufferTermination(execa('max-buffer-forever.js', [`${fdNumber}`, '100'], {...fullStdio, maxBuffer: 5, ...options}), options.killSignal);
++	assert.equal(error.stdio[fdNumber], '.....');
++};
++
++test('maxBuffer terminates a subprocess that stays alive without more output', () => testAliveMaxBuffer(1));
++test('maxBuffer terminates a subprocess that stays alive without more stderr', () => testAliveMaxBuffer(2));
++test('maxBuffer terminates a subprocess that stays alive without more stdio[3]', () => testAliveMaxBuffer(3));
++test('maxBuffer termination uses killSignal', () => testAliveMaxBuffer(1, {killSignal: 'SIGINT'}));
++
++// Windows terminates immediately instead of delivering catchable signals.
++if (platform !== 'win32') {
++	test('maxBuffer termination forcefully kills a subprocess ignoring killSignal', async () => {
++		const error = await assertMaxBufferTermination(execa('max-buffer-forever.js', ['1', '100', 'SIGINT'], {
++			maxBuffer: 5,
++			killSignal: 'SIGINT',
++			forceKillAfterDelay: 50,
++		}), 'SIGKILL');
++		assert.equal(error.isForcefullyTerminated, true);
++		assert.equal(error.stdout, '.....');
++	});
++
++	test('maxBuffer termination reports the exit code of a subprocess handling killSignal', async () => {
++		const error = await assertMaxBufferRejects(execa('max-buffer-forever.js', ['1', '100', 'SIGTERM', '5'], {maxBuffer: 5}));
++		assert.equal(error.isTerminated, false);
++		assert.equal(error.signal, undefined);
++		assert.equal(error.exitCode, 5);
++		assert.equal(error.stdout, '.....');
++	});
++}
++
++test('maxBuffer termination applies to lines', async () => {
++	const error = await assertMaxBufferTermination(execa('max-buffer-forever.js', ['1', '100'], {
++		maxBuffer: 1,
++		lines: true,
++		stdout: {
++			* transform() {
++				yield 'first\nsecond\n';
++			},
++			binary: true,
++		},
++	}));
++	assert.deepEqual(error.stdout, ['first']);
++	assertErrorMessage(error.shortMessage, {length: 1, unit: 'lines'});
++});
++
++test('maxBuffer termination applies to object mode', async () => {
++	const error = await assertMaxBufferTermination(execa('max-buffer-forever.js', ['1', '100'], {
++		maxBuffer: 1,
++		stdout: {
++			* transform() {
++				yield {index: 1};
++				yield {index: 2};
++			},
++			binary: true,
++			objectMode: true,
++		},
++	}));
++	assert.deepEqual(error.stdout, [{index: 1}]);
++	assertErrorMessage(error.shortMessage, {length: 1, unit: 'objects'});
++});
++
++test('maxBuffer termination applies to IPC messages', async () => {
++	const error = await assertMaxBufferTermination(execa('ipc-send-forever.js', {ipc: true, maxBuffer: {ipc: 0}}));
++	assert.deepEqual(error.ipcOutput, []);
++	assert.ok(error.shortMessage.includes('IPC output was larger than 0 messages'));
++});
++
+ const runMaxBuffer = async (execaMethod, fdNumber, options) => {
+ 	const error = execaMethod === execa
+ 		? await assertRejects(getMaxBufferSubprocess(execaMethod, fdNumber, options), maxBufferMessage)
+@@ -47,20 +139,31 @@ test('maxBuffer does not affect stderr if too high, sync', () => testMaxBufferSu
+ test('maxBuffer does not affect stdio[*] if too high, sync', () => testMaxBufferSuccess(execaSync, 3, false));
+ test('maxBuffer does not affect all if too high, sync', () => testMaxBufferSuccess(execaSync, 1, true));
+ 
+-const testGracefulExit = async (fixtureName, expectedExitCode) => {
+-	const {isMaxBuffer, shortMessage, exitCode, signal, stdout} = await assertRejects(
++// The subprocess might exit on its own before it is terminated, in which case its real exit is reported
++const assertMaxBufferExit = ({exitCode, signal, isTerminated}, expectedExitCode) => {
++	if (signal === undefined) {
++		assert.equal(isTerminated, false);
++		assert.equal(exitCode, expectedExitCode);
++	} else {
++		assert.equal(isTerminated, true);
++		assert.equal(signal, 'SIGTERM');
++		assert.equal(exitCode, undefined);
++	}
++};
++
++const testMaxBufferExit = async (fixtureName, expectedExitCode) => {
++	const error = await assertRejects(
+ 		execa(fixtureName, ['1', '.'.repeat(maxBuffer + 1)], {maxBuffer}),
+ 		maxBufferMessage,
+ 	);
+-	assert.equal(isMaxBuffer, true);
+-	assertErrorMessage(shortMessage);
+-	assert.equal(exitCode, expectedExitCode);
+-	assert.equal(signal, undefined);
+-	assert.equal(stdout, getExpectedOutput());
++	assert.equal(error.isMaxBuffer, true);
++	assertMaxBufferExit(error, expectedExitCode);
++	assertErrorMessage(error.shortMessage);
++	assert.equal(error.stdout, getExpectedOutput());
+ };
+ 
+-test('maxBuffer terminates stream gracefully, more writes', () => testGracefulExit('noop-repeat.js', 1));
+-test('maxBuffer terminates stream gracefully, no more writes', () => testGracefulExit('noop-fd.js', 0));
++test('maxBuffer terminates subprocess, more writes', () => testMaxBufferExit('noop-repeat.js', 1));
++test('maxBuffer terminates subprocess, no more writes', () => testMaxBufferExit('noop-fd.js', 0));
+ 
+ const testGracefulExitSync = fixtureName => {
+ 	const {isMaxBuffer, shortMessage, exitCode, signal, stdout} = assertThrows(() => {
+@@ -173,6 +276,8 @@ test('maxBuffer.stderr is used when lower than maxBuffer.stdout, sync', () => {
+ 	assertErrorMessage(error.shortMessage, {execaMethod: execaSync, fdNumber: 2, length});
+ 	assert.equal(error.stdout, getExpectedOutput(maxBuffer + 1));
+ 	assert.equal(error.stderr, getExpectedOutput(length));
++	// Unlike asynchronous methods, the subprocess is not terminated, since it already exited
++	assert.equal(error.isTerminated, false);
+ 	assert.equal(error.signal, undefined);
+ 	assert.equal(error.exitCode, 0);
+ });
+@@ -184,8 +289,7 @@ test('maxBuffer.stderr is used when lower than maxBuffer.stdout', async () => {
+ 	assertErrorMessage(error.shortMessage, {fdNumber: 2, length});
+ 	assert.equal(error.stdout, getExpectedOutput(maxBuffer + 1));
+ 	assert.equal(error.stderr, getExpectedOutput(length));
+-	assert.equal(error.signal, undefined);
+-	assert.equal(error.exitCode, 0);
++	assertMaxBufferExit(error, 0);
+ });
+ 
+ test('maxBuffer is not hit when under each file descriptor\'s value, sync', () => {
+@@ -265,6 +369,65 @@ test('maxBuffer.fd10 is invalid, sync', () => testInvalidFd('fd10', execaSync));
+ // These tests need the subprocess to have written its output before the timeout kills it, which is only guaranteed if the timeout leaves room for the subprocess to start. On a busy machine, starting Node.js can take over a second.
+ const SYNC_TIMEOUT = 1e4;
+ 
++test('maxBuffer 0 terminates on the first output byte before timeout, sync', () => {
++	const error = assertThrows(() => {
++		execaSync('max-buffer-forever.js', ['1', '1'], {timeout: SYNC_TIMEOUT, maxBuffer: 0});
++	}, maxBufferCodeSync);
++	assert.equal(error.timedOut, false);
++	assert.equal(error.isMaxBuffer, true);
++	assert.equal(error.stdout, '');
++	assertErrorMessage(error.shortMessage, {execaMethod: execaSync, length: 0});
++});
++
++const testZeroMaxBufferSync = (fdNumber, maxBuffer, encoding = 'utf8') => {
++	const error = execaSync('max-buffer-forever.js', [`${fdNumber}`, '1'], {
++		...fullStdio,
++		timeout: SYNC_TIMEOUT,
++		maxBuffer,
++		encoding,
++		reject: false,
++	});
++	assert.equal(error.code, 'ENOBUFS');
++	assert.equal(error.failed, true);
++	assert.equal(error.timedOut, false);
++	assert.equal(error.isMaxBuffer, true);
++	assert.deepEqual(error.stdio[fdNumber], encoding === 'buffer' ? new Uint8Array() : '');
++	assertErrorMessage(error.shortMessage, {execaMethod: execaSync, fdNumber, length: 0});
++};
++
++test('maxBuffer 0 terminates on the first stderr byte before timeout, sync', () => testZeroMaxBufferSync(2, 0));
++test('maxBuffer 0 terminates on the first fd3 byte before timeout with binary output, sync', () => testZeroMaxBufferSync(3, 0, 'buffer'));
++test('maxBuffer 0 terminates on the first output byte with stdout-specific limit, sync', () => testZeroMaxBufferSync(1, {stdout: 0}));
++test('maxBuffer 0 terminates on the first fd3 byte with fd1-specific limit, sync', () => testZeroMaxBufferSync(3, {fd1: 0}));
++
++const testZeroMaxBufferEmptySync = (maxBuffer, encoding = 'utf8') => {
++	const {failed, isMaxBuffer, stdout} = execaSync('empty.js', {maxBuffer, encoding});
++	assert.equal(failed, false);
++	assert.equal(isMaxBuffer, false);
++	assert.deepEqual(stdout, encoding === 'buffer' ? new Uint8Array() : '');
++};
++
++test('maxBuffer 0 allows empty text output, sync', () => testZeroMaxBufferEmptySync(0));
++test('maxBuffer 0 allows empty binary output, sync', () => testZeroMaxBufferEmptySync(0, 'buffer'));
++test('maxBuffer 0 allows empty output with stdout-specific limit, sync', () => testZeroMaxBufferEmptySync({stdout: 0}));
++
++test('maxBuffer small positive limit allows exactly one byte, sync', () => {
++	const {failed, isMaxBuffer, stdout} = execaSync('max-buffer.js', ['1', '1'], {maxBuffer: 1});
++	assert.equal(failed, false);
++	assert.equal(isMaxBuffer, false);
++	assert.equal(stdout, '.');
++});
++
++test('maxBuffer small positive fractional limit rejects the first byte, sync', () => {
++	const error = assertThrows(() => {
++		execaSync('max-buffer-forever.js', ['1', '1'], {timeout: SYNC_TIMEOUT, maxBuffer: 0.5});
++	}, maxBufferCodeSync);
++	assert.equal(error.timedOut, false);
++	assert.equal(error.isMaxBuffer, true);
++	assert.equal(error.stdout, '');
++	assertErrorMessage(error.shortMessage, {execaMethod: execaSync, length: 0.5});
++});
++
+ // A file descriptor limit lower than `maxBuffer.stdout` does not stop the subprocess with synchronous methods, so the subprocess can still time out afterwards
+ const testMaxBufferTimeoutSync = (fdNumber, fdName) => {
+ 	const length = 3;
+diff --git a/test/methods/node.js b/test/methods/node.js
+index e1f34d2..7bb98f0 100644
+--- a/test/methods/node.js
++++ b/test/methods/node.js
+@@ -6,11 +6,12 @@ import test from 'node:test';
+ import getNode from 'get-node';
+ import {assertThrows, assertRejects} from '../helpers/assert.js';
+ import {execa, execaSync, execaNode} from '../../index.js';
+-import {FIXTURES_DIRECTORY} from '../helpers/fixtures-directory.js';
++import {setFixtureDirectory, FIXTURES_DIRECTORY} from '../helpers/fixtures-directory.js';
+ import {identity, fullStdio} from '../helpers/stdio.js';
+ import {foobarString} from '../helpers/input.js';
+ import {getDenoNodePath} from '../helpers/file-path.js';
+ 
++setFixtureDirectory();
+ process.chdir(FIXTURES_DIRECTORY);
+ 
+ const runWithNodeOption = (file, commandArguments, options) => Array.isArray(commandArguments)
+diff --git a/test/methods/script.js b/test/methods/script.js
+index 007eb24..b3232fa 100644
+--- a/test/methods/script.js
++++ b/test/methods/script.js
+@@ -1,8 +1,9 @@
+ import assert from 'node:assert/strict';
++import {readFile} from 'node:fs/promises';
+ import test from 'node:test';
+ import {isStream} from 'is-stream';
+-import {$} from '../../index.js';
+-import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
++import {$, execa} from '../../index.js';
++import {setFixtureDirectory, FIXTURES_DIRECTORY, FIXTURES_DIRECTORY_URL} from '../helpers/fixtures-directory.js';
+ import {foobarString} from '../helpers/input.js';
+ 
+ setFixtureDirectory();
+@@ -55,6 +56,72 @@ test('$(options).sync`...` stdin defaults to "inherit"', () => {
+ 	assert.equal(stdout, foobarString);
+ });
+ 
++const testUndefinedScriptStdin = async method => {
++	const {stdout} = await execa('stdin-script-undefined.js', [method], {input: foobarString});
++	assert.equal(stdout, foobarString);
++};
++
++test('$(options) inherits stdin with an undefined stdin option', () => testUndefinedScriptStdin('async'));
++test('$.sync(options) inherits stdin with an undefined stdin option', () => testUndefinedScriptStdin('sync'));
++
++const testScriptStdinCall = async call => {
++	const indexUrl = new URL('../../index.js', import.meta.url).href;
++	const script = `import {$} from ${JSON.stringify(indexUrl)}; await ${call};`;
++	const {stdout} = await execa('node', ['--input-type=module', '--eval', script], {input: foobarString, cwd: FIXTURES_DIRECTORY, timeout: 10_000});
++	assert.equal(stdout, foobarString);
++};
++
++test('$ inherits stdin with per-call undefined options', () => testScriptStdinCall('$("node", ["stdin.js"], {stdin: undefined, stdout: "inherit", timeout: 5000})'));
++test('$.sync inherits stdin with per-call undefined options', () => testScriptStdinCall('$.sync("node", ["stdin.js"], {stdin: undefined, stdout: "inherit", timeout: 5000})'));
++test('$(options).sync inherits stdin with undefined options', () => testScriptStdinCall('$({stdin: undefined, stdout: "inherit", timeout: 5000}).sync("node", ["stdin.js"])'));
++test('$(options) array syntax inherits stdin with undefined options', () => testScriptStdinCall('$({stdin: undefined, stdout: "inherit", timeout: 5000})("node", ["stdin.js"])'));
++
++const testScriptInput = async (execaMethod, options) => {
++	const {stdout} = await execaMethod({stdin: undefined, ...options})`stdin.js`;
++	assert.equal(stdout, foobarString);
++};
++
++test('$ explicit input takes precedence over inherited stdin', () => testScriptInput($, {input: foobarString}));
++test('$.sync explicit input takes precedence over inherited stdin', () => testScriptInput($.sync, {input: foobarString}));
++test('$ explicit stdin iterable takes precedence over inherited stdin', () => testScriptInput($, {stdin: [[foobarString]]}));
++test('$.sync explicit stdin iterable takes precedence over inherited stdin', () => testScriptInput($.sync, {stdin: [[foobarString]]}));
++
++const testScriptInputFile = async execaMethod => {
++	const inputFile = new URL('noop.js', FIXTURES_DIRECTORY_URL);
++	const {stdout} = await execaMethod({stdin: undefined, inputFile, stripFinalNewline: false})`stdin.js`;
++	assert.equal(stdout, await readFile(inputFile, 'utf8'));
++};
++
++test('$ inputFile takes precedence over inherited stdin', () => testScriptInputFile($));
++test('$.sync inputFile takes precedence over inherited stdin', () => testScriptInputFile($.sync));
++
++test('$ explicit stdin pipe takes precedence over inherited stdin', async () => {
++	const subprocess = $({stdin: 'pipe'})`stdin.js`;
++	subprocess.stdin.end(foobarString);
++	const {stdout} = await subprocess;
++	assert.equal(stdout, foobarString);
++});
++
++const testScriptIgnoreStdin = async execaMethod => {
++	const {stdout} = await execaMethod({stdin: 'ignore'})`stdin.js`;
++	assert.equal(stdout, '');
++};
++
++test('$ explicit ignored stdin takes precedence over inherited stdin', () => testScriptIgnoreStdin($));
++test('$.sync explicit ignored stdin takes precedence over inherited stdin', () => testScriptIgnoreStdin($.sync));
++
++test('$ stdio pipe takes precedence over inherited stdin', async () => {
++	const subprocess = $({stdin: undefined, stdio: 'pipe'})`stdin.js`;
++	subprocess.stdin.end(foobarString);
++	const {stdout} = await subprocess;
++	assert.equal(stdout, foobarString);
++});
++
++test('$.sync stdio pipe takes precedence over inherited stdin', () => {
++	const {stdout} = $.sync({stdin: undefined, stdio: 'pipe'})`stdin.js`;
++	assert.equal(stdout, '');
++});
++
+ test('$ stdin has no default value when stdio is set', () => {
+ 	assert.ok(isStream($({stdio: 'pipe'})`noop.js`.stdin));
+ });
+diff --git a/test/stdio/handle-invalid.js b/test/stdio/handle-invalid.js
+index dfb2be0..07b6df5 100644
+--- a/test/stdio/handle-invalid.js
++++ b/test/stdio/handle-invalid.js
+@@ -1,5 +1,6 @@
+ import assert from 'node:assert/strict';
+-import {open, rm} from 'node:fs/promises';
++import {open, readFile, rm} from 'node:fs/promises';
++import {Writable} from 'node:stream';
+ import test from 'node:test';
+ import tempfile from 'tempfile';
+ import {assertThrows} from '../helpers/assert.js';
+@@ -103,6 +104,104 @@ test('Cannot pass a negative file descriptor to stdio[*]', () => testInvalidFile
+ test('Cannot pass a fractional file descriptor to stdout', () => testInvalidFileDescriptor(1, 'stdout', 1.5, execaSync));
+ test('Cannot pass a negative file descriptor to stdin', () => testInvalidFileDescriptor(0, 'stdin', -1, execaSync));
+ 
++// Invalid descriptor objects must be tested in a child: Node.js otherwise aborts the test process.
++test('Cannot pass a fractional file descriptor object to stdout', async () => {
++	const {stdout} = await execa('nested-invalid-file-handle.js', ['async', '1.5']);
++	assert.equal(stdout, '');
++});
++
++const testInvalidFileHandle = async (fileDescriptor, method, fdNumber = 1, isWrapped = false) => {
++	const {stdout} = await execa('nested-invalid-file-handle.js', [method, `${fileDescriptor}`, `${fdNumber}`, `${isWrapped}`]);
++	assert.equal(stdout, '');
++};
++
++test('Cannot pass a fractional file descriptor object to stdout, sync', () => testInvalidFileHandle(1.5, 'sync'));
++
++test('Cannot pass a fractional stream file descriptor to stdout', async () => {
++	const {stdout} = await execa('nested-invalid-file-handle.js', ['async', '1.5', '1', 'false', 'stream']);
++	assert.equal(stdout, '');
++});
++
++for (const method of ['async', 'sync']) {
++	for (const fileDescriptor of [NaN, 2 ** 31]) {
++		test(`Cannot pass an invalid stream file descriptor (${fileDescriptor}) to stdout, ${method}`, async () => {
++			const {stdout} = await execa('nested-invalid-file-handle.js', [method, `${fileDescriptor}`, '1', 'false', 'stream']);
++			assert.equal(stdout, '');
++		});
++	}
++}
++
++for (const method of ['async', 'sync']) {
++	for (const fileDescriptor of [NaN, Infinity, -Infinity, -1, 2 ** 31, 2 ** 32, Number.MAX_SAFE_INTEGER]) {
++		test(`Cannot pass an invalid file descriptor object (${fileDescriptor}) to stdout, ${method}`, () => testInvalidFileHandle(fileDescriptor, method));
++	}
++
++	for (const fdNumber of [0, 2, 3]) {
++		test(`Cannot pass a fractional file descriptor object to stdio[${fdNumber}], ${method}`, () => testInvalidFileHandle(1.5, method, fdNumber));
++	}
++
++	test(`Cannot pass a wrapped invalid file descriptor object to stdout, ${method}`, () => testInvalidFileHandle(1.5, method, 1, true));
++
++	test(`Cannot pass a closed FileHandle to stdout, ${method}`, async () => {
++		const filePath = tempfile();
++		try {
++			const fileHandle = await open(filePath, 'w');
++			await fileHandle.close();
++			const execaMethod = method === 'sync' ? execaSync : execa;
++			assertThrows(() => {
++				execaMethod('empty.js', {stdout: fileHandle});
++			}, {instanceOf: TypeError, message: 'The `stdout` option must be a non-negative 32-bit integer: got -1.'});
++		} finally {
++			await rm(filePath);
++		}
++	});
++}
++
++const testValidFileHandleOutput = async (execaMethod, fdNumber, isWrapped) => {
++	const filePath = tempfile();
++	const fileHandle = await open(filePath, 'w');
++	try {
++		const descriptor = {fd: fileHandle.fd};
++		const value = isWrapped ? {value: descriptor} : descriptor;
++		await execaMethod('noop-fd.js', [`${fdNumber}`, 'file output'], getStdio(fdNumber, value));
++		assert.equal(await readFile(filePath, 'utf8'), 'file output');
++	} finally {
++		await fileHandle.close();
++		await rm(filePath);
++	}
++};
++
++test('Can still pass a native descriptor object to stdout', () => testValidFileHandleOutput(execa, 1, false));
++test('Can still pass a native descriptor object to stdout, sync', () => testValidFileHandleOutput(execaSync, 1, false));
++test('Can still pass a wrapped native descriptor object to stderr', () => testValidFileHandleOutput(execa, 2, true));
++test('Can still pass a wrapped native descriptor object to stderr, sync', () => testValidFileHandleOutput(execaSync, 2, true));
++
++const testValidStreamFileDescriptor = async (execaMethod, isStdioArray) => {
++	const filePath = tempfile();
++	const fileHandle = await open(filePath, 'w');
++	const chunks = [];
++	const stream = new Writable({
++		write(chunk, encoding, callback) {
++			chunks.push(chunk.toString());
++			callback();
++		},
++	});
++	stream.fd = fileHandle.fd;
++	try {
++		await execaMethod('noop-fd.js', ['1', 'file output'], {stdout: isStdioArray ? ['pipe', stream] : stream});
++		assert.equal(await readFile(filePath, 'utf8'), isStdioArray ? '' : 'file output');
++		assert.equal(chunks.join(''), isStdioArray ? 'file output' : '');
++	} finally {
++		stream.destroy();
++		await fileHandle.close();
++		await rm(filePath);
++	}
++};
++
++test('Can still pass a stream with a valid file descriptor to stdout', () => testValidStreamFileDescriptor(execa, false));
++test('Can still pass a stream with a valid file descriptor to stdout, sync', () => testValidStreamFileDescriptor(execaSync, false));
++test('Can still pipe to a stream with a file descriptor in a stdio array', () => testValidStreamFileDescriptor(execa, true));
++
+ const testUnknownNativeValue = (invalidStdio, fdNumber, execaMethod) => {
+ 	const {message} = assertThrows(() => {
+ 		execaMethod('empty.js', getStdio(fdNumber, ['pipe', invalidStdio]));
+diff --git a/test/stdio/web-stream.js b/test/stdio/web-stream.js
+index 8d25aef..910f2f9 100644
+--- a/test/stdio/web-stream.js
++++ b/test/stdio/web-stream.js
+@@ -18,6 +18,207 @@ const testReadableStream = async fdNumber => {
+ test('stdin can be a ReadableStream', () => testReadableStream(0));
+ test('stdio[*] can be a ReadableStream', () => testReadableStream(3));
+ 
++test('stdin can read objects from a ReadableStream with an object mode transform', async () => {
++	const input = {message: 'foobar'};
++	const readableStream = new ReadableStream({
++		start(controller) {
++			controller.enqueue(input);
++			controller.close();
++		},
++	});
++	const {stdout} = await execa('stdin.js', {
++		stdin: [readableStream, {
++			objectMode: true,
++			* transform(value) {
++				yield JSON.stringify(value);
++			},
++		}],
++	});
++	assert.equal(stdout, JSON.stringify(input));
++});
++
++test('stdout can write objects to a WritableStream with an object mode transform', async () => {
++	const output = {message: 'foobar'};
++	const received = [];
++	const writableStream = new WritableStream({
++		write(chunk) {
++			received.push(chunk);
++		},
++	});
++	const {stdout} = await execa('noop.js', {
++		stdout: [writableStream, {
++			objectMode: true,
++			* transform() {
++				yield output;
++			},
++		}],
++	});
++	assert.deepEqual(stdout, [output]);
++	assert.deepEqual(received, [output]);
++	assert.equal(received[0], output);
++});
++
++const objectChunks = [{value: 1}, [1, [2]], false, 0, '', 'first\nsecond', new Uint8Array([97, 98])];
++
++const testObjectReadableStream = async (fdNumber, hasOtherSource) => {
++	const readableStream = new ReadableStream({
++		start(controller) {
++			for (const chunk of objectChunks) {
++				controller.enqueue(chunk);
++			}
++
++			controller.close();
++		},
++	});
++	const otherChunks = hasOtherSource ? [{other: true}] : [];
++	const received = [];
++	let finalCount = 0;
++	const {stdout} = await execa('stdin-fd.js', [`${fdNumber}`], getStdio(fdNumber, [readableStream, otherChunks, {
++		objectMode: true,
++		* transform(chunk) {
++			received.push(chunk);
++			yield JSON.stringify(chunk);
++		},
++		* final() {
++			finalCount += 1;
++			yield 'finished';
++		},
++	}]));
++	const expectedChunks = [...objectChunks, ...otherChunks];
++	assert.deepEqual(stdout.split('\n').sort(), [...expectedChunks.map(chunk => JSON.stringify(chunk)), 'finished'].sort());
++	assert.equal(finalCount, 1);
++	for (const chunk of expectedChunks) {
++		assert.ok(received.includes(chunk));
++	}
++};
++
++test('stdin preserves arbitrary object chunks from a ReadableStream', () => testObjectReadableStream(0, false));
++test('stdio[*] preserves arbitrary object chunks from a ReadableStream', () => testObjectReadableStream(3, false));
++test('Object-mode ReadableStream input can be combined with another source', () => testObjectReadableStream(0, true));
++
++const testObjectWritableStream = async fdNumber => {
++	const received = [];
++	let isClosed = false;
++	const writableStream = new WritableStream({
++		write(chunk) {
++			received.push(chunk);
++		},
++		async close() {
++			await setImmediate();
++			isClosed = true;
++		},
++	});
++	const {stdio} = await execa('noop-fd.js', [`${fdNumber}`, 'x'], getStdio(fdNumber, [writableStream, {
++		objectMode: true,
++		* transform() {
++			yield * objectChunks;
++		},
++	}]));
++	assert.deepEqual(stdio[fdNumber], objectChunks);
++	assert.deepEqual(received, objectChunks);
++	assert.equal(isClosed, true);
++	for (const [index, chunk] of objectChunks.entries()) {
++		assert.equal(received[index], chunk);
++	}
++};
++
++test('stderr writes arbitrary object chunks to a WritableStream', () => testObjectWritableStream(2));
++test('stdio[*] writes arbitrary object chunks to a WritableStream', () => testObjectWritableStream(3));
++
++const testSharedObjectWritableStream = async objectDescriptor => {
++	const output = {event: 'error'};
++	const received = [];
++	const writableStream = new WritableStream({
++		write(chunk) {
++			received.push(chunk);
++		},
++	});
++	const byteDescriptor = objectDescriptor === 'stdout' ? 'stderr' : 'stdout';
++	const result = await execa('noop-both.js', ['byte output'], {
++		stdout: writableStream,
++		stderr: writableStream,
++		[objectDescriptor]: [writableStream, {
++			objectMode: true,
++			* transform() {
++				yield output;
++			},
++		}],
++	});
++	assert.deepEqual(result[objectDescriptor], [output]);
++	assert.equal(result[byteDescriptor], 'byte output');
++	assert.equal(received.filter(chunk => chunk === output).length, 1);
++	assert.equal(received.filter(chunk => chunk !== output).map(chunk => chunk.toString()).join(''), 'byte output\n');
++};
++
++test('A shared WritableStream can receive byte stdout and object-mode stderr', () => testSharedObjectWritableStream('stderr'));
++test('A shared WritableStream can receive object-mode stdout and byte stderr', () => testSharedObjectWritableStream('stdout'));
++
++test('A shared WritableStream receives byte stdout and stderr without dropping either', async () => {
++	const received = [];
++	const writableStream = new WritableStream({
++		write(chunk) {
++			assert.ok(chunk instanceof Uint8Array);
++			received.push(chunk.toString());
++		},
++	});
++	await execa('noop-both.js', ['stdout', 'stderr'], {stdout: writableStream, stderr: writableStream});
++	assert.deepEqual(received.join('').trim().split('\n').sort(), ['stderr', 'stdout']);
++});
++
++test('Object-mode WritableStream errors preserve the original cause', async () => {
++	const cause = new Error('Object write failed');
++	const writableStream = new WritableStream({
++		write() {
++			throw cause;
++		},
++	});
++	const error = await assertRejects(execa('noop.js', {
++		stdout: [writableStream, {
++			objectMode: true,
++			* transform() {
++				yield objectChunks[0];
++			},
++		}],
++	}));
++	assert.equal(error.cause, cause);
++});
++
++test('Byte-mode web streams preserve binary data without text decoding', async () => {
++	const input = new Uint8Array([0, 255, 128, 10]);
++	const readableStream = new ReadableStream({
++		type: 'bytes',
++		start(controller) {
++			controller.enqueue(new Uint8Array(input));
++			controller.close();
++		},
++	});
++	const received = [];
++	const writableStream = new WritableStream({
++		write(chunk) {
++			received.push(...chunk);
++		},
++	});
++	const {stdout} = await execa('stdin.js', {
++		stdin: readableStream,
++		stdout: writableStream,
++		encoding: 'buffer',
++		stripFinalNewline: false,
++	});
++	assert.deepEqual(stdout, input);
++	assert.deepEqual(received, [...input]);
++});
++
++test('A web ReadableStream requires a transform to serialize object input', async () => {
++	const readableStream = new ReadableStream({
++		start(controller) {
++			controller.enqueue({value: 1});
++			controller.close();
++		},
++	});
++	const error = await assertRejects(execa('stdin.js', {stdin: readableStream}));
++	assert.equal(error.cause.code, 'ERR_INVALID_ARG_TYPE');
++});
++
+ const testWritableStream = async fdNumber => {
+ 	const result = [];
+ 	const writableStream = new WritableStream({
+diff --git a/test/terminate/kill-descendants.js b/test/terminate/kill-descendants.js
+index b2e39db..589238e 100644
+--- a/test/terminate/kill-descendants.js
++++ b/test/terminate/kill-descendants.js
+@@ -16,7 +16,8 @@ setFixtureDirectory();
+ const isWindows = process.platform === 'win32';
+ 
+ const pollForSubprocessExit = async pid => {
+-	while (isRunning(pid)) {
++	const deadline = Date.now() + 1e4;
++	while (isRunning(pid) && Date.now() < deadline) {
+ 		// eslint-disable-next-line no-await-in-loop
+ 		await setTimeout(100);
+ 	}
+@@ -42,10 +43,7 @@ test('killDescendants terminates descendant processes', async () => {
+ 	await assertRejects(subprocess);
+ 	assert.ok(!isRunning(subprocess.pid));
+ 
+-	await Promise.race([
+-		setTimeout(1e4, undefined, {ref: false}),
+-		pollForSubprocessExit(descendantPid),
+-	]);
++	await pollForSubprocessExit(descendantPid);
+ 	assert.ok(!isRunning(descendantPid));
+ });
+ 
+@@ -56,10 +54,7 @@ test('killDescendants also terminates descendant processes when the subprocess t
+ 	const {timedOut} = await assertRejects(subprocess);
+ 	assert.equal(timedOut, true);
+ 
+-	await Promise.race([
+-		setTimeout(1e4, undefined, {ref: false}),
+-		pollForSubprocessExit(descendantPid),
+-	]);
++	await pollForSubprocessExit(descendantPid);
+ 	assert.ok(!isRunning(descendantPid));
+ });
+ 
+@@ -109,6 +104,8 @@ test('killDescendants escalates to descendants which outlive the subprocess', as
+ 		setTimeout(1e4, 'pending', {ref: false}),
+ 	]);
+ 	assert.equal(settled, 'settled');
++	// Pipe EOF can arrive before the OS releases the descendant's PID.
++	await pollForSubprocessExit(descendantPid);
+ 	assert.ok(!isRunning(descendantPid));
+ });
+ 
+@@ -122,10 +119,7 @@ if (!isWindows) {
+ 		try {
+ 			assert.ok(isRunning(descendantPid));
+ 			assert.ok(subprocess.kill());
+-			await Promise.race([
+-				setTimeout(1e4, undefined, {ref: false}),
+-				pollForSubprocessExit(descendantPid),
+-			]);
++			await pollForSubprocessExit(descendantPid);
+ 			assert.ok(!isRunning(descendantPid));
+ 		} finally {
+ 			if (isRunning(descendantPid)) {
+diff --git a/test/terminate/kill-force.js b/test/terminate/kill-force.js
+index 3fd6436..fc913aa 100644
+--- a/test/terminate/kill-force.js
++++ b/test/terminate/kill-force.js
+@@ -146,7 +146,6 @@ if (isWindows) {
+ 		const subprocess = execa('noop-forever.js', ['.'], {...noKillableSimpleOptions, maxBuffer: 1});
+ 		const [chunk] = await once(subprocess.stdout, 'data');
+ 		assert.equal(chunk.toString(), '.\n');
+-		subprocess.kill();
+ 		const {isTerminated, signal, isForcefullyTerminated, shortMessage} = await assertRejects(subprocess);
+ 		assert.equal(isTerminated, true);
+ 		assert.equal(signal, 'SIGKILL');
+diff --git a/test/transform/encoding-multibyte.js b/test/transform/encoding-multibyte.js
+index 9858bf3..d0dbc33 100644
+--- a/test/transform/encoding-multibyte.js
++++ b/test/transform/encoding-multibyte.js
+@@ -1,8 +1,14 @@
+ import assert from 'node:assert/strict';
++import {Buffer} from 'node:buffer';
+ import test from 'node:test';
+ import {execa, execaSync} from '../../index.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+-import {noopGenerator, getOutputsGenerator, addNoopGenerator} from '../helpers/generator.js';
++import {
++	noopGenerator,
++	getOutputsGenerator,
++	addNoopGenerator,
++	convertTransformToFinal,
++} from '../helpers/generator.js';
+ import {
+ 	multibyteChar,
+ 	multibyteString,
+@@ -23,7 +29,7 @@ const testMultibyteCharacters = async (objectMode, addNoopTransform, execaMethod
+ 	if (objectMode) {
+ 		assert.deepEqual(stdout, foobarArray);
+ 	} else {
+-		// eslint-disable-next-line n/prefer-global/buffer -- `Uint8Array#toBase64()` is not available on the minimum supported Node.js version
++		// `Uint8Array#toBase64()` is not available on the minimum supported Node.js version.
+ 		assert.equal(stdout, Buffer.from(foobarArray.join('')).toString('base64'));
+ 	}
+ };
+@@ -79,3 +85,110 @@ const testMultibytePartialOutput = async execaMethod => {
+ 
+ test('Generator handles output multibyte characters with Uint8Array', () => testMultibytePartialOutput(execa));
+ test('Generator handles output multibyte characters with Uint8Array, sync', () => testMultibytePartialOutput(execaSync));
++
++test('Synchronous input transforms preserve the order of mixed text and partial UTF-8 bytes', () => {
++	const {stdout} = execaSync('stdin.js', {
++		stdin: [
++			[new Uint8Array([0xC3]), 'middle', new Uint8Array([0xA9])],
++			noopGenerator(false, false, true),
++		],
++	});
++	assert.equal(stdout, '\u{FFFD}middle\u{FFFD}');
++});
++
++const mixedInputCases = new Map([
++	['a two-byte character interrupted by text', [new Uint8Array([0xC3]), 'middle', new Uint8Array([0xA9])]],
++	['a three-byte character interrupted by text', [new Uint8Array([0xE2, 0x82]), 'middle', new Uint8Array([0xAC])]],
++	['a four-byte character interrupted by a newline', [new Uint8Array([0xF0, 0x9F]), '\n', new Uint8Array([0x98, 0x80])]],
++	['an unfinished character before final text', [new Uint8Array([0xC3]), 'last']],
++	['an empty string between character bytes', [new Uint8Array([0xC3]), '', new Uint8Array([0xA9])]],
++	['text between complete byte characters', [new Uint8Array([0xC3, 0xA9]), '🙂', new Uint8Array([0xE2, 0x82, 0xAC])]],
++	['text before a split byte character', ['first', new Uint8Array([0xC3]), new Uint8Array([0xA9])]],
++	['adjacent text chunks', ['first', '🙂', 'last']],
++	['separate string surrogate halves', ['\u{D83D}', '\u{DE00}']],
++]);
++
++const getMixedInputBytes = chunks => Buffer.concat(chunks.map(chunk => typeof chunk === 'string' ? Buffer.from(chunk) : chunk));
++
++const testMixedInput = async (chunks, execaMethod) => {
++	const {stdout} = await execaMethod('stdin.js', {
++		stdin: [chunks, noopGenerator(false, false, true)],
++		stripFinalNewline: false,
++	});
++	assert.equal(stdout, getMixedInputBytes(chunks).toString());
++};
++
++for (const [name, chunks] of mixedInputCases) {
++	test(`Input transforms preserve ${name}`, () => testMixedInput(chunks, execa));
++	test(`Input transforms preserve ${name}, sync`, () => testMixedInput(chunks, execaSync));
++}
++
++const interruptedChunks = mixedInputCases.get('a two-byte character interrupted by text');
++
++const testMixedTransformChain = async (direction, final, execaMethod) => {
++	const outputTransform = getOutputsGenerator(interruptedChunks)(false, false, true);
++	const {stdout} = await execaMethod(direction === 'stdin' ? 'stdin.js' : 'noop.js', {
++		[direction]: [convertTransformToFinal(outputTransform, final), noopGenerator(false, false, true)],
++		...(direction === 'stdin' && {input: 'trigger'}),
++		stripFinalNewline: false,
++	});
++	assert.equal(stdout, getMixedInputBytes(interruptedChunks).toString());
++};
++
++for (const direction of ['stdin', 'stdout']) {
++	for (const final of [false, true]) {
++		const phase = final ? 'final' : 'transform';
++		test(`Chained ${direction} generators preserve mixed chunks yielded by ${phase}`, () => testMixedTransformChain(direction, final, execa));
++		test(`Chained ${direction} generators preserve mixed chunks yielded by ${phase}, sync`, () => testMixedTransformChain(direction, final, execaSync));
++	}
++}
++
++const testMixedBinaryInput = async execaMethod => {
++	const {stdout} = await execaMethod('stdin.js', {
++		stdin: [interruptedChunks, noopGenerator(false, true)],
++		encoding: 'buffer',
++		stripFinalNewline: false,
++	});
++	assert.deepEqual(stdout, new Uint8Array(getMixedInputBytes(interruptedChunks)));
++};
++
++test('Binary input transforms preserve mixed chunks as bytes', () => testMixedBinaryInput(execa));
++test('Binary input transforms preserve mixed chunks as bytes, sync', () => testMixedBinaryInput(execaSync));
++
++const testMixedObjectInput = async execaMethod => {
++	const chunks = [...interruptedChunks, '\u{D800}', {value: true}];
++	const received = [];
++	await execaMethod('stdin.js', {
++		stdin: [chunks, {
++			objectMode: true,
++			preserveNewlines: true,
++			* transform(chunk) {
++				received.push(chunk);
++				yield JSON.stringify(chunk);
++			},
++		}],
++	});
++	assert.deepEqual(received, chunks);
++	for (const [index, chunk] of chunks.entries()) {
++		assert.equal(received[index], chunk);
++	}
++};
++
++test('Object-mode input transforms preserve mixed chunk identity and raw text', () => testMixedObjectInput(execa));
++test('Object-mode input transforms preserve mixed chunk identity and raw text, sync', () => testMixedObjectInput(execaSync));
++
++const testMixedAllRawString = async (encoding, execaMethod) => {
++	const chunk = '\u{D800}';
++	const {stdout, all} = await execaMethod('noop.js', {
++		all: true,
++		encoding,
++		stdout: getOutputsGenerator([chunk])(true),
++	});
++	assert.deepEqual(stdout, [chunk]);
++	assert.deepEqual(all, [chunk]);
++};
++
++test('Mixed object-mode all preserves raw strings with UTF-8', () => testMixedAllRawString('utf8', execa));
++test('Mixed object-mode all preserves raw strings with UTF-8, sync', () => testMixedAllRawString('utf8', execaSync));
++test('Mixed object-mode all preserves raw strings with hex', () => testMixedAllRawString('hex', execa));
++test('Mixed object-mode all preserves raw strings with hex, sync', () => testMixedAllRawString('hex', execaSync));
+diff --git a/test/transform/generator-all.js b/test/transform/generator-all.js
+index 90e6282..4442f9f 100644
+--- a/test/transform/generator-all.js
++++ b/test/transform/generator-all.js
+@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
+ import {Buffer} from 'node:buffer';
+ import test from 'node:test';
+ import {execa, execaSync} from '../../index.js';
++import {assertRejects} from '../helpers/assert.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+-import {foobarObject} from '../helpers/input.js';
++import {foobarObject, foobarString} from '../helpers/input.js';
+ import {
+ 	outputObjectGenerator,
+ 	uppercaseGenerator,
+@@ -14,6 +15,83 @@ setFixtureDirectory();
+ 
+ const textEncoder = new TextEncoder();
+ 
++test('result.all preserves object-mode bytes when stderr is not buffered', async () => {
++	const chunk = new Uint8Array([97, 98]);
++	const {stdout, all} = await execa('noop-both.js', ['x'], {
++		all: true,
++		buffer: {stderr: false},
++		stdout: {
++			objectMode: true,
++			* transform() {
++				yield chunk;
++			},
++		},
++	});
++	assert.deepEqual(stdout, [chunk]);
++	assert.deepEqual(all, [chunk]);
++	assert.equal(all[0], chunk);
++});
++
++const testSingleBufferedObjectMode = async (bufferedDescriptor, failure) => {
++	const chunks = [new Uint8Array([97, 98]), Buffer.from('cd'), 'first\nsecond\n', ['nested'], {value: 1}];
++	const unbufferedDescriptor = bufferedDescriptor === 'stdout' ? 'stderr' : 'stdout';
++	const subprocess = execa(failure ? 'all-fail.js' : 'noop-both.js', {
++		all: true,
++		lines: true,
++		buffer: {[unbufferedDescriptor]: false},
++		[bufferedDescriptor]: {
++			objectMode: true,
++			* transform() {},
++			* final() {
++				yield * chunks;
++			},
++		},
++	});
++	const result = failure ? await assertRejects(subprocess, {exitCode: 1}) : await subprocess;
++	assert.equal(result.failed, failure);
++	assert.equal(result[unbufferedDescriptor], undefined);
++	assert.deepEqual(result[bufferedDescriptor], chunks);
++	assert.deepEqual(result.all, chunks);
++	for (const [index, chunk] of chunks.entries()) {
++		assert.equal(result.all[index], chunk);
++	}
++};
++
++const testSingleBufferedTextMode = async (bufferedDescriptor, encoding, failure) => {
++	const unbufferedDescriptor = bufferedDescriptor === 'stdout' ? 'stderr' : 'stdout';
++	const subprocess = execa(failure ? 'all-fail.js' : 'noop-both.js', {
++		all: true,
++		encoding,
++		stripFinalNewline: false,
++		buffer: {[unbufferedDescriptor]: false},
++		[unbufferedDescriptor]: outputObjectGenerator(),
++	});
++	const result = failure ? await assertRejects(subprocess, {exitCode: 1}) : await subprocess;
++	const failureOutput = bufferedDescriptor === 'stdout' ? 'std\nout' : 'std\nerr';
++	const output = `${failure ? failureOutput : foobarString}\n`;
++	const expected = encoding === 'buffer' ? textEncoder.encode(output) : Buffer.from(output).toString(encoding);
++	assert.equal(result[unbufferedDescriptor], undefined);
++	assert.deepEqual(result[bufferedDescriptor], expected);
++	assert.deepEqual(result.all, expected);
++};
++
++// Object-mode chunks are passed through unchanged, so they are not affected by the `encoding` option
++for (const bufferedDescriptor of ['stdout', 'stderr']) {
++	for (const failure of [false, true]) {
++		const resultType = failure ? 'error' : 'result';
++		test(`${resultType}.all preserves object-mode chunks when only ${bufferedDescriptor} is buffered`, () => testSingleBufferedObjectMode(bufferedDescriptor, failure));
++	}
++}
++
++for (const bufferedDescriptor of ['stdout', 'stderr']) {
++	for (const encoding of ['utf8', 'buffer', 'hex']) {
++		for (const failure of [false, true]) {
++			const resultType = failure ? 'error' : 'result';
++			test(`${resultType}.all decodes text when only ${bufferedDescriptor} is buffered and the other descriptor is in object mode, encoding "${encoding}"`, () => testSingleBufferedTextMode(bufferedDescriptor, encoding, failure));
++		}
++	}
++}
++
+ const getAllStdioOption = (stdioOption, encoding, objectMode) => {
+ 	if (stdioOption) {
+ 		return 'pipe';
+diff --git a/test/transform/generator-error.js b/test/transform/generator-error.js
+index 554cdcf..ee8a0d9 100644
+--- a/test/transform/generator-error.js
++++ b/test/transform/generator-error.js
+@@ -1,7 +1,7 @@
+ import assert from 'node:assert/strict';
+ import {once} from 'node:events';
+ import {setTimeout} from 'node:timers/promises';
+-import {readFile, rm} from 'node:fs/promises';
++import {readFile, writeFile, rm} from 'node:fs/promises';
+ import test from 'node:test';
+ import tempfile from 'tempfile';
+ import {assertThrows, assertRejects, assertLike} from '../helpers/assert.js';
+@@ -16,6 +16,7 @@ import {
+ import {generatorsMap} from '../helpers/map.js';
+ import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
+ import {getEarlyErrorSubprocess, expectedEarlyError} from '../helpers/early-error.js';
++import {getStdio} from '../helpers/stdio.js';
+ 
+ setFixtureDirectory();
+ 
+@@ -43,6 +44,123 @@ test('Generators "final" errors make subprocess fail, sync', () => testThrowingG
+ test('Duplexes "transform" errors make subprocess fail', () => testThrowingGenerator('duplex', false, execa));
+ test('WebTransform "transform" errors make subprocess fail', () => testThrowingGenerator('webTransform', false, execa));
+ 
++test('Failed synchronous output transforms do not expose untransformed data', () => {
++	const secret = 'private-token';
++	const cause = new Error('Redaction failed');
++	const error = assertThrows(() => {
++		execaSync('environment.js', {
++			env: {FOO: secret, BAR: 'fail'},
++			* stdout(line) {
++				if (line === 'fail') {
++					throw cause;
++				}
++
++				yield '[REDACTED]';
++			},
++			all: true,
++		});
++	});
++	assert.equal(error.cause, cause);
++	assert.equal(error.stdout, '');
++	assert.equal(error.stdio[1], '');
++	assert.equal(error.all, '');
++	assert.equal(error.message.includes(secret), false);
++});
++
++const secretOutputScript = 'const fs = require("node:fs"); const descriptor = Number(process.env.OUTPUT_FD); fs.writeSync(descriptor, process.env.SECRET + "\\nfail\\n"); fs.writeSync(descriptor === 1 ? 2 : 1, "safe\\n");';
++
++const testSyncTransformDiscard = (fdNumber, options = {}) => {
++	const {objectMode, ...subprocessOptions} = options;
++	const secret = 'private-token';
++	const cause = new Error('Redaction failed');
++	const loggedLines = [];
++	const result = execaSync('node', ['-e', secretOutputScript], {
++		...getStdio(fdNumber, {
++			objectMode,
++			* transform() {
++				yield objectMode ? {redacted: true} : '[REDACTED]';
++				throw cause;
++			},
++		}),
++		...subprocessOptions,
++		env: {SECRET: secret, OUTPUT_FD: `${fdNumber}`},
++		all: true,
++		reject: false,
++		verbose(line) {
++			loggedLines.push(line);
++		},
++	});
++	const expectedOutput = objectMode || options.lines ? [] : (options.encoding === 'buffer' ? new Uint8Array() : '');
++	assert.equal(result.failed, true);
++	assert.equal(result.cause, cause);
++	assert.deepEqual(result.stdio[fdNumber], expectedOutput);
++	const safeOutput = options.lines ? ['safe'] : (options.encoding === 'buffer' ? new TextEncoder().encode('safe') : 'safe');
++	assert.deepEqual(result.stdio[fdNumber === 1 ? 2 : 1], safeOutput);
++	assert.equal(result.message.includes(secret), false);
++	assert.equal(loggedLines.some(line => line.includes(secret)), false);
++};
++
++test('Failed synchronous stderr transforms discard raw text and preserve stdout', () => testSyncTransformDiscard(2));
++test('Failed synchronous fd3 transforms discard raw text and preserve stdout', () => testSyncTransformDiscard(3));
++test('Failed synchronous binary transforms keep empty Uint8Array output', () => testSyncTransformDiscard(1, {encoding: 'buffer'}));
++test('Failed synchronous object-mode transforms keep empty arrays', () => testSyncTransformDiscard(2, {objectMode: true}));
++test('Failed synchronous transforms with lines keep empty arrays', () => testSyncTransformDiscard(3, {lines: true}));
++
++test('Failed synchronous final transforms do not expose raw output', () => {
++	const secret = 'private-token';
++	const cause = new Error('Final failed');
++	const result = execaSync('environment.js', {
++		env: {FOO: secret, BAR: 'last'},
++		stdout: {
++			* transform() {
++				yield '[REDACTED]';
++			},
++			final: throwingGenerator(cause)().transform,
++		},
++		reject: false,
++	});
++	assert.equal(result.failed, true);
++	assert.equal(result.cause, cause);
++	assert.equal(result.stdout, '');
++	assert.equal(result.message.includes(secret), false);
++});
++
++test('Failed synchronous chained transforms do not expose raw output', () => {
++	const secret = 'private-token';
++	const cause = new Error('Chained transform failed');
++	const result = execaSync('environment.js', {
++		env: {FOO: secret, BAR: 'last'},
++		stdout: [{
++			* transform() {
++				yield '[REDACTED]';
++			},
++		}, throwingGenerator(cause)()],
++		reject: false,
++	});
++	assert.equal(result.failed, true);
++	assert.equal(result.cause, cause);
++	assert.equal(result.stdout, '');
++	assert.equal(result.message.includes(secret), false);
++});
++
++test('A failed synchronous transform leaves its output file unchanged', async () => {
++	const filePath = tempfile();
++	await writeFile(filePath, 'keep existing output');
++	try {
++		const cause = new Error('Transform failed');
++		const error = assertThrows(() => {
++			execaSync('environment.js', {
++				env: {FOO: 'private-token', BAR: 'last'},
++				stdout: [throwingGenerator(cause)(), {file: filePath}],
++			});
++		});
++		assert.equal(error.cause, cause);
++		assert.equal(await readFile(filePath, 'utf8'), 'keep existing output');
++	} finally {
++		await rm(filePath);
++	}
++});
++
+ const testSingleErrorOutput = async (type, execaMethod) => {
+ 	await assertProcessError(type, execaMethod, transform => execaMethod('noop.js', {
+ 		stdout: [
+diff --git a/test/transform/generator-falsy-error.js b/test/transform/generator-falsy-error.js
+new file mode 100644
+index 0000000..eb648e9
+--- /dev/null
++++ b/test/transform/generator-falsy-error.js
+@@ -0,0 +1,84 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import {execa, execaSync} from '../../index.js';
++import {setFixtureDirectory} from '../helpers/fixtures-directory.js';
++import {throwingGenerator} from '../helpers/generator.js';
++import {foobarString} from '../helpers/input.js';
++
++setFixtureDirectory();
++
++const testFalsyTransformError = async execaMethod => {
++	const {failed} = await execaMethod('noop.js', {
++		stdout: throwingGenerator(null)().transform,
++		reject: false,
++	});
++	assert.equal(failed, true);
++};
++
++test('A synchronous generator throwing null makes the subprocess fail', () => testFalsyTransformError(execa));
++test('A synchronous generator throwing null makes the subprocess fail, sync', () => testFalsyTransformError(execaSync));
++
++const testWrappedGeneratorError = async (reason, execaMethod, {direction, phase, generator = throwingGenerator(reason)().transform}) => {
++	const result = await execaMethod(direction === 'stdin' ? 'stdin.js' : 'noop.js', {
++		[direction]: {[phase]: generator},
++		...(direction === 'stdin' && {input: foobarString}),
++		reject: false,
++	});
++	assert.equal(result.failed, true);
++	assert.ok(result.cause instanceof Error);
++	assert.equal(result.code, 'ERR_FALSY_VALUE_REJECTION');
++	assert.equal(result.cause.reason, reason);
++	assert.equal(Object.hasOwn(result.cause, 'reason'), true);
++};
++
++const falsyReasons = new Map([
++	['null', null],
++	['undefined', undefined],
++	['false', false],
++	['zero', 0],
++	['negative zero', -0],
++	['zero bigint', 0n],
++	['empty string', ''],
++	['NaN', NaN],
++]);
++
++for (const [name, reason] of falsyReasons) {
++	for (const phase of ['transform', 'final']) {
++		for (const direction of ['stdin', 'stdout']) {
++			test(`A synchronous ${direction} ${phase} throwing ${name} reports the original reason`, () => testWrappedGeneratorError(reason, execa, {direction, phase}));
++			test(`A synchronous ${direction} ${phase} throwing ${name} reports the original reason, sync`, () => testWrappedGeneratorError(reason, execaSync, {direction, phase}));
++		}
++	}
++}
++
++// eslint-disable-next-line require-yield
++const throwingAsyncGenerator = reason => async function * () {
++	throw reason;
++};
++
++for (const [name, reason] of falsyReasons) {
++	for (const direction of ['stdin', 'stdout']) {
++		for (const phase of ['transform', 'final']) {
++			test(`An asynchronous ${direction} ${phase} throwing ${name} reports the original reason`, () => testWrappedGeneratorError(reason, execa, {direction, phase, generator: throwingAsyncGenerator(reason)}));
++		}
++	}
++}
++
++const testTruthyGeneratorError = async (reason, execaMethod, direction, phase) => {
++	const {failed, cause} = await execaMethod(direction === 'stdin' ? 'stdin.js' : 'noop.js', {
++		[direction]: {[phase]: throwingGenerator(reason)().transform},
++		...(direction === 'stdin' && {input: foobarString}),
++		reject: false,
++	});
++	assert.equal(failed, true);
++	assert.equal(cause, reason);
++};
++
++for (const [name, reason] of new Map([['Error', new Error('Generator failed')], ['string', 'Generator failed'], ['object', {message: 'Generator failed'}]])) {
++	for (const phase of ['transform', 'final']) {
++		for (const direction of ['stdin', 'stdout']) {
++			test(`A synchronous ${direction} ${phase} keeps a truthy ${name} cause`, () => testTruthyGeneratorError(reason, execa, direction, phase));
++			test(`A synchronous ${direction} ${phase} keeps a truthy ${name} cause, sync`, () => testTruthyGeneratorError(reason, execaSync, direction, phase));
++		}
++	}
++}
+diff --git a/types/arguments/options.d.ts b/types/arguments/options.d.ts
+index 79c1d23..a8d2ce9 100644
+--- a/types/arguments/options.d.ts
++++ b/types/arguments/options.d.ts
+@@ -194,7 +194,7 @@ export type CommonOptions<
+ 
+ 	With synchronous methods, this cannot be enforced per file descriptor while the subprocess runs, since `spawnSync()` only accepts a single value, which limits the total output of all file descriptors. The `maxBuffer.stdout` value is used for it. The other file descriptors' own values are enforced from the output, once the subprocess ended, and cannot be higher than `maxBuffer.stdout`. Also, with synchronous methods, this is measured in bytes instead of characters or lines, for the same reason.
+ 
+-	When reached, `error.isMaxBuffer` becomes `true`.
++	When reached, `error.isMaxBuffer` becomes `true` and the subprocess is terminated with the `killSignal` option.
+ 
+ 	@default 100_000_000
+ 	*/
+diff --git a/types/arguments/specific.d.ts b/types/arguments/specific.d.ts
+index 482caf9..fa9972c 100644
+--- a/types/arguments/specific.d.ts
++++ b/types/arguments/specific.d.ts
+@@ -19,36 +19,20 @@ type FdSpecificObjectOption<
+ 	GenericOption extends GenericOptionObject<unknown>,
+ 	FdNumber extends string,
+ > = keyof GenericOption extends GenericFromOption
+-	? FdNumberToFromOption<FdNumber, keyof GenericOption> extends never
+-		? undefined
+-		: GenericOption[FdNumberToFromOption<FdNumber, keyof GenericOption>]
++	? FdNumber extends '1'
++		? FdOptionValue<GenericOption, 'stdout', FdOptionValue<GenericOption, 'fd1', FdOptionValue<GenericOption, 'all'>>>
++		: FdNumber extends '2'
++			? FdOptionValue<GenericOption, 'stderr', FdOptionValue<GenericOption, 'fd2', FdOptionValue<GenericOption, 'all'>>>
++			: FdOptionValue<GenericOption, FdNumber extends 'ipc' ? 'ipc' : `fd${FdNumber}`>
+ 	: GenericOption;
+ 
+-type FdNumberToFromOption<
+-	FdNumber extends string,
+-	GenericOptionKeys extends GenericFromOption,
+-> = FdNumber extends 'ipc'
+-	? 'ipc' extends GenericOptionKeys
+-		? 'ipc'
+-		: never
+-	: FdNumber extends '1'
+-		? 'stdout' extends GenericOptionKeys
+-			? 'stdout'
+-			: 'fd1' extends GenericOptionKeys
+-				? 'fd1'
+-				: 'all' extends GenericOptionKeys
+-					? 'all'
+-					: never
+-		: FdNumber extends '2'
+-			? 'stderr' extends GenericOptionKeys
+-				? 'stderr'
+-				: 'fd2' extends GenericOptionKeys
+-					? 'fd2'
+-					: 'all' extends GenericOptionKeys
+-						? 'all'
+-						: never
+-			: `fd${FdNumber}` extends GenericOptionKeys
+-				? `fd${FdNumber}`
+-				: never;
++// Optional descriptor keys can be absent, so lower-priority keys can still apply.
++type FdOptionValue<
++	GenericOption extends GenericOptionObject<unknown>,
++	Key extends string,
++	Fallback = undefined,
++> = Key extends keyof GenericOption
++	? GenericOption[Key] | ({} extends Pick<GenericOption, Key> ? Fallback : never)
++	: Fallback;
+ 
+ export {};
+diff --git a/types/convert.d.ts b/types/convert.d.ts
+index 8876c96..684929a 100644
+--- a/types/convert.d.ts
++++ b/types/convert.d.ts
+@@ -1,6 +1,7 @@
+ import type {BinaryEncodingOption} from './arguments/encoding-option.js';
+ import type {Options} from './arguments/options.js';
+ import type {FromOption, ToOption} from './arguments/fd-options.js';
++import type {IsObjectFd} from './transform/object-mode.js';
+ 
+ // `subprocess.readable|duplex|iterable()` options
+ export type ReadableOptions = {
+@@ -20,6 +21,8 @@ export type ReadableOptions = {
+ 
+ 	This is always `true` when the `encoding` option is binary.
+ 
++	With a transform in object mode, each chunk is the object itself, whatever the value of this option.
++
+ 	@default `false` with `subprocess.iterable()`, `true` otherwise
+ 	*/
+ 	readonly binary?: boolean;
+@@ -49,12 +52,27 @@ export type DuplexOptions = ReadableOptions & WritableOptions;
+ export type SubprocessAsyncIterable<
+ 	BinaryOption extends boolean | undefined,
+ 	EncodingOption extends Options['encoding'],
++	ObjectMode extends boolean,
+ > = AsyncIterableIterator<
+-	EncodingOption extends BinaryEncodingOption
+-		? Uint8Array
+-		: BinaryOption extends true
++	// Object-mode chunks are passed through unchanged, even with binary options.
++	true extends ObjectMode
++		? unknown
++		: EncodingOption extends BinaryEncodingOption
+ 			? Uint8Array
+-			: string
++			: BinaryOption extends true
++				? Uint8Array
++				: string
+ >;
+ 
++// `all` can yield objects from either stdout or stderr.
++export type IsObjectIterable<
++	From extends ReadableOptions['from'],
++	OptionsType extends Options,
++> = OptionsType extends Options
++	? From extends 'all' ? IsObjectFd<'1' | '2', OptionsType>
++		: From extends 'stderr' ? IsObjectFd<'2', OptionsType>
++			: From extends `fd${infer FdNumber}` ? IsObjectFd<`${number}` extends FdNumber ? string : FdNumber, OptionsType>
++				: IsObjectFd<'1', OptionsType>
++	: never;
++
+ export {};
+diff --git a/types/ipc.d.ts b/types/ipc.d.ts
+index a8f7e3e..176cbeb 100644
+--- a/types/ipc.d.ts
++++ b/types/ipc.d.ts
+@@ -142,6 +142,11 @@ export type HasIpc<OptionsType extends Options> = HasIpcOption<
+ 	'gracefulCancel' extends keyof OptionsType ? OptionsType['gracefulCancel'] : undefined
+ >;
+ 
++// IPC methods of a subprocess. With an options union, each member enables IPC and sets its `serialization` separately.
++export type SubprocessIpcMethods<OptionsType extends Options> = OptionsType extends unknown
++	? IpcMethods<HasIpc<OptionsType>, OptionsType['serialization']>
++	: never;
++
+ type HasIpcOption<
+ 	IpcOption extends Options['ipc'],
+ 	NodeOption extends Options['node'],
+diff --git a/types/methods/bind.d.ts b/types/methods/bind.d.ts
+new file mode 100644
+index 0000000..ac45041
+--- /dev/null
++++ b/types/methods/bind.d.ts
+@@ -0,0 +1,43 @@
++import type {CommonOptions, StricterOptions} from '../arguments/options.js';
++
++// Like runtime option binding, later values override earlier ones. Only fd-specific options and `env` merge plain objects.
++// The `infer ... extends` constraint lets TypeScript check generic uses against `StrictOptions` directly, instead of resolving every branch, which is very slow when declaration files are type-checked.
++export type MergeOptions<BoundOptions, NewOptions, StrictOptions extends CommonOptions = CommonOptions> = MergeAnyOptions<BoundOptions, NewOptions, StrictOptions> extends infer Merged extends StrictOptions ? Merged : never;
++
++type MergeAnyOptions<BoundOptions, NewOptions, StrictOptions extends CommonOptions> = [BoundOptions] extends [Record<PropertyKey, never>]
++	? NewOptions
++	: [NewOptions] extends [Record<PropertyKey, never>]
++		? BoundOptions
++		: keyof StrictOptions extends keyof BoundOptions | keyof NewOptions
++			? StrictOptions
++			: MergeNonemptyOptions<BoundOptions, NewOptions, StrictOptions>;
++
++type MergeNonemptyOptions<BoundOptions, NewOptions, StrictOptions extends CommonOptions> = BoundOptions extends unknown
++	? NewOptions extends unknown
++		? StricterOptions<MergeObject<BoundOptions, NewOptions>, StrictOptions>
++		: never
++	: never;
++
++type MergeObject<BoundOptions, NewOptions> = Omit<BoundOptions, keyof NewOptions> & {
++	[OptionName in keyof NewOptions]: OptionName extends keyof BoundOptions
++		? MergeOption<BoundOptions[OptionName], NewOptions[OptionName], OptionName> | ({} extends Pick<NewOptions, OptionName> ? BoundOptions[OptionName] : never)
++		: NewOptions[OptionName]
++};
++
++type MergeOption<BoundValue, NewValue, OptionName> = OptionName extends 'env' | 'lines' | 'buffer' | 'maxBuffer' | 'verbose' | 'stripFinalNewline'
++	? BoundValue extends (...arguments_: never[]) => unknown
++		? NewValue
++		: NewValue extends (...arguments_: never[]) => unknown
++			? NewValue
++			: BoundValue extends object
++				? NewValue extends object
++					? MergeShallowObject<BoundValue, NewValue>
++					: NewValue
++				: NewValue
++	: NewValue;
++
++type MergeShallowObject<BoundValue, NewValue> = Omit<BoundValue, keyof NewValue> & {
++	[Key in keyof NewValue]: NewValue[Key] | ({} extends Pick<NewValue, Key> ? (Key extends keyof BoundValue ? BoundValue[Key] : never) : never)
++};
++
++export {};
+diff --git a/types/methods/main-async.d.ts b/types/methods/main-async.d.ts
+index 98b3975..774de29 100644
+--- a/types/methods/main-async.d.ts
++++ b/types/methods/main-async.d.ts
+@@ -1,6 +1,7 @@
+ import type {Options} from '../arguments/options.js';
+ import type {ResultPromise} from '../subprocess/subprocess.js';
+ import type {TemplateString} from './template.js';
++import type {MergeOptions} from './bind.js';
+ 
+ /**
+ Executes a command using `file ...arguments`.
+@@ -361,7 +362,7 @@ export type ExecaMethod<OptionsType extends Options = Options> =
+ // `execa(options)` binding
+ type ExecaBind<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(options: NewOptionsType)
+-	=> ExecaMethod<OptionsType & NewOptionsType>;
++	=> ExecaMethod<MergeOptions<OptionsType, NewOptionsType, Options>>;
+ 
+ // `execa`command`` template syntax
+ type ExecaTemplate<OptionsType extends Options> =
+@@ -371,11 +372,11 @@ type ExecaTemplate<OptionsType extends Options> =
+ // `execa('file', ['argument'], {})` array syntax
+ type ExecaArrayLong<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(file: string | URL, arguments?: readonly string[], options?: NewOptionsType)
+-	=> ResultPromise<OptionsType & NewOptionsType>;
++	=> ResultPromise<MergeOptions<OptionsType, NewOptionsType, Options>>;
+ 
+ // `execa('file', {})` array syntax
+ type ExecaArrayShort<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(file: string | URL, options?: NewOptionsType)
+-	=> ResultPromise<OptionsType & NewOptionsType>;
++	=> ResultPromise<MergeOptions<OptionsType, NewOptionsType, Options>>;
+ 
+ export {};
+diff --git a/types/methods/main-sync.d.ts b/types/methods/main-sync.d.ts
+index 07feda7..44dccf1 100644
+--- a/types/methods/main-sync.d.ts
++++ b/types/methods/main-sync.d.ts
+@@ -1,6 +1,7 @@
+ import type {SyncOptions} from '../arguments/options.js';
+ import type {SyncResult} from '../return/result.js';
+ import type {TemplateString} from './template.js';
++import type {MergeOptions} from './bind.js';
+ 
+ /**
+ Same as `execa()` but synchronous.
+@@ -41,7 +42,7 @@ export type ExecaSyncMethod<OptionsType extends SyncOptions = SyncOptions> =
+ // `execaSync(options)` binding
+ type ExecaSyncBind<OptionsType extends SyncOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(options: NewOptionsType)
+-	=> ExecaSyncMethod<OptionsType & NewOptionsType>;
++	=> ExecaSyncMethod<MergeOptions<OptionsType, NewOptionsType, SyncOptions>>;
+ 
+ // `execaSync`command`` template syntax
+ type ExecaSyncTemplate<OptionsType extends SyncOptions> =
+@@ -51,11 +52,11 @@ type ExecaSyncTemplate<OptionsType extends SyncOptions> =
+ // `execaSync('file', ['argument'], {})` array syntax
+ type ExecaSyncArrayLong<OptionsType extends SyncOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(file: string | URL, arguments?: readonly string[], options?: NewOptionsType)
+-	=> SyncResult<OptionsType & NewOptionsType>;
++	=> SyncResult<MergeOptions<OptionsType, NewOptionsType, SyncOptions>>;
+ 
+ // `execaSync('file', {})` array syntax
+ type ExecaSyncArrayShort<OptionsType extends SyncOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(file: string | URL, options?: NewOptionsType)
+-	=> SyncResult<OptionsType & NewOptionsType>;
++	=> SyncResult<MergeOptions<OptionsType, NewOptionsType, SyncOptions>>;
+ 
+ export {};
+diff --git a/types/methods/node.d.ts b/types/methods/node.d.ts
+index d50f619..763ec7f 100644
+--- a/types/methods/node.d.ts
++++ b/types/methods/node.d.ts
+@@ -1,6 +1,7 @@
+ import type {Options} from '../arguments/options.js';
+ import type {ResultPromise} from '../subprocess/subprocess.js';
+ import type {TemplateString} from './template.js';
++import type {MergeOptions} from './bind.js';
+ 
+ /**
+ Same as `execa()` but using the `node: true` option.
+@@ -44,7 +45,7 @@ export type ExecaNodeMethod<OptionsType extends Options = Options> =
+ // `execaNode(options)` binding
+ type ExecaNodeBind<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(options: NewOptionsType)
+-	=> ExecaNodeMethod<OptionsType & NewOptionsType>;
++	=> ExecaNodeMethod<MergeOptions<OptionsType, NewOptionsType, Options>>;
+ 
+ // `execaNode`command`` template syntax
+ type ExecaNodeTemplate<OptionsType extends Options> =
+@@ -54,14 +55,22 @@ type ExecaNodeTemplate<OptionsType extends Options> =
+ // `execaNode('script', ['argument'], {})` array syntax
+ type ExecaNodeArrayLong<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(scriptPath: string | URL, arguments?: readonly string[], options?: NewOptionsType)
+-	=> ResultPromise<NodeOptions<OptionsType & NewOptionsType>>;
++	=> ResultPromise<NodeOptions<MergeOptions<OptionsType, NewOptionsType, Options>>>;
+ 
+ // `execaNode('script', {})` array syntax
+ type ExecaNodeArrayShort<OptionsType extends Options> =
+ 	<NewOptionsType extends Options = {}>(scriptPath: string | URL, options?: NewOptionsType)
+-	=> ResultPromise<NodeOptions<OptionsType & NewOptionsType>>;
++	=> ResultPromise<NodeOptions<MergeOptions<OptionsType, NewOptionsType, Options>>>;
+ 
+-// `execaNode()` always uses the `node` option, which also enables the `ipc` option by default
+-type NodeOptions<OptionsType extends Options> = OptionsType & {readonly node: true};
++// `execaNode()` always uses the `node` option, which also enables the `ipc` option by default.
++// `node: false` throws at runtime.
++// Any other `node` value is replaced instead of intersected, since `{node: undefined} & {node: true}` would be `never`. The result is flattened, so it is a plain object type.
++type NodeOptions<OptionsType extends Options> = OptionsType extends Options
++	? OptionsType extends {readonly node: false}
++		? never
++		: ({[Key in keyof OptionsType]: Key extends 'node' ? true : OptionsType[Key]} & {readonly node: true}) extends infer ForcedOptions
++			? {[Key in keyof ForcedOptions]: ForcedOptions[Key]}
++			: never
++	: never;
+ 
+ export {};
+diff --git a/types/methods/script.d.ts b/types/methods/script.d.ts
+index fd4bf86..b650d26 100644
+--- a/types/methods/script.d.ts
++++ b/types/methods/script.d.ts
+@@ -6,7 +6,11 @@ import type {
+ } from '../arguments/options.js';
+ import type {SyncResult} from '../return/result.js';
+ import type {ResultPromise} from '../subprocess/subprocess.js';
++import type {SubprocessStdioStream} from '../subprocess/stdout.js';
++import type {SubprocessStdioArray} from '../subprocess/stdio.js';
++import type {WithInputSources} from '../stdio/option.js';
+ import type {TemplateString} from './template.js';
++import type {MergeOptions} from './bind.js';
+ 
+ /**
+ Same as `execa()` but using script-friendly default options.
+@@ -66,22 +70,46 @@ export type ExecaScriptMethod<OptionsType extends CommonOptions = CommonOptions>
+ // `$(options)` binding
+ type ExecaScriptBind<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends Options = {}>(options: NewOptionsType)
+-	=> ExecaScriptMethod<OptionsType & NewOptionsType>;
++	=> ExecaScriptMethod<MergeOptions<OptionsType, NewOptionsType>>;
+ 
+ // `$`command`` template syntax
+ type ExecaScriptTemplate<OptionsType extends CommonOptions> =
+ 	(...templateString: TemplateString)
+-	=> ResultPromise<StricterOptions<OptionsType, Options>>;
++	=> ScriptResultPromise<StricterOptions<OptionsType, Options>>;
+ 
+ // `$('file', ['arg'], {})` array syntax
+ type ExecaScriptArrayLong<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends Options = {}>(file: string | URL, arguments?: readonly string[], options?: NewOptionsType)
+-	=> ResultPromise<StricterOptions<OptionsType & NewOptionsType, Options>>;
++	=> ScriptSubprocess<MergeOptions<OptionsType, NewOptionsType>>;
+ 
+ // `$('file', {})` array syntax
+ type ExecaScriptArrayShort<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends Options = {}>(file: string | URL, options?: NewOptionsType)
+-	=> ResultPromise<StricterOptions<OptionsType & NewOptionsType, Options>>;
++	=> ScriptSubprocess<MergeOptions<OptionsType, NewOptionsType>>;
++
++// Inferring the options from the return value's expected type, e.g. `const subprocess: ResultPromise = $('file')`, is too complex for TypeScript, so the return value is excluded from that inference.
++// This is like the built-in `NoInfer`, which is not available with the minimum supported TypeScript version.
++type ScriptSubprocess<OptionsType extends CommonOptions> = [ScriptResultPromise<StricterOptions<OptionsType, Options>>][OptionsType extends unknown ? 0 : never];
++
++type ScriptResultPromise<
++	OptionsType extends Options,
++	SubprocessType = ResultPromise<OptionsType>,
++> = SubprocessType extends unknown
++	? Omit<SubprocessType, 'stdin' | 'stdio'> & {stdin: SubprocessStdioStream<'0', StricterOptions<ScriptOptions<OptionsType>, Options>>; stdio: SubprocessStdioArray<StricterOptions<ScriptOptions<OptionsType>, Options>>}
++	: never;
++
++// `$` defaults to inherited stdin unless input, inputFile or stdio is provided.
++type ScriptOptions<OptionsType extends Options> = OptionsType extends Options
++	? Omit<OptionsType, 'stdin'> & {stdin: ScriptStdin<OptionsType, 'stdin' extends keyof OptionsType ? OptionsType['stdin'] : undefined>}
++	: never;
++
++type ScriptStdin<
++	OptionsType extends Options,
++	StdinOption,
++> = StdinOption extends undefined ? ScriptDefaultStdin<OptionsType> : StdinOption;
++
++// With an input source, the `stdin` option is left `undefined`, so its usual default applies.
++type ScriptDefaultStdin<OptionsType extends Options> = WithInputSources<OptionsType, 'input' | 'inputFile' | 'stdio', 'inherit', undefined>;
+ 
+ // We must intersect the overloaded methods with & instead of using a simple object as a workaround for a TypeScript bug
+ // See https://github.com/microsoft/TypeScript/issues/58765
+@@ -97,7 +125,7 @@ export type ExecaScriptSyncMethod<OptionsType extends CommonOptions = CommonOpti
+ // `$.sync(options)` binding
+ type ExecaScriptSyncBind<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(options: NewOptionsType)
+-	=> ExecaScriptSyncMethod<OptionsType & NewOptionsType>;
++	=> ExecaScriptSyncMethod<MergeOptions<OptionsType, NewOptionsType>>;
+ 
+ // $.sync`command` template syntax
+ type ExecaScriptSyncTemplate<OptionsType extends CommonOptions> =
+@@ -107,11 +135,11 @@ type ExecaScriptSyncTemplate<OptionsType extends CommonOptions> =
+ // `$.sync('file', ['arg'], {})` array syntax
+ type ExecaScriptSyncArrayLong<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(file: string | URL, arguments?: readonly string[], options?: NewOptionsType)
+-	=> SyncResult<StricterOptions<OptionsType & NewOptionsType, SyncOptions>>;
++	=> SyncResult<StricterOptions<MergeOptions<OptionsType, NewOptionsType>, SyncOptions>>;
+ 
+ // `$.sync('file', {})` array syntax
+ type ExecaScriptSyncArrayShort<OptionsType extends CommonOptions> =
+ 	<NewOptionsType extends SyncOptions = {}>(file: string | URL, options?: NewOptionsType)
+-	=> SyncResult<StricterOptions<OptionsType & NewOptionsType, SyncOptions>>;
++	=> SyncResult<StricterOptions<MergeOptions<OptionsType, NewOptionsType>, SyncOptions>>;
+ 
+ export {};
+diff --git a/types/pipe.d.ts b/types/pipe.d.ts
+index a742366..f2fc413 100644
+--- a/types/pipe.d.ts
++++ b/types/pipe.d.ts
+@@ -2,7 +2,7 @@ import type {Options} from './arguments/options.js';
+ import type {Result} from './return/result.js';
+ import type {FromOption, ToOption} from './arguments/fd-options.js';
+ import type {ResultPromise, SubprocessResultMethods} from './subprocess/subprocess.js';
+-import type {IpcMethods, HasIpc} from './ipc.js';
++import type {SubprocessIpcMethods} from './ipc.js';
+ import type {TemplateExpression} from './methods/template.js';
+ 
+ // `subprocess.pipe()` options
+@@ -28,7 +28,7 @@ type PipeOptions = {
+ // Methods forwarded from the destination subprocess to the return value of `subprocess.pipe()`, so its output can be iterated, converted to a stream, or used for IPC.
+ type PipeResultMethods<OptionsType extends Options> =
+ 	& SubprocessResultMethods<OptionsType>
+-	& IpcMethods<HasIpc<OptionsType>, OptionsType['serialization']>;
++	& SubprocessIpcMethods<OptionsType>;
+ 
+ // Same as `PipeResultMethods`, but when the destination is another `execa()` call, so its own option types are kept.
+ // The base `Options` is only used to compute the property names, which do not depend on the specific options.
+diff --git a/types/return/ignore.d.ts b/types/return/ignore.d.ts
+index 8a04365..21b5b01 100644
+--- a/types/return/ignore.d.ts
++++ b/types/return/ignore.d.ts
+@@ -8,7 +8,8 @@ import type {CommonOptions} from '../arguments/options.js';
+ export type IgnoresResultOutput<
+ 	FdNumber extends string,
+ 	OptionsType extends CommonOptions,
+-> = FdSpecificOption<OptionsType['buffer'], FdNumber> extends false
++	BufferOption extends boolean | undefined = FdSpecificOption<OptionsType['buffer'], FdNumber>,
++> = BufferOption extends false
+ 	? true
+ 	: IgnoresResultOutputDirection<IsInputFd<FdNumber, OptionsType>, FdNumber, OptionsType>;
+ 
+diff --git a/types/return/result-all.d.ts b/types/return/result-all.d.ts
+index 01cda55..632b506 100644
+--- a/types/return/result-all.d.ts
++++ b/types/return/result-all.d.ts
+@@ -5,28 +5,56 @@ import type {IgnoresResultOutput} from './ignore.js';
+ import type {ResultStdio} from './result-stdout.js';
+ 
+ // `result.all`
+-export type ResultAll<OptionsType extends CommonOptions> =
+-	ResultAllProperty<OptionsType['all'], OptionsType>;
++export type ResultAll<OptionsType extends CommonOptions> = OptionsType extends unknown
++	? ResultAllProperty<OptionsType['all'], OptionsType>
++	: never;
+ 
+ type ResultAllProperty<
+ 	AllOption extends CommonOptions['all'],
+ 	OptionsType extends CommonOptions,
++	BufferOption extends CommonOptions['buffer'] = OptionsType['buffer'],
+ > = AllOption extends true
+-	? ResultStdio<
+-		AllMainFd<OptionsType>,
+-		AllObjectFd<OptionsType>,
+-		AllLinesFd<OptionsType>,
+-		OptionsType
+-	>
++	? BufferOption extends unknown
++		? ResultAllBuffered<OptionsType, FdSpecificOption<BufferOption, '1'>, FdSpecificOption<BufferOption, '2'>>
++		: never
+ 	: undefined;
+ 
++// Distribute buffer flags before selecting descriptors so their presence and output modes stay correlated.
++// Undefined flags use the default `true`.
++type ResultAllBuffered<
++	OptionsType extends CommonOptions,
++	BufferStdout extends boolean | undefined,
++	BufferStderr extends boolean | undefined,
++> = BufferStdout extends unknown
++	? BufferStderr extends unknown
++		? ResultAllOutput<Omit<OptionsType, 'buffer'> & {
++			buffer: {
++				stdout: BufferStdout extends false ? false : true;
++				stderr: BufferStderr extends false ? false : true;
++			};
++		}>
++		: never
++	: never;
++
++type ResultAllOutput<OptionsType> = OptionsType extends CommonOptions ? ResultStdio<
++	AllMainFd<OptionsType>,
++	AllObjectFd<OptionsType>,
++	AllLinesFd<OptionsType>,
++	OptionsType
++> : never;
++
+ type AllMainFd<OptionsType extends CommonOptions> =
+ 	IgnoresResultOutput<'1', OptionsType> extends true ? '2' : '1';
+ 
+ type AllObjectFd<OptionsType extends CommonOptions> =
+-	IsObjectFd<'1', OptionsType> extends true ? '1' : '2';
++	IgnoresResultOutput<'1', OptionsType> extends true ? '2'
++		: IgnoresResultOutput<'2', OptionsType> extends true ? '1'
++			: IsObjectFd<'1', OptionsType> extends true ? '1' : '2';
+ 
++// `lines` is disabled by `buffer: false`, but still affects `all` when the descriptor has no stream.
+ type AllLinesFd<OptionsType extends CommonOptions> =
+-	FdSpecificOption<OptionsType['lines'], '1'> extends true ? '1' : '2';
++	FdSpecificOption<OptionsType['buffer'], '1'> extends false ? '2'
++		: FdSpecificOption<OptionsType['buffer'], '2'> extends false ? '1'
++			: FdSpecificOption<OptionsType['lines'], '1'> extends true ? '1' : '2';
+ 
+ export {};
+diff --git a/types/return/result-ipc.d.ts b/types/return/result-ipc.d.ts
+index 5188e66..d0ecb5b 100644
+--- a/types/return/result-ipc.d.ts
++++ b/types/return/result-ipc.d.ts
+@@ -10,11 +10,14 @@ export type ResultIpcOutput<
+ 	OptionsType extends CommonOptions,
+ > = IsSync extends true
+ 	? []
+-	: ResultIpcAsync<
+-		FdSpecificOption<OptionsType['buffer'], 'ipc'>,
+-		HasIpc<StricterOptions<OptionsType, Options>>,
+-		OptionsType['serialization']
+-	>;
++	// With an options union, each member enables IPC and sets its `buffer` and `serialization` options separately
++	: OptionsType extends unknown
++		? ResultIpcAsync<
++			FdSpecificOption<OptionsType['buffer'], 'ipc'>,
++			HasIpc<StricterOptions<OptionsType, Options>>,
++			OptionsType['serialization']
++		>
++		: never;
+ 
+ type ResultIpcAsync<
+ 	BufferOption extends boolean | undefined,
+diff --git a/types/return/result-stdio.d.ts b/types/return/result-stdio.d.ts
+index f8b2ae1..7db477e 100644
+--- a/types/return/result-stdio.d.ts
++++ b/types/return/result-stdio.d.ts
+@@ -28,8 +28,11 @@ type ResultIpcStdio<
+ 	OptionsType extends CommonOptions,
+ > = IsSync extends true
+ 	? []
+-	: HasIpc<StricterOptions<OptionsType, Options>> extends true
+-		? [undefined]
+-		: [];
++	// With an options union, each member enables IPC separately
++	: OptionsType extends unknown
++		? HasIpc<StricterOptions<OptionsType, Options>> extends true
++			? [undefined]
++			: []
++		: never;
+ 
+ export {};
+diff --git a/types/return/result-stdout.d.ts b/types/return/result-stdout.d.ts
+index a36e095..fb1b456 100644
+--- a/types/return/result-stdout.d.ts
++++ b/types/return/result-stdout.d.ts
+@@ -11,17 +11,20 @@ export type ResultStdioNotAll<
+ > = ResultStdio<FdNumber, FdNumber, FdNumber, OptionsType>;
+ 
+ // `result.stdout|stderr|stdio|all`
++// Distribute option objects before reading properties to preserve each branch's output mode.
+ export type ResultStdio<
+ 	MainFdNumber extends string,
+ 	ObjectFdNumber extends string,
+ 	LinesFdNumber extends string,
+ 	OptionsType extends CommonOptions,
+-> = ResultStdioProperty<
+-	ObjectFdNumber,
+-	LinesFdNumber,
+-	IgnoresResultOutput<MainFdNumber, OptionsType>,
+-	OptionsType
+->;
++> = OptionsType extends unknown
++	? ResultStdioProperty<
++		ObjectFdNumber,
++		LinesFdNumber,
++		IgnoresResultOutput<MainFdNumber, OptionsType>,
++		OptionsType
++	>
++	: never;
+ 
+ type ResultStdioProperty<
+ 	ObjectFdNumber extends string,
+diff --git a/types/stdio/option.d.ts b/types/stdio/option.d.ts
+index 3916466..f2faed9 100644
+--- a/types/stdio/option.d.ts
++++ b/types/stdio/option.d.ts
+@@ -6,7 +6,25 @@ import type {StandardStreams, StdioOptionCommon, StdioOptionsArray} from './type
+ export type FdStdioOption<
+ 	FdNumber extends string,
+ 	OptionsType extends CommonOptions,
+-> = FdStdioOptionProperty<FdNumber, OptionsType>;
++> = FdNumber extends '0'
++	? OptionsType extends CommonOptions
++		? WithInputSources<OptionsType, 'input' | 'inputFile', FdStdioOptionProperty<FdNumber, OptionsType>, 'pipe'>
++		: never
++	: FdStdioOptionProperty<FdNumber, OptionsType>;
++
++// A defined input source overrides the `stdin` option and makes it use a pipe.
++// Since each input source can be optional, both values are possible when some of them are.
++export type WithInputSources<
++	OptionsType extends CommonOptions,
++	InputKeys extends string,
++	NoInputValue,
++	InputValue,
++	InputOptions = Pick<OptionsType, Extract<keyof OptionsType, InputKeys>>,
++> = InputOptions[keyof InputOptions] extends undefined
++	? NoInputValue
++	: {[Key in keyof InputOptions]: undefined} extends InputOptions
++		? NoInputValue | InputValue
++		: InputValue;
+ 
+ type FdStdioOptionProperty<
+ 	FdNumber extends string,
+diff --git a/types/subprocess/all.d.ts b/types/subprocess/all.d.ts
+index d916ef0..db646ac 100644
+--- a/types/subprocess/all.d.ts
++++ b/types/subprocess/all.d.ts
+@@ -1,9 +1,12 @@
+ import type {Readable} from 'node:stream';
+ import type {IgnoresSubprocessOutput} from '../return/ignore.js';
+ import type {Options} from '../arguments/options.js';
++import type {And} from '../utils.js';
+ 
+ // `subprocess.all`
+-export type SubprocessAll<OptionsType extends Options> = AllStream<AllIgnored<OptionsType['all'], OptionsType>>;
++export type SubprocessAll<OptionsType extends Options> = OptionsType extends unknown
++	? AllStream<AllIgnored<OptionsType['all'], OptionsType>>
++	: never;
+ 
+ type AllStream<IsIgnored> = IsIgnored extends true ? undefined : Readable;
+ 
+@@ -11,9 +14,7 @@ type AllIgnored<
+ 	AllOption,
+ 	OptionsType extends Options,
+ > = AllOption extends true
+-	? IgnoresSubprocessOutput<'1', OptionsType> extends true
+-		? IgnoresSubprocessOutput<'2', OptionsType>
+-		: false
++	? And<IgnoresSubprocessOutput<'1', OptionsType>, IgnoresSubprocessOutput<'2', OptionsType>>
+ 	: true;
+ 
+ export {};
+diff --git a/types/subprocess/stdout.d.ts b/types/subprocess/stdout.d.ts
+index f85e73b..c79bf6b 100644
+--- a/types/subprocess/stdout.d.ts
++++ b/types/subprocess/stdout.d.ts
+@@ -4,10 +4,13 @@ import type {IgnoresSubprocessOutput} from '../return/ignore.js';
+ import type {Options} from '../arguments/options.js';
+ 
+ // `subprocess.stdin|stdout|stderr|stdio`
++// Resolve each option branch separately to preserve its stream presence and direction.
+ export type SubprocessStdioStream<
+ 	FdNumber extends string,
+ 	OptionsType extends Options,
+-> = SubprocessStream<FdNumber, IgnoresSubprocessOutput<FdNumber, OptionsType>, OptionsType>;
++> = OptionsType extends unknown
++	? SubprocessStream<FdNumber, IgnoresSubprocessOutput<FdNumber, OptionsType>, OptionsType>
++	: never;
+ 
+ type SubprocessStream<
+ 	FdNumber extends string,
+diff --git a/types/subprocess/subprocess.d.ts b/types/subprocess/subprocess.d.ts
+index c78173f..6e43a68 100644
+--- a/types/subprocess/subprocess.d.ts
++++ b/types/subprocess/subprocess.d.ts
+@@ -10,8 +10,9 @@ import type {
+ 	WritableOptions,
+ 	DuplexOptions,
+ 	SubprocessAsyncIterable,
++	IsObjectIterable,
+ } from '../convert.js';
+-import type {IpcMethods, HasIpc} from '../ipc.js';
++import type {SubprocessIpcMethods} from '../ipc.js';
+ import type {SubprocessStdioStream} from './stdout.js';
+ import type {SubprocessStdioArray} from './stdio.js';
+ import type {SubprocessAll} from './all.js';
+@@ -32,12 +33,12 @@ export type SubprocessResultMethods<OptionsType extends Options = Options> = {
+ 	/**
+ 	Subprocesses are [async iterables](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/asyncIterator). They iterate over each output line.
+ 	*/
+-	[Symbol.asyncIterator](): SubprocessAsyncIterable<undefined, OptionsType['encoding']>;
++	[Symbol.asyncIterator](): SubprocessAsyncIterable<undefined, OptionsType['encoding'], IsObjectIterable<undefined, OptionsType>>;
+ 
+ 	/**
+ 	Same as `subprocess[Symbol.asyncIterator]` except options can be provided.
+ 	*/
+-	iterable<IterableOptions extends ReadableOptions = {}>(readableOptions?: IterableOptions): SubprocessAsyncIterable<IterableOptions['binary'], OptionsType['encoding']>;
++	iterable<IterableOptions extends ReadableOptions = {}>(readableOptions?: IterableOptions): SubprocessAsyncIterable<IterableOptions['binary'], OptionsType['encoding'], IsObjectIterable<IterableOptions['from'], OptionsType>>;
+ 
+ 	/**
+ 	Converts the subprocess to a readable stream.
+@@ -51,7 +52,7 @@ export type SubprocessResultMethods<OptionsType extends Options = Options> = {
+ };
+ 
+ type ExecaCustomSubprocess<OptionsType extends Options> =
+-	& IpcMethods<HasIpc<OptionsType>, OptionsType['serialization']>
++	& SubprocessIpcMethods<OptionsType>
+ 	& PipableSubprocess
+ 	& SubprocessResultMethods<OptionsType>
+ 	& {
+@@ -65,7 +66,9 @@ type ExecaCustomSubprocess<OptionsType extends Options> =
+ 		/**
+ 		The subprocess [`stdin`](https://en.wikipedia.org/wiki/Standard_streams#Standard_input_(stdin)) as a stream.
+ 
+-		This is `null` if the `stdin` option is set to `'inherit'`, `'ignore'`, `Readable` or `integer`.
++		This is `null` if neither `input` nor `inputFile` is provided and the `stdin` option is set to `'inherit'`, `'ignore'`, `Readable` or `integer`.
++
++		When `input` or `inputFile` is provided, `stdin` uses a pipe, so this is a `Writable`. The `stdin` option cannot be `'ignore'` then.
+ 		*/
+ 		stdin: SubprocessStdioStream<'0', OptionsType>;
+ 
+@@ -86,7 +89,9 @@ type ExecaCustomSubprocess<OptionsType extends Options> =
+ 		/**
+ 		The subprocess `stdin`, `stdout`, `stderr` and other files descriptors as an array of streams.
+ 
+-		Each array item is `null` if the corresponding `stdin`, `stdout`, `stderr` or `stdio` option is set to `'inherit'`, `'ignore'`, `Stream` or `integer`.
++		Each array item is `null` if the corresponding `stdin`, `stdout`, `stderr` or `stdio` option is set to `'inherit'`, `'ignore'`, `Stream` or `integer`. For `stdin`, this only applies when neither `input` nor `inputFile` is provided.
++
++		When `input` or `inputFile` is provided, `stdin` uses a pipe, so the first item is a `Writable`. The `stdin` option cannot be `'ignore'` then.
+ 
+ 		With the `ipc` option, the last item is the subprocess' IPC channel, which is always `null`.
+ 		*/
+diff --git a/types/transform/object-mode.d.ts b/types/transform/object-mode.d.ts
+index ecef047..c99b861 100644
+--- a/types/transform/object-mode.d.ts
++++ b/types/transform/object-mode.d.ts
+@@ -12,11 +12,14 @@ export type IsObjectFd<
+ 
+ type IsObjectStdioOption<StdioOptionType> = IsObjectStdioSingleOption<StdioSingleOptionItems<StdioOptionType>>;
+ 
+-type IsObjectStdioSingleOption<StdioSingleOptionType> = StdioSingleOptionType extends TransformCommon
+-	? BooleanObjectMode<StdioSingleOptionType['objectMode']>
+-	: StdioSingleOptionType extends DuplexTransform
+-		? StdioSingleOptionType['transform']['readableObjectMode']
+-		: false;
++// Direction wrappers do not change the transform's object mode.
++type IsObjectStdioSingleOption<StdioSingleOptionType> = StdioSingleOptionType extends {readonly value: infer Value}
++	? IsObjectStdioSingleOption<Value>
++	: StdioSingleOptionType extends TransformCommon
++		? BooleanObjectMode<StdioSingleOptionType['objectMode']>
++		: StdioSingleOptionType extends DuplexTransform
++			? StdioSingleOptionType['transform']['readableObjectMode']
++			: false;
+ 
+ type BooleanObjectMode<ObjectModeOption extends boolean | undefined> = ObjectModeOption extends true ? true : false;
+ 

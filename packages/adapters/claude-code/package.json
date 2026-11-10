@@ -1,0 +1,13 @@
+{
+  "name": "@sieve/adapter-claude-code",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sieve/protocol": "workspace:*",
+    "@sieve/core": "workspace:*"
+  }
+}

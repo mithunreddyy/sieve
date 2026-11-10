@@ -1,0 +1,5 @@
+--- FAIL: TestDiscountAppliedOnce (0.00s)
+    cart_test.go:20: Total() = 81, want 90
+FAIL
+FAIL	example.com/shop	0.088s
+FAIL

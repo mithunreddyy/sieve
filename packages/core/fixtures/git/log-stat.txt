@@ -1,0 +1,726 @@
+commit 247faa0ff0641020e8790475989cee72df85d62b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 16:13:59 2026 +0700
+
+    10.2.1
+
+ package.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit e375b0b94b1cc4b5b6bbc035a14586be31755bd9
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 15:44:20 2026 +0700
+
+    Fix tests
+
+ test/helpers/fixtures-directory.js | 2 ++
+ test/methods/node.js               | 3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+commit 2b6988b1543ff2ed9ab60130e026ee0f84dd6dca
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Fri Oct 23 14:44:36 2026 +0700
+
+    Fix types compatibility with `exactOptionalPropertyTypes`
+    
+    Fixes #1265
+
+ package.json                       |  2 +-
+ test-d/return/result-all.test-d.ts |  5 +++++
+ types/return/result-all.d.ts       | 12 +++++++++---
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+commit e7e0664c25e3a6fa3f2162f3d7f0128a81a4b8f3
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 13:24:12 2026 +0700
+
+    Fix flaky Windows test cleanup of copied executables
+
+ test/arguments/command-resolution.js | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+commit a605753a476a168e111b6a0654692f22ddf37402
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 12:42:09 2026 +0700
+
+    10.2.0
+
+ package.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit b87aab71b2ac3da1799914a7ef79a36bd2d14c03
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Sun Oct 18 03:09:16 2026 +0700
+
+    Fix link check in type tests
+    
+    The link checker excludes `file:///test` only, so `file:///input.txt` failed CI.
+
+ test-d/subprocess/input-inherit.test-d.ts | 2 +-
+ test-d/subprocess/input-native.test-d.ts  | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+commit cb8aaf60b64df19ac4f89562ef6ff61d4b9b3e37
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix IPC types for option unions
+    
+    When the options are a union, IPC is now resolved for each member, with its own `buffer` and `serialization` options. `subprocess.sendMessage()`, `result.ipcOutput` and `result.stdio` used the union as a whole instead, so they were typed as if IPC was disabled.
+    
+    The IPC methods are resolved per member on the subprocess type, not inside `HasIpc`, and `$`'s default stdin type no longer recomputes the `stdin` option. Otherwise, options from a generic type parameter made `$(...).stdin` fail with "Expression produces a union type that is too complex to represent".
+
+ test-d/ipc-options-union.test-d.ts       | 101 +++++++++++++++++++++++++++++++
+ test-d/methods/generic-options.test-d.ts |  38 ++++++++++++
+ types/ipc.d.ts                           |   5 ++
+ types/methods/script.d.ts                |   5 +-
+ types/pipe.d.ts                          |   4 +-
+ types/return/result-ipc.d.ts             |  13 ++--
+ types/return/result-stdio.d.ts           |   9 ++-
+ types/subprocess/subprocess.d.ts         |   4 +-
+ 8 files changed, 165 insertions(+), 14 deletions(-)
+
+commit 80b01e90e44edb484bfde3a2a37f4b26441633c5
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix fd-specific option types
+    
+    A descriptor key which is absent must not stop lower-priority keys from applying, while a required key overrides them even when its value is `undefined`.
+
+ test-d/return/fd-optional.test-d.ts | 74 +++++++++++++++++++++++++++++++++++++
+ test/arguments/specific.js          | 20 ++++++++++
+ types/arguments/specific.d.ts       | 42 +++++++--------------
+ 3 files changed, 107 insertions(+), 29 deletions(-)
+
+commit 355d917f1d46ce0d55b7a414ba1de8dae59128f2
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix subprocess stream types for option unions
+    
+    When the options are a union, each member's own stream presence and direction must be resolved separately. `subprocess.all`, `subprocess.stdout` and `subprocess.stderr` were resolved from the union as a whole.
+
+ test-d/subprocess/options-union.test-d.ts | 59 +++++++++++++++++++++++++++++++
+ types/subprocess/all.d.ts                 |  9 ++---
+ types/subprocess/stdout.d.ts              |  5 ++-
+ 3 files changed, 68 insertions(+), 5 deletions(-)
+
+commit 523cf9b7fab0b83a6454d45a41371aa24a567e62
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `execaNode()` result types when the `node` option is `undefined`
+    
+    `execaNode()` forces the `node` option, but the returned type kept the `undefined` value of the call, which made the result's output types wrong.
+
+ test-d/methods/node-undefined.test-d.ts | 57 +++++++++++++++++++++++++++++++++
+ types/methods/node.d.ts                 | 10 ++++--
+ 2 files changed, 65 insertions(+), 2 deletions(-)
+
+commit 580b250f1cf4f17bb2197693fc5476f7b6d7cb8e
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Add type tests for `$`'s stdin
+    
+    `$` inherits stdin unless an input source is provided. Its `subprocess.stdin` and `subprocess.stdio[0]` types already reflect this, and now reuse `WithInputSources` to compute it.
+
+ test-d/methods/script-stdin.test-d.ts | 46 +++++++++++++++++++++++++++++++++++
+ types/methods/script.d.ts             | 11 ++-------
+ 2 files changed, 48 insertions(+), 9 deletions(-)
+
+commit 236c8312f0238622853b0b404c04721e6773518c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `subprocess.stdin` and `options.stdin` types when an input source is provided
+    
+    A defined `input` or `inputFile` makes stdin use a pipe, even when the `stdin` option is `'inherit'`, a stream or an integer. `'ignore'` cannot be combined with an input source: it throws.
+
+ docs/api.md                               |  8 ++-
+ test-d/subprocess/input-inherit.test-d.ts | 92 +++++++++++++++++++++++++++++++
+ test-d/subprocess/input-native.test-d.ts  | 84 ++++++++++++++++++++++++++++
+ test/io/input-option.js                   | 51 ++++++++++++++++-
+ types/stdio/option.d.ts                   | 20 ++++++-
+ types/subprocess/subprocess.d.ts          |  8 ++-
+ 6 files changed, 257 insertions(+), 6 deletions(-)
+
+commit f5772f341ae481458c147f5df96799ac13d28f2a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix `result` types for fd-specific and union options
+    
+    `result.all`, `result.stdout` and `result.stderr` were resolved from the union of the options as a whole. Also, `result.all` included the output modes of the descriptors which are not buffered.
+
+ test-d/return/options-union.test-d.ts |  68 ++++++++++++++
+ test-d/return/result-all.test-d.ts    | 165 ++++++++++++++++++++++++++++++++++
+ types/return/ignore.d.ts              |   3 +-
+ types/return/result-all.d.ts          |  42 ++++++---
+ types/return/result-stdout.d.ts       |  15 ++--
+ 5 files changed, 276 insertions(+), 17 deletions(-)
+
+commit 708fed7dcadd9846e0f689b6528d54715f726932
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix result types for options bound with `execa(options)`
+    
+    Bound options were intersected with the new ones, so the result kept the bound value even when it was overridden or reset with `undefined`.
+    
+    Since `$`'s default `stdin: 'inherit'` now depends on the merged options, `$`'s `subprocess.stdin` and `subprocess.stdio[0]` types are computed from them too.
+
+ test-d/methods/bind-override.test-d.ts | 136 +++++++++++++++++++++++++++++++++
+ types/methods/bind.d.ts                |  43 +++++++++++
+ types/methods/main-async.d.ts          |   7 +-
+ types/methods/main-sync.d.ts           |   7 +-
+ types/methods/node.d.ts                |  11 ++-
+ types/methods/script.d.ts              |  48 ++++++++++--
+ 6 files changed, 235 insertions(+), 17 deletions(-)
+
+commit 32b87a14fdc95caa30182221ce298e4ccfbfcfaa
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix flaky `killDescendants` test
+    
+    A descendant's PID can be released by the OS after its pipe ends, so the test must poll for it instead of racing a single delay.
+
+ test/terminate/kill-descendants.js | 20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
+
+commit 224dd20a5cc5c3bff3b385d324361b64da7ada38
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:33 2026 +0700
+
+    Fix zero `maxBuffer` allowing unbounded synchronous output
+    
+    `maxBuffer: 0` disables the limit of `child_process.spawnSync()`, so the subprocess' output was never limited. A zero value must reject the first byte, like it does with asynchronous methods.
+
+ lib/io/max-buffer.js  |  3 ++-
+ test/io/max-buffer.js | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 61 insertions(+), 1 deletion(-)
+
+commit ed80079bc4e21a259fdc521c5a4b27126b308c9a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix synchronous transforms reordering mixed text and byte chunks
+    
+    Strings were not encoded before the next transform decoded them, so the chunks of a split character were reordered. Synchronous methods now encode strings like `Transform`'s `decodeStrings` option does.
+
+ lib/transform/generator.js           |   7 +++
+ test/transform/encoding-multibyte.js | 117 ++++++++++++++++++++++++++++++++++-
+ 2 files changed, 122 insertions(+), 2 deletions(-)
+
+commit 0ba2b6ebaecfb68140817839863fa12c96d2b587
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix failed synchronous transforms exposing raw output and hiding errors
+    
+    The output of a failed synchronous transform was returned as is, which exposed data that the transform was filtering. Also, a generator throwing a falsy value was treated as a success instead of an error.
+
+ lib/io/output-sync.js                   |   3 +-
+ lib/transform/run-sync.js               |  22 ++++--
+ test/transform/generator-error.js       | 120 +++++++++++++++++++++++++++++++-
+ test/transform/generator-falsy-error.js |  84 ++++++++++++++++++++++
+ 4 files changed, 222 insertions(+), 7 deletions(-)
+
+commit 5ea2900f0dc5cf547da41c428652312632876744
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix object mode when piping to a web `WritableStream`
+    
+    Web streams are re-used when several file descriptors share them, so a `WritableStream` could be wrapped in byte mode and then receive objects, which threw. Web writers accept arbitrary chunks, so they are always wrapped in object mode.
+
+ docs/streams.md           |   2 +
+ lib/stdio/handle-async.js |   5 +-
+ test/stdio/web-stream.js  | 201 ++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 206 insertions(+), 2 deletions(-)
+
+commit f61a6e91f68e8472d1dbfdbff7ce1320b8d73fb0
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix `$` defaults being overridden by explicit `undefined` options
+    
+    `$(... {stdin: undefined})` did not inherit stdin, and `$(... {preferLocal: undefined})` did not use local binaries. Options set to `undefined` should reset to the default value of the method, including on pipe destinations.
+
+ lib/methods/create.js                   |  7 ++++
+ lib/methods/script.js                   |  6 +--
+ test/arguments/local.js                 | 74 +++++++++++++++++++++++++++++++--
+ test/fixtures/stdin-script-undefined.js |  7 ++++
+ test/methods/script.js                  | 71 ++++++++++++++++++++++++++++++-
+ 5 files changed, 156 insertions(+), 9 deletions(-)
+
+commit 5e4345b1cde72c576f592d1bda5f26d89fa93a26
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix invalid `subprocess.duplex()` options blocking later stream cleanup
+    
+    The readable side was registered before the writable side was validated, so an invalid option left a pending wait behind. That made any later `readable()`, `writable()` or `duplex()` call wait forever unless the subprocess ended.
+
+ lib/convert/duplex.js      | 12 ++++++---
+ lib/convert/readable.js    | 11 +++------
+ lib/convert/writable.js    | 11 +++++----
+ test/convert/concurrent.js | 61 ++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 78 insertions(+), 17 deletions(-)
+
+commit d0a5968b5ca1b355755b393896a7f3b583fd2bee
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix invalid file descriptor objects aborting the current process
+    
+    Objects with an `fd` property, such as file handles, were not validated. An invalid descriptor was passed to `node:child_process`, which aborted the current process with a fatal assertion instead of throwing.
+
+ lib/stdio/handle.js                         |  11 ++-
+ test/fixtures/nested-invalid-file-handle.js |  14 ++++
+ test/stdio/handle-invalid.js                | 101 +++++++++++++++++++++++++++-
+ 3 files changed, 122 insertions(+), 4 deletions(-)
+
+commit a2912e5702821cef0cd42873180ff977bc1ec02f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix object-mode chunks being typed as text or bytes when iterating
+    
+    `subprocess` iteration and `subprocess.iterable()` ignored the `objectMode` of the descriptor's transform, so their chunks were typed as `string` or `Uint8Array` instead of the original objects.
+
+ docs/api.md                       |  2 +
+ test-d/convert/iterable.test-d.ts | 85 +++++++++++++++++++++++++++++++++++++++
+ test/convert/iterable.js          | 29 ++++++++++++-
+ types/convert.d.ts                | 26 ++++++++++--
+ types/subprocess/subprocess.d.ts  |  5 ++-
+ types/transform/object-mode.d.ts  | 13 +++---
+ 6 files changed, 148 insertions(+), 12 deletions(-)
+
+commit 8629132ed5b4a78d4d1dd2dc9249b41592716f2b
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix `result.all` corrupting objects when only one file descriptor is buffered
+    
+    When only `stdout` or `stderr` is buffered, `result.all` is read from that descriptor's own stream rather than the merged one. It was still converted as if it were mixed, which changed its object-mode chunks.
+
+ lib/resolve/all-async.js        |  3 +-
+ test/transform/generator-all.js | 80 ++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 81 insertions(+), 2 deletions(-)
+
+commit f6de9be4d08389c7dfef167b46c08a72f023ad5d
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix subprocesses hanging after exceeding `maxBuffer`
+    
+    Closing the output stream does not stop a subprocess that stays alive without writing again, so Execa's promise never settled. The subprocess is now terminated with the `killSignal` option when the limit is exceeded, like with synchronous methods and the other termination options. The error reports the real exit of the subprocess, which might have exited on its own before being terminated.
+
+ docs/api.md                         |   2 +-
+ docs/errors.md                      |   2 +-
+ docs/output.md                      |   2 +-
+ lib/resolve/wait-subprocess.js      |   6 ++
+ test/fixtures/max-buffer-forever.js |  10 +++
+ test/io/max-buffer.js               | 126 ++++++++++++++++++++++++++++++++----
+ test/terminate/kill-force.js        |   1 -
+ types/arguments/options.d.ts        |   2 +-
+ 8 files changed, 135 insertions(+), 16 deletions(-)
+
+commit e7478724d4ecdb8a1b0e34c8226686fb25bcd46f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Fix inherited `--print=` flags overriding the Node.js subprocess command
+    
+    `process.execArgv` flags which run code, such as `--print=` and `--eval=`, must not be re-used by the subprocess instead of its file, otherwise it does not run the file. `--eval=` was filtered, `--print=` was not.
+
+ lib/methods/node.js  |  2 +-
+ test/methods/node.js | 28 ++++++++++++++++++++++++++--
+ 2 files changed, 27 insertions(+), 3 deletions(-)
+
+commit 9c548333e6cb0041656dd832e30b1d1395bc0e21
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 14 20:51:32 2026 +0700
+
+    Run input transform `final()` when there is no input source
+    
+    Synchronous input transforms were skipped when no `input`, `inputFile` or `stdin` source was provided, which meant their `final()` did not run and their errors were not reported.
+
+ lib/io/input-sync.js              |   3 +-
+ test/transform/generator-final.js | 103 +++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 104 insertions(+), 2 deletions(-)
+
+commit cc7bcab5650cb3c95ccb3e5d484159cc748a0133
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 13:56:45 2026 +0700
+
+    10.1.1
+
+ package.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 5a8dd97233bf674fd6ffa4bc7d244fcafbc894fb
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 13:28:52 2026 +0700
+
+    Fix tests failing on Windows
+
+ test/convert/shared.js     | 3 ++-
+ test/return/early-error.js | 4 ++--
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+commit 2633abb20eecf229872223a1e7cea0efe02a4e6a
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 11:31:31 2026 +0700
+
+    Fix `execaNode()` and the `node` option missing IPC in their types
+    
+    `execaNode()` and the `node` option enable the `ipc` option by default, but their types did not: `subprocess.sendMessage()` was `undefined`, `result.ipcOutput` was `[]`, and `result.stdio` and `subprocess.stdio` missed the IPC channel's file descriptor.
+    
+    Also, `ipc: undefined` disabled IPC with the `node` option, instead of using the default value.
+
+ lib/methods/node.js                  |  3 ++-
+ test-d/ipc/send.test-d.ts            |  7 +++++++
+ test-d/methods/command.test-d.ts     |  2 +-
+ test-d/methods/node.test-d.ts        | 24 ++++++++++++------------
+ test-d/return/result-ipc.ts          | 16 ++++++++++++++++
+ test-d/return/result-stdio.test-d.ts | 13 +++++++++++++
+ test-d/subprocess/stdio.test-d.ts    |  5 ++++-
+ test/methods/node.js                 |  3 +++
+ test/methods/parameters-options.js   |  1 +
+ types/ipc.d.ts                       | 16 ++++++++++------
+ types/methods/node.d.ts              |  9 ++++++---
+ types/return/result-stdio.d.ts       | 34 +++++++++++++++++++++++-----------
+ types/return/result.d.ts             |  2 +-
+ 13 files changed, 99 insertions(+), 36 deletions(-)
+
+commit b2c3a54c87586f0441ba7e0178c1eef377a989dc
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 13 03:43:15 2026 +0700
+
+    Fix `escapedCommand` and `verbose` quoting arguments when using the `shell` option
+    
+    With `shell`, the shell receives the file and arguments joined with spaces, so quoting each argument showed a different command than the one that ran.
+    
+    Fixes #1264
+
+ docs/api.md              |  2 ++
+ docs/debugging.md        |  2 +-
+ lib/arguments/command.js |  3 ++-
+ lib/arguments/escape.js  | 11 +++++++----
+ test/arguments/escape.js | 25 +++++++++++++++++++++++--
+ test/verbose/start.js    |  5 +++++
+ types/return/result.d.ts |  2 ++
+ 7 files changed, 42 insertions(+), 8 deletions(-)
+
+commit 21411470717e96d4415b0d742e6e221703d92d59
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Mon Oct 12 06:01:41 2026 +0700
+
+    Move type tests from `tsd` to `nz`
+
+ package.json                                       |   5 +-
+ test-d/arguments/encoding-option.test-d.ts         |   2 +-
+ test-d/arguments/env.test-d.ts                     |  20 +-
+ test-d/arguments/options.test-d.ts                 |  14 +-
+ test-d/arguments/specific.test-d.ts                |  26 +--
+ test-d/convert/duplex.test-d.ts                    |   4 +-
+ test-d/convert/iterable.test-d.ts                  |  46 ++---
+ test-d/convert/readable-stream.test-d.ts           |   4 +-
+ test-d/convert/readable.test-d.ts                  |   4 +-
+ test-d/convert/transform-stream.test-d.ts          |   4 +-
+ test-d/convert/writable-stream.test-d.ts           |   4 +-
+ test-d/convert/writable.test-d.ts                  |   4 +-
+ test-d/ipc/get-each.test-d.ts                      |  24 +--
+ test-d/ipc/get-one.test-d.ts                       |  24 +--
+ test-d/ipc/graceful.ts                             |   4 +-
+ test-d/ipc/message.test-d.ts                       | 158 ++++++++--------
+ test-d/ipc/send.test-d.ts                          |  22 +--
+ test-d/methods/command.test-d.ts                   |  22 +--
+ test-d/methods/list.test-d.ts                      |  86 ++++-----
+ test-d/methods/main-async.test-d.ts                |  76 ++++----
+ test-d/methods/main-sync.test-d.ts                 |  76 ++++----
+ test-d/methods/node.test-d.ts                      |  82 ++++----
+ test-d/methods/script-s.test-d.ts                  |  90 ++++-----
+ test-d/methods/script-sync.test-d.ts               |  90 ++++-----
+ test-d/methods/script.test-d.ts                    |  70 +++----
+ test-d/methods/template.test-d.ts                  |  24 +--
+ test-d/pipe.test-d.ts                              | 200 ++++++++++----------
+ test-d/return/ignore-option.test-d.ts              | 192 +++++++++----------
+ test-d/return/ignore-other.test-d.ts               | 158 ++++++++--------
+ test-d/return/lines-main.test-d.ts                 |  86 ++++-----
+ test-d/return/lines-specific.test-d.ts             | 130 ++++++-------
+ test-d/return/no-buffer-main.test-d.ts             |  50 ++---
+ test-d/return/no-buffer-specific.test-d.ts         | 136 ++++++-------
+ test-d/return/result-all.test-d.ts                 |  18 +-
+ test-d/return/result-ipc.ts                        |  62 +++---
+ test-d/return/result-main.test-d.ts                | 162 ++++++++--------
+ test-d/return/result-reject.test-d.ts              |  30 +--
+ test-d/return/result-stdio.test-d.ts               | 188 +++++++++---------
+ test-d/stdio/array.test-d.ts                       |   2 +-
+ test-d/stdio/direction.test-d.ts                   |  10 +-
+ test-d/stdio/option/array-binary.test-d.ts         |  10 +-
+ test-d/stdio/option/array-object.test-d.ts         |  10 +-
+ test-d/stdio/option/array-string.test-d.ts         |  10 +-
+ test-d/stdio/option/duplex-invalid.test-d.ts       |  18 +-
+ test-d/stdio/option/duplex-object.test-d.ts        |  18 +-
+ test-d/stdio/option/duplex-transform.test-d.ts     |  18 +-
+ test-d/stdio/option/duplex.test-d.ts               |  18 +-
+ test-d/stdio/option/fd-integer-0.test-d.ts         |  40 ++--
+ test-d/stdio/option/fd-integer-1.test-d.ts         |  18 +-
+ test-d/stdio/option/fd-integer-2.test-d.ts         |  18 +-
+ test-d/stdio/option/fd-integer-3.test-d.ts         |  18 +-
+ test-d/stdio/option/file-append-invalid.test-d.ts  |  18 +-
+ test-d/stdio/option/file-append.test-d.ts          |  18 +-
+ test-d/stdio/option/file-object-invalid.test-d.ts  |  18 +-
+ test-d/stdio/option/file-object.test-d.ts          |  18 +-
+ test-d/stdio/option/file-url.test-d.ts             |  18 +-
+ test-d/stdio/option/final-async-full.test-d.ts     |  18 +-
+ test-d/stdio/option/final-invalid-full.test-d.ts   |  18 +-
+ test-d/stdio/option/final-object-full.test-d.ts    |  18 +-
+ test-d/stdio/option/final-unknown-full.test-d.ts   |  18 +-
+ test-d/stdio/option/generator-async-full.test-d.ts |  18 +-
+ test-d/stdio/option/generator-async.test-d.ts      |  18 +-
+ .../option/generator-binary-invalid.test-d.ts      |  18 +-
+ .../option/generator-binary-uint-array.test-d.ts   |  76 ++++----
+ test-d/stdio/option/generator-binary.test-d.ts     |  18 +-
+ .../stdio/option/generator-boolean-full.test-d.ts  |  18 +-
+ test-d/stdio/option/generator-boolean.test-d.ts    |  18 +-
+ test-d/stdio/option/generator-empty.test-d.ts      |  18 +-
+ .../stdio/option/generator-invalid-full.test-d.ts  |  18 +-
+ test-d/stdio/option/generator-invalid.test-d.ts    |  18 +-
+ .../stdio/option/generator-object-full.test-d.ts   |  34 ++--
+ .../option/generator-object-mode-invalid.test-d.ts |  18 +-
+ .../stdio/option/generator-object-mode.test-d.ts   |  18 +-
+ test-d/stdio/option/generator-object.test-d.ts     |  18 +-
+ .../stdio/option/generator-only-binary.test-d.ts   |  18 +-
+ test-d/stdio/option/generator-only-final.test-d.ts |  18 +-
+ .../option/generator-only-object-mode.test-d.ts    |  18 +-
+ .../stdio/option/generator-only-preserve.test-d.ts |  18 +-
+ .../option/generator-preserve-invalid.test-d.ts    |  18 +-
+ test-d/stdio/option/generator-preserve.test-d.ts   |  18 +-
+ .../stdio/option/generator-string-full.test-d.ts   |  18 +-
+ test-d/stdio/option/generator-string.test-d.ts     |  26 +--
+ .../stdio/option/generator-unknown-full.test-d.ts  |  18 +-
+ test-d/stdio/option/generator-unknown.test-d.ts    |  18 +-
+ test-d/stdio/option/generator-widened.test-d.ts    |  26 +--
+ test-d/stdio/option/ignore.test-d.ts               |  18 +-
+ test-d/stdio/option/inherit.test-d.ts              |  18 +-
+ test-d/stdio/option/input-pipe.test-d.ts           |  38 ++--
+ test-d/stdio/option/ipc.test-d.ts                  |  18 +-
+ .../stdio/option/iterable-async-binary.test-d.ts   |  18 +-
+ .../stdio/option/iterable-async-object.test-d.ts   |  18 +-
+ .../stdio/option/iterable-async-string.test-d.ts   |  18 +-
+ test-d/stdio/option/iterable-binary.test-d.ts      |  18 +-
+ test-d/stdio/option/iterable-object.test-d.ts      |  18 +-
+ test-d/stdio/option/iterable-string.test-d.ts      |  18 +-
+ test-d/stdio/option/null.test-d.ts                 |  18 +-
+ test-d/stdio/option/overlapped.test-d.ts           |  18 +-
+ test-d/stdio/option/pipe-inherit.test-d.ts         |  10 +-
+ test-d/stdio/option/pipe-undefined.test-d.ts       |  10 +-
+ test-d/stdio/option/pipe-wide.test-d.ts            |  18 +-
+ test-d/stdio/option/pipe.test-d.ts                 |  18 +-
+ test-d/stdio/option/process-stderr.test-d.ts       |  18 +-
+ test-d/stdio/option/process-stdin.test-d.ts        |  18 +-
+ test-d/stdio/option/process-stdout.test-d.ts       |  18 +-
+ test-d/stdio/option/readable-stream.test-d.ts      |  18 +-
+ test-d/stdio/option/readable.test-d.ts             |  18 +-
+ test-d/stdio/option/uint-array.test-d.ts           |  18 +-
+ test-d/stdio/option/undefined.test-d.ts            |  18 +-
+ test-d/stdio/option/unknown.test-d.ts              |  18 +-
+ .../stdio/option/web-transform-instance.test-d.ts  |  18 +-
+ .../stdio/option/web-transform-invalid.test-d.ts   |  18 +-
+ test-d/stdio/option/web-transform-object.test-d.ts |  18 +-
+ test-d/stdio/option/web-transform.test-d.ts        |  18 +-
+ test-d/stdio/option/writable-stream.test-d.ts      |  18 +-
+ test-d/stdio/option/writable.test-d.ts             |  18 +-
+ test-d/subprocess/all.test-d.ts                    |   6 +-
+ test-d/subprocess/stdio.test-d.ts                  | 112 +++++------
+ test-d/subprocess/subprocess.test-d.ts             |  26 +--
+ test-d/transform/object-mode.test-d.ts             | 210 ++++++++++-----------
+ test-d/verbose.test-d.ts                           |  48 +++--
+ 120 files changed, 2124 insertions(+), 2129 deletions(-)
+
+commit b57d643035053d3bde2662411245ec62aa627837
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 19:49:02 2026 +0700
+
+    Fix wrong-typed options and arguments being silently ignored or coerced
+
+ lib/arguments/options.js           | 29 +++++++++++++
+ lib/arguments/specific.js          | 25 +++++++++--
+ lib/convert/duplex.js              |  4 +-
+ lib/convert/iterable.js            |  4 +-
+ lib/convert/readable.js            |  4 +-
+ lib/ipc/send.js                    |  3 +-
+ lib/methods/node.js                |  4 ++
+ lib/methods/parameters.js          | 12 +++++-
+ lib/methods/template.js            |  5 ++-
+ lib/pipe/pipe-arguments.js         |  2 +
+ lib/stdio/handle.js                | 32 ++++++++++++--
+ lib/stdio/stdio-option.js          |  3 +-
+ lib/stdio/type.js                  |  7 +---
+ lib/terminate/cancel.js            |  6 +--
+ lib/terminate/kill.js              |  7 +---
+ lib/terminate/timeout.js           | 16 ++++---
+ lib/utils/abort-signal.js          |  7 ++++
+ lib/utils/options.js               |  6 +++
+ lib/utils/type-name.js             |  2 +
+ test/convert/duplex.js             |  4 ++
+ test/convert/iterable.js           |  8 ++++
+ test/convert/readable.js           |  8 ++++
+ test/ipc/send.js                   |  6 +++
+ test/methods/node.js               |  8 ++++
+ test/methods/parameters-options.js | 85 ++++++++++++++++++++++++++++++++++++++
+ test/methods/template.js           |  6 +++
+ test/pipe/abort.js                 | 30 ++++++++++++++
+ test/stdio/file-descriptor.js      |  9 ++++
+ test/stdio/handle-invalid.js       | 24 +++++++++++
+ test/stdio/stdio-option.js         |  1 +
+ test/terminate/kill-force.js       |  5 +++
+ test/terminate/timeout.js          |  5 +++
+ 32 files changed, 342 insertions(+), 35 deletions(-)
+
+commit 74b854a98cdbb57069de9aa217152d04ac2a06a6
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 04:25:36 2026 +0700
+
+    Fix documentation and types mistakes
+
+ docs/api.md                            | 22 +++++++++++++---------
+ docs/bash.md                           |  2 +-
+ docs/input.md                          |  2 +-
+ docs/ipc.md                            |  2 +-
+ docs/lines.md                          |  2 +-
+ docs/output.md                         |  1 +
+ docs/streams.md                        |  2 +-
+ docs/transform.md                      |  2 +-
+ test-d/return/ignore-option.test-d.ts  |  4 ----
+ test-d/return/no-buffer-main.test-d.ts |  1 -
+ test-d/return/result-main.test-d.ts    |  4 ++--
+ test-d/return/result-stdio.test-d.ts   | 18 ++++++++++++++++++
+ test-d/subprocess/stdio.test-d.ts      | 31 ++++++++++++++++++++++++++++---
+ types/arguments/options.d.ts           |  6 +++---
+ types/return/result-stdio.d.ts         | 24 ++++++++++++++----------
+ types/return/result.d.ts               |  6 ++++--
+ types/subprocess/stdio.d.ts            | 18 +++++++++++-------
+ types/subprocess/subprocess.d.ts       |  8 +++++---
+ types/verbose.d.ts                     |  4 ++--
+ 19 files changed, 107 insertions(+), 52 deletions(-)
+
+commit a2eda67b7860278a7c86cb09f62ae9d80d93c61c
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Wed Oct 7 00:13:54 2026 +0700
+
+    Fix the `verbose` option printing colors when `stderr` is not a terminal
+
+ lib/verbose/default.js | 21 +++++++++++++++------
+ test/verbose/log.js    |  6 ++++--
+ 2 files changed, 19 insertions(+), 8 deletions(-)
+
+commit 6925cc346370ec31f0b9d5c4eff554ab54095a2f
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:58:57 2026 +0700
+
+    Fix `stdin` iterables and input transforms edge cases
+
+ lib/io/input-sync.js                           | 19 ++++++++---
+ lib/resolve/wait-stream.js                     | 17 ++++++++--
+ lib/stdio/handle-async.js                      | 47 +++++++++++++++++++++-----
+ lib/stdio/handle-sync.js                       | 12 +++++--
+ lib/stdio/handle.js                            |  5 +--
+ test/fixtures/nested-input-transform-chunks.js | 17 ++++++++++
+ test/resolve/wait-abort.js                     | 26 +++++++++++++-
+ test/stdio/direction.js                        | 35 +++++++++++++++++++
+ test/stdio/iterable.js                         | 40 ++++++++++++++++++----
+ test/stdio/web-transform.js                    | 36 +++++++++++++++++++-
+ test/transform/generator-input.js              | 45 ++++++++++++++++++++++++
+ 11 files changed, 271 insertions(+), 28 deletions(-)
+
+commit 5f80cdeda53986d44144c1fad4011b7c382fb388
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:39:38 2026 +0700
+
+    Fix IPC edge cases
+
+ docs/ipc.md                                  |  2 +
+ lib/ipc/forward.js                           |  2 +
+ lib/ipc/get-each.js                          |  6 ++-
+ lib/ipc/get-one.js                           |  6 ++-
+ lib/ipc/graceful.js                          |  3 +-
+ lib/ipc/send.js                              |  6 ++-
+ lib/ipc/strict.js                            | 24 ++++++---
+ lib/ipc/validation.js                        | 13 ++++-
+ test/fixtures/graceful-print-disconnected.js | 12 +++++
+ test/fixtures/ipc-get-concurrent.js          |  6 +++
+ test/fixtures/ipc-get-print-ready.js         |  6 +++
+ test/fixtures/ipc-get-strict-disconnect.js   | 11 ++++
+ test/fixtures/ipc-send-object.js             |  6 +++
+ test/fixtures/ipc-send-strict-disconnect.js  | 11 ++++
+ test/ipc/get-each.js                         | 15 ++++++
+ test/ipc/get-one.js                          | 29 ++++++++++
+ test/ipc/graceful.js                         | 11 ++++
+ test/ipc/send.js                             | 10 ++++
+ test/ipc/strict.js                           | 79 ++++++++++++++++++++++++++++
+ test/ipc/validation.js                       | 14 +++++
+ test/pipe/methods.js                         |  6 +++
+ 21 files changed, 264 insertions(+), 14 deletions(-)
+
+commit d3ec10ddddbb7757b1bfe46e52d8ec872c426d2e
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:45:34 2026 +0700
+
+    Fix `.pipe()` and stream conversion edge cases
+
+ lib/convert/readable.js           | 11 ++---
+ lib/convert/shared.js             |  6 +--
+ lib/convert/writable.js           | 17 ++++---
+ lib/io/pipeline.js                | 13 ++++--
+ lib/pipe/abort.js                 |  3 +-
+ lib/pipe/pipe-arguments.js        |  1 +
+ lib/pipe/sequence.js              |  5 ++-
+ lib/pipe/setup.js                 | 14 +++++-
+ lib/pipe/streaming.js             | 45 ++++++++++++++++++-
+ lib/resolve/wait-stream.js        |  1 +
+ test/convert/readable.js          | 32 +++++++++++++
+ test/convert/shared.js            | 94 +++++++++++++++++++++++++++++++++++++++
+ test/pipe/methods.js              | 24 +++++++++-
+ test/pipe/streaming.js            | 86 +++++++++++++++++++++++++++++++++++
+ test/pipe/throw.js                | 23 ++++++++++
+ test/transform/generator-error.js | 45 +++++++++++++++++++
+ 16 files changed, 394 insertions(+), 26 deletions(-)
+
+commit fb92da1e280aad3a4950dc5ea9eb7e7cfb628aed
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:35:39 2026 +0700
+
+    Fix template strings, `parseCommandString()` and `execaNode()` edge cases
+
+ lib/methods/command.js   | 27 ++++++++----------------
+ lib/methods/node.js      | 25 ++++++++++++++++++++++-
+ lib/methods/template.js  | 26 ++++++++++++++++--------
+ test/methods/command.js  | 53 ++++++++++++++++++++++++++++++++++++++++++++++++
+ test/methods/node.js     | 50 +++++++++++++++++++++++++++++++++++++++++++++
+ test/methods/template.js | 33 ++++++++++++++++++++++++++++++
+ 6 files changed, 187 insertions(+), 27 deletions(-)
+
+commit d9a5689977af191dce377c4d11c248b11dd10438
+Author: Sindre Sorhus <sindresorhus@gmail.com>
+Date:   Tue Oct 6 23:22:53 2026 +0700
+
+    Fix invalid `timeout` and `forceKillAfterDelay` values
+    
+    Timers fire after 1ms when their delay is larger than 2147483647ms (about 24.8 days), so a large `timeout` or `forceKillAfterDelay` terminated the subprocess right away. Such values now throw instead.
+    
+    Fractional `timeout` values were accepted by asynchronous methods, but `spawnSync()` requires an integer, so synchronous methods failed with a raw `ERR_OUT_OF_RANGE` error. Both options now require integers, as their error messages already documented.
+
+ docs/api.md                  |  4 ++--
+ lib/terminate/kill.js        |  5 +++--
+ lib/terminate/timeout.js     | 10 ++++++++--
+ test/terminate/kill-force.js |  4 ++++
+ test/terminate/timeout.js    | 17 +++++++++++++++--
+ types/arguments/options.d.ts |  4 ++--
+ 6 files changed, 34 insertions(+), 10 deletions(-)

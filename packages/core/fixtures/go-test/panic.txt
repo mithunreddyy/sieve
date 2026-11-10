@@ -1,0 +1,22 @@
+--- FAIL: TestDiscountAppliedOnce (0.00s)
+    cart_test.go:20: Total() = 81, want 90
+--- FAIL: TestParseQty (0.00s)
+panic: strconv.Atoi: parsing "2x": invalid syntax [recovered, repanicked]
+
+goroutine 97 [running]:
+testing.tRunner.func1.2({0x104926c28, 0x746a0dc1d290})
+	/opt/homebrew/Cellar/go/1.27.3/libexec/src/testing/testing.go:2125 +0x1a0
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.27.3/libexec/src/testing/testing.go:2128 +0x2c8
+panic({0x104926c28?, 0x746a0dc1d290?})
+	/opt/homebrew/Cellar/go/1.27.3/libexec/src/runtime/panic.go:859 +0x120
+example.com/shop.ParseQty(...)
+	/work/go/cart.go:16
+example.com/shop.TestParseQty(0x746a0dc6efc8)
+	/work/go/panic_test.go:6 +0x5c
+testing.tRunner(0x746a0dc6efc8, 0x10495f7e0)
+	/opt/homebrew/Cellar/go/1.27.3/libexec/src/testing/testing.go:2195 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/opt/homebrew/Cellar/go/1.27.3/libexec/src/testing/testing.go:2260 +0x3b8
+FAIL	example.com/shop	0.108s
+FAIL

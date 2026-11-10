@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": ["**", "!**/node_modules", "!**/dist", "!**/fixtures", "!**/__snapshots__", "!**/*.md"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110 },
+  "linter": { "rules": { "preset": "recommended", "style": { "noNonNullAssertion": "off" } } },
+  "javascript": { "formatter": { "quoteStyle": "double" } }
+}

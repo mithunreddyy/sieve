@@ -1,0 +1,42 @@
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape sequences is the point
+const ANSI = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
+
+/**
+ * Remove ANSI escapes and collapse carriage-return redraws (progress bars) so only the
+ * final state of each line remains. Never drops printable content otherwise.
+ */
+export function cleanTerminal(text: string): string {
+  let out = text.includes("\x1b") ? text.replace(ANSI, "") : text;
+  if (out.includes("\r")) {
+    out = out
+      .split("\n")
+      .map((line) => {
+        const l = line.endsWith("\r") ? line.slice(0, -1) : line;
+        const i = l.lastIndexOf("\r");
+        return i === -1 ? l : l.slice(i + 1);
+      })
+      .join("\n");
+  }
+  return out;
+}
+
+export function byteLength(s: string): number {
+  return Buffer.byteLength(s, "utf8");
+}
+
+export function countLines(s: string): number {
+  if (s.length === 0) return 0;
+  let n = 1;
+  for (let i = s.indexOf("\n"); i !== -1; i = s.indexOf("\n", i + 1)) n++;
+  return s.endsWith("\n") ? n - 1 : n;
+}
+
+export function formatInt(n: number): string {
+  return n.toLocaleString("en-US");
+}
+
+export function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}

@@ -1,0 +1,132 @@
+In file included from mod1.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod1.c:6:22: error: call to undeclared function 'missing_fn1'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn1(a);
+      |                      ^
+mod1.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod10.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod10.c:6:22: error: call to undeclared function 'missing_fn10'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn10(a);
+      |                      ^
+mod10.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod11.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod11.c:6:22: error: call to undeclared function 'missing_fn11'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn11(a);
+      |                      ^
+mod11.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod12.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod12.c:6:22: error: call to undeclared function 'missing_fn12'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn12(a);
+      |                      ^
+mod12.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod2.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod2.c:6:22: error: call to undeclared function 'missing_fn2'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn2(a);
+      |                      ^
+mod2.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod3.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod3.c:6:22: error: call to undeclared function 'missing_fn3'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn3(a);
+      |                      ^
+mod3.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod4.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod4.c:6:22: error: call to undeclared function 'missing_fn4'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn4(a);
+      |                      ^
+mod4.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod5.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod5.c:6:22: error: call to undeclared function 'missing_fn5'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn5(a);
+      |                      ^
+mod5.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod6.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod6.c:6:22: error: call to undeclared function 'missing_fn6'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn6(a);
+      |                      ^
+mod6.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod7.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod7.c:6:22: error: call to undeclared function 'missing_fn7'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn7(a);
+      |                      ^
+mod7.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod8.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod8.c:6:22: error: call to undeclared function 'missing_fn8'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn8(a);
+      |                      ^
+mod8.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.
+In file included from mod9.c:1:
+./util.h:1:32: warning: unused variable 'unused_local' [-Wunused-variable]
+    1 | static int helper(int x) { int unused_local = 3; return x; }
+      |                                ^~~~~~~~~~~~
+mod9.c:6:22: error: call to undeclared function 'missing_fn9'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    6 |   return helper(a) + missing_fn9(a);
+      |                      ^
+mod9.c:5:9: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+    5 |   if (a < u) return b;
+      |       ~ ^ ~
+2 warnings and 1 error generated.

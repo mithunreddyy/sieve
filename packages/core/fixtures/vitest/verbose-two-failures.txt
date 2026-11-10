@@ -1,0 +1,232 @@
+
+ RUN  v3.2.7 /work/js
+
+ ✓ vt/feature11.test.js > feature 11 > doubles 1 1ms
+ ✓ vt/feature11.test.js > feature 11 > doubles 2 0ms
+ ✓ vt/feature11.test.js > feature 11 > doubles 3 0ms
+ ✓ vt/feature11.test.js > feature 11 > sums 0ms
+ ✓ vt/feature10.test.js > feature 10 > doubles 1 0ms
+ ✓ vt/feature10.test.js > feature 10 > doubles 2 0ms
+ ✓ vt/feature10.test.js > feature 10 > doubles 3 0ms
+ ✓ vt/feature10.test.js > feature 10 > sums 0ms
+ ✓ vt/feature9.test.js > feature 9 > doubles 1 0ms
+ ✓ vt/feature9.test.js > feature 9 > doubles 2 0ms
+ ✓ vt/feature9.test.js > feature 9 > doubles 3 0ms
+ ✓ vt/feature9.test.js > feature 9 > sums 0ms
+ ✓ vt/feature36.test.js > feature 36 > doubles 1 0ms
+ ✓ vt/feature36.test.js > feature 36 > doubles 2 0ms
+ ✓ vt/feature36.test.js > feature 36 > doubles 3 0ms
+ ✓ vt/feature36.test.js > feature 36 > sums 0ms
+ ✓ vt/feature38.test.js > feature 38 > doubles 1 1ms
+ ✓ vt/feature38.test.js > feature 38 > doubles 2 0ms
+ ✓ vt/feature38.test.js > feature 38 > doubles 3 0ms
+ ✓ vt/feature38.test.js > feature 38 > sums 0ms
+ × vt/checkout.test.js > checkout > applies the discount once 3ms
+   → expected 81 to be 90 // Object.is equality
+ × vt/checkout.test.js > checkout > parses a valid line item 1ms
+   → [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "string",
+    "path": [
+      "qty"
+    ],
+    "message": "Expected number, received string"
+  }
+]
+ ✓ vt/feature7.test.js > feature 7 > doubles 1 0ms
+ ✓ vt/feature7.test.js > feature 7 > doubles 2 0ms
+ ✓ vt/feature7.test.js > feature 7 > doubles 3 0ms
+ ✓ vt/feature7.test.js > feature 7 > sums 0ms
+ ✓ vt/feature5.test.js > feature 5 > doubles 1 0ms
+ ✓ vt/feature5.test.js > feature 5 > doubles 2 0ms
+ ✓ vt/feature5.test.js > feature 5 > doubles 3 0ms
+ ✓ vt/feature5.test.js > feature 5 > sums 0ms
+ ✓ vt/feature35.test.js > feature 35 > doubles 1 0ms
+ ✓ vt/feature35.test.js > feature 35 > doubles 2 0ms
+ ✓ vt/feature35.test.js > feature 35 > doubles 3 0ms
+ ✓ vt/feature35.test.js > feature 35 > sums 0ms
+ ✓ vt/feature1.test.js > feature 1 > doubles 1 0ms
+ ✓ vt/feature1.test.js > feature 1 > doubles 2 0ms
+ ✓ vt/feature1.test.js > feature 1 > doubles 3 0ms
+ ✓ vt/feature1.test.js > feature 1 > sums 0ms
+ ✓ vt/feature31.test.js > feature 31 > doubles 1 1ms
+ ✓ vt/feature31.test.js > feature 31 > doubles 2 0ms
+ ✓ vt/feature31.test.js > feature 31 > doubles 3 0ms
+ ✓ vt/feature31.test.js > feature 31 > sums 0ms
+ ✓ vt/feature17.test.js > feature 17 > doubles 1 1ms
+ ✓ vt/feature17.test.js > feature 17 > doubles 2 0ms
+ ✓ vt/feature17.test.js > feature 17 > doubles 3 0ms
+ ✓ vt/feature17.test.js > feature 17 > sums 0ms
+ ✓ vt/feature22.test.js > feature 22 > doubles 1 0ms
+ ✓ vt/feature22.test.js > feature 22 > doubles 2 0ms
+ ✓ vt/feature22.test.js > feature 22 > doubles 3 0ms
+ ✓ vt/feature22.test.js > feature 22 > sums 0ms
+ ✓ vt/feature3.test.js > feature 3 > doubles 1 0ms
+ ✓ vt/feature3.test.js > feature 3 > doubles 2 0ms
+ ✓ vt/feature3.test.js > feature 3 > doubles 3 0ms
+ ✓ vt/feature3.test.js > feature 3 > sums 0ms
+ ✓ vt/feature29.test.js > feature 29 > doubles 1 0ms
+ ✓ vt/feature29.test.js > feature 29 > doubles 2 0ms
+ ✓ vt/feature29.test.js > feature 29 > doubles 3 0ms
+ ✓ vt/feature29.test.js > feature 29 > sums 0ms
+ ✓ vt/feature30.test.js > feature 30 > doubles 1 0ms
+ ✓ vt/feature30.test.js > feature 30 > doubles 2 0ms
+ ✓ vt/feature30.test.js > feature 30 > doubles 3 0ms
+ ✓ vt/feature30.test.js > feature 30 > sums 0ms
+ ✓ vt/feature27.test.js > feature 27 > doubles 1 1ms
+ ✓ vt/feature27.test.js > feature 27 > doubles 2 0ms
+ ✓ vt/feature27.test.js > feature 27 > doubles 3 0ms
+ ✓ vt/feature27.test.js > feature 27 > sums 0ms
+ ✓ vt/feature24.test.js > feature 24 > doubles 1 1ms
+ ✓ vt/feature24.test.js > feature 24 > doubles 2 0ms
+ ✓ vt/feature24.test.js > feature 24 > doubles 3 0ms
+ ✓ vt/feature24.test.js > feature 24 > sums 0ms
+ ✓ vt/feature4.test.js > feature 4 > doubles 1 1ms
+ ✓ vt/feature4.test.js > feature 4 > doubles 2 0ms
+ ✓ vt/feature4.test.js > feature 4 > doubles 3 0ms
+ ✓ vt/feature4.test.js > feature 4 > sums 0ms
+ ✓ vt/feature12.test.js > feature 12 > doubles 1 0ms
+ ✓ vt/feature12.test.js > feature 12 > doubles 2 0ms
+ ✓ vt/feature12.test.js > feature 12 > doubles 3 0ms
+ ✓ vt/feature12.test.js > feature 12 > sums 0ms
+ ✓ vt/feature16.test.js > feature 16 > doubles 1 2ms
+ ✓ vt/feature16.test.js > feature 16 > doubles 2 0ms
+ ✓ vt/feature16.test.js > feature 16 > doubles 3 0ms
+ ✓ vt/feature16.test.js > feature 16 > sums 0ms
+ ✓ vt/feature40.test.js > feature 40 > doubles 1 0ms
+ ✓ vt/feature40.test.js > feature 40 > doubles 2 0ms
+ ✓ vt/feature40.test.js > feature 40 > doubles 3 0ms
+ ✓ vt/feature40.test.js > feature 40 > sums 0ms
+ ✓ vt/feature15.test.js > feature 15 > doubles 1 0ms
+ ✓ vt/feature15.test.js > feature 15 > doubles 2 0ms
+ ✓ vt/feature15.test.js > feature 15 > doubles 3 0ms
+ ✓ vt/feature15.test.js > feature 15 > sums 0ms
+ ✓ vt/feature2.test.js > feature 2 > doubles 1 0ms
+ ✓ vt/feature2.test.js > feature 2 > doubles 2 0ms
+ ✓ vt/feature2.test.js > feature 2 > doubles 3 0ms
+ ✓ vt/feature2.test.js > feature 2 > sums 0ms
+ ✓ vt/feature25.test.js > feature 25 > doubles 1 0ms
+ ✓ vt/feature25.test.js > feature 25 > doubles 2 0ms
+ ✓ vt/feature25.test.js > feature 25 > doubles 3 0ms
+ ✓ vt/feature25.test.js > feature 25 > sums 0ms
+ ✓ vt/feature28.test.js > feature 28 > doubles 1 2ms
+ ✓ vt/feature28.test.js > feature 28 > doubles 2 0ms
+ ✓ vt/feature28.test.js > feature 28 > doubles 3 0ms
+ ✓ vt/feature28.test.js > feature 28 > sums 0ms
+ ✓ vt/feature18.test.js > feature 18 > doubles 1 0ms
+ ✓ vt/feature18.test.js > feature 18 > doubles 2 0ms
+ ✓ vt/feature18.test.js > feature 18 > doubles 3 0ms
+ ✓ vt/feature18.test.js > feature 18 > sums 0ms
+ ✓ vt/feature37.test.js > feature 37 > doubles 1 0ms
+ ✓ vt/feature37.test.js > feature 37 > doubles 2 0ms
+ ✓ vt/feature37.test.js > feature 37 > doubles 3 0ms
+ ✓ vt/feature37.test.js > feature 37 > sums 0ms
+ ✓ vt/feature6.test.js > feature 6 > doubles 1 3ms
+ ✓ vt/feature6.test.js > feature 6 > doubles 2 0ms
+ ✓ vt/feature6.test.js > feature 6 > doubles 3 0ms
+ ✓ vt/feature6.test.js > feature 6 > sums 0ms
+ ✓ vt/feature39.test.js > feature 39 > doubles 1 0ms
+ ✓ vt/feature39.test.js > feature 39 > doubles 2 0ms
+ ✓ vt/feature39.test.js > feature 39 > doubles 3 0ms
+ ✓ vt/feature39.test.js > feature 39 > sums 0ms
+ ✓ vt/feature21.test.js > feature 21 > doubles 1 0ms
+ ✓ vt/feature21.test.js > feature 21 > doubles 2 0ms
+ ✓ vt/feature21.test.js > feature 21 > doubles 3 0ms
+ ✓ vt/feature21.test.js > feature 21 > sums 0ms
+ ✓ vt/feature19.test.js > feature 19 > doubles 1 2ms
+ ✓ vt/feature19.test.js > feature 19 > doubles 2 0ms
+ ✓ vt/feature19.test.js > feature 19 > doubles 3 0ms
+ ✓ vt/feature19.test.js > feature 19 > sums 0ms
+ ✓ vt/feature14.test.js > feature 14 > doubles 1 0ms
+ ✓ vt/feature14.test.js > feature 14 > doubles 2 0ms
+ ✓ vt/feature14.test.js > feature 14 > doubles 3 0ms
+ ✓ vt/feature14.test.js > feature 14 > sums 0ms
+ ✓ vt/feature20.test.js > feature 20 > doubles 1 0ms
+ ✓ vt/feature20.test.js > feature 20 > doubles 2 0ms
+ ✓ vt/feature20.test.js > feature 20 > doubles 3 0ms
+ ✓ vt/feature20.test.js > feature 20 > sums 0ms
+ ✓ vt/feature34.test.js > feature 34 > doubles 1 3ms
+ ✓ vt/feature34.test.js > feature 34 > doubles 2 0ms
+ ✓ vt/feature34.test.js > feature 34 > doubles 3 0ms
+ ✓ vt/feature34.test.js > feature 34 > sums 0ms
+ ✓ vt/feature33.test.js > feature 33 > doubles 1 0ms
+ ✓ vt/feature33.test.js > feature 33 > doubles 2 0ms
+ ✓ vt/feature33.test.js > feature 33 > doubles 3 0ms
+ ✓ vt/feature33.test.js > feature 33 > sums 0ms
+ ✓ vt/feature32.test.js > feature 32 > doubles 1 0ms
+ ✓ vt/feature32.test.js > feature 32 > doubles 2 0ms
+ ✓ vt/feature32.test.js > feature 32 > doubles 3 0ms
+ ✓ vt/feature32.test.js > feature 32 > sums 0ms
+ ✓ vt/feature26.test.js > feature 26 > doubles 1 0ms
+ ✓ vt/feature26.test.js > feature 26 > doubles 2 0ms
+ ✓ vt/feature26.test.js > feature 26 > doubles 3 0ms
+ ✓ vt/feature26.test.js > feature 26 > sums 0ms
+ ✓ vt/feature23.test.js > feature 23 > doubles 1 0ms
+ ✓ vt/feature23.test.js > feature 23 > doubles 2 0ms
+ ✓ vt/feature23.test.js > feature 23 > doubles 3 0ms
+ ✓ vt/feature23.test.js > feature 23 > sums 0ms
+ ✓ vt/feature8.test.js > feature 8 > doubles 1 0ms
+ ✓ vt/feature8.test.js > feature 8 > doubles 2 0ms
+ ✓ vt/feature8.test.js > feature 8 > doubles 3 0ms
+ ✓ vt/feature8.test.js > feature 8 > sums 0ms
+ ✓ vt/feature13.test.js > feature 13 > doubles 1 0ms
+ ✓ vt/feature13.test.js > feature 13 > doubles 2 0ms
+ ✓ vt/feature13.test.js > feature 13 > doubles 3 0ms
+ ✓ vt/feature13.test.js > feature 13 > sums 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  vt/checkout.test.js > checkout > applies the discount once
+AssertionError: expected 81 to be 90 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 90[39m
+[31m+ 81[39m
+
+ ❯ vt/checkout.test.js:5:60
+      3| describe("checkout", () => {
+      4|   test("applies the discount once", () => {
+      5|     expect(total([{ sku: "a", qty: 1, price: 100 }], 0.1)).toBe(90);
+       |                                                            ^
+      6|   });
+      7|   test("parses a valid line item", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  vt/checkout.test.js > checkout > parses a valid line item
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "string",
+    "path": [
+      "qty"
+    ],
+    "message": "Expected number, received string"
+  }
+]
+ ❯ Object.get error [as error] node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse node_modules/zod/v3/types.js:114:22
+ ❯ parseItem src/cart.js:3:46
+      1| import { z } from "zod";
+      2| const Item = z.object({ sku: z.string(), qty: z.number().int().positiv…
+      3| export function parseItem(raw) { return Item.parse(raw); }
+       |                                              ^
+      4| export function total(items, discount = 0) {
+      5|   const sum = items.reduce((s, i) => s + i.qty * i.price, 0);
+ ❯ vt/checkout.test.js:8:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { issues: [ { code: 'invalid_type', expected: 'number', received: 'string', path: [ 'qty' ], message: 'Expected number, received string' } ], addIssue: 'Function<anonymous>', addIssues: 'Function<anonymous>', errors: [ { code: 'invalid_type', expected: 'number', received: 'string', path: [ 'qty' ], message: 'Expected number, received string' } ], format: 'Function<format>', isEmpty: false, flatten: 'Function<flatten>', formErrors: { formErrors: [], fieldErrors: { qty: [ 'Expected number, received string' ] } } }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 40 passed (41)
+      Tests  2 failed | 160 passed (162)
+   Start at  21:41:15
+   Duration  948ms (transform 84ms, setup 0ms, collect 735ms, tests 67ms, environment 5ms, prepare 1.41s)
+

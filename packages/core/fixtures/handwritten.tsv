@@ -1,0 +1,4 @@
+cargo-test/one-failure.txt	cargo test	hand-written	format of the tool's documented output
+rustc/cargo-build.txt	cargo build	hand-written	format of the tool's documented output
+rspec/one-failure.txt	bundle exec rspec	hand-written	format of the tool's documented output
+playwright/one-failure.txt	npx playwright test	hand-written	format of the tool's documented output

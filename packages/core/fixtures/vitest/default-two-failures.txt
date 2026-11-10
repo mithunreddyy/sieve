@@ -1,0 +1,111 @@
+
+ RUN  v3.2.7 /work/js
+
+ ✓ vt/feature21.test.js (4 tests) 1ms
+ ✓ vt/feature13.test.js (4 tests) 1ms
+ ✓ vt/feature4.test.js (4 tests) 1ms
+ ✓ vt/feature3.test.js (4 tests) 1ms
+ ✓ vt/feature35.test.js (4 tests) 1ms
+ ✓ vt/feature17.test.js (4 tests) 1ms
+ ✓ vt/feature33.test.js (4 tests) 1ms
+ ✓ vt/feature24.test.js (4 tests) 1ms
+ ✓ vt/feature16.test.js (4 tests) 1ms
+ ❯ vt/checkout.test.js (2 tests | 2 failed) 9ms
+   × checkout > applies the discount once 6ms
+     → expected 81 to be 90 // Object.is equality
+   × checkout > parses a valid line item 1ms
+     → [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "string",
+    "path": [
+      "qty"
+    ],
+    "message": "Expected number, received string"
+  }
+]
+ ✓ vt/feature30.test.js (4 tests) 1ms
+ ✓ vt/feature36.test.js (4 tests) 2ms
+ ✓ vt/feature32.test.js (4 tests) 1ms
+ ✓ vt/feature40.test.js (4 tests) 1ms
+ ✓ vt/feature12.test.js (4 tests) 1ms
+ ✓ vt/feature5.test.js (4 tests) 3ms
+ ✓ vt/feature15.test.js (4 tests) 1ms
+ ✓ vt/feature8.test.js (4 tests) 1ms
+ ✓ vt/feature9.test.js (4 tests) 4ms
+ ✓ vt/feature31.test.js (4 tests) 3ms
+ ✓ vt/feature19.test.js (4 tests) 1ms
+ ✓ vt/feature38.test.js (4 tests) 4ms
+ ✓ vt/feature37.test.js (4 tests) 1ms
+ ✓ vt/feature2.test.js (4 tests) 1ms
+ ✓ vt/feature39.test.js (4 tests) 1ms
+ ✓ vt/feature25.test.js (4 tests) 1ms
+ ✓ vt/feature27.test.js (4 tests) 1ms
+ ✓ vt/feature7.test.js (4 tests) 2ms
+ ✓ vt/feature26.test.js (4 tests) 1ms
+ ✓ vt/feature20.test.js (4 tests) 1ms
+ ✓ vt/feature10.test.js (4 tests) 1ms
+ ✓ vt/feature14.test.js (4 tests) 1ms
+ ✓ vt/feature34.test.js (4 tests) 1ms
+ ✓ vt/feature1.test.js (4 tests) 1ms
+ ✓ vt/feature18.test.js (4 tests) 1ms
+ ✓ vt/feature29.test.js (4 tests) 1ms
+ ✓ vt/feature11.test.js (4 tests) 1ms
+ ✓ vt/feature28.test.js (4 tests) 1ms
+ ✓ vt/feature22.test.js (4 tests) 1ms
+ ✓ vt/feature23.test.js (4 tests) 1ms
+ ✓ vt/feature6.test.js (4 tests) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  vt/checkout.test.js > checkout > applies the discount once
+AssertionError: expected 81 to be 90 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 90[39m
+[31m+ 81[39m
+
+ ❯ vt/checkout.test.js:5:60
+      3| describe("checkout", () => {
+      4|   test("applies the discount once", () => {
+      5|     expect(total([{ sku: "a", qty: 1, price: 100 }], 0.1)).toBe(90);
+       |                                                            ^
+      6|   });
+      7|   test("parses a valid line item", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  vt/checkout.test.js > checkout > parses a valid line item
+ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "string",
+    "path": [
+      "qty"
+    ],
+    "message": "Expected number, received string"
+  }
+]
+ ❯ Object.get error [as error] node_modules/zod/v3/types.js:39:31
+ ❯ ZodObject.parse node_modules/zod/v3/types.js:114:22
+ ❯ parseItem src/cart.js:3:46
+      1| import { z } from "zod";
+      2| const Item = z.object({ sku: z.string(), qty: z.number().int().positiv…
+      3| export function parseItem(raw) { return Item.parse(raw); }
+       |                                              ^
+      4| export function total(items, discount = 0) {
+      5|   const sum = items.reduce((s, i) => s + i.qty * i.price, 0);
+ ❯ vt/checkout.test.js:8:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 40 passed (41)
+      Tests  2 failed | 160 passed (162)
+   Start at  21:41:14
+   Duration  971ms (transform 129ms, setup 0ms, collect 799ms, tests 64ms, environment 3ms, prepare 1.39s)
+
