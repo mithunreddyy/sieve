@@ -4,7 +4,7 @@
  * the MCP handshake: the paths where a broken Sieve could break an agent session.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bashPost, bigOutput, freshHome, runShim, SHIM, SIEVE } from "./helpers.ts";
 
@@ -105,6 +105,34 @@ d("compiled binaries", () => {
     expect(existsSync(join(env.home, "run", "sieved.lock"))).toBe(false);
   });
 
+  test("the outline worker runs inside the compiled binary and indexes symbols", async () => {
+    const repo = join(env.home, "wrepo");
+    mkdirSync(repo);
+    writeFileSync(join(repo, "a.ts"), "export class Alpha {\n  beta() {}\n}\n");
+    Bun.spawnSync(["git", "init", "-q"], { cwd: repo });
+    await runShim(
+      { session_id: "w", cwd: repo, hook_event_name: "SessionStart", source: "startup" },
+      shimEnv(),
+      "SessionStart",
+    );
+    expect(await waitFor(socketUp)).toBe(true);
+    await runShim(
+      { session_id: "w", cwd: repo, hook_event_name: "SessionStart", source: "startup" },
+      shimEnv(),
+      "SessionStart",
+    );
+    const ok = await waitFor(() => {
+      const r = Bun.spawnSync([SIEVE, "status", "--json"], { env: { ...process.env, SIEVE_HOME: env.home } });
+      try {
+        const s = JSON.parse(r.stdout.toString());
+        return s.outlines === true && s.watchers.some((w: { symbols: number }) => w.symbols >= 2);
+      } catch {
+        return false;
+      }
+    }, 10_000);
+    expect(ok).toBe(true);
+  });
+
   test("status reports the connected agent", async () => {
     await runShim(bashPost("x", project), shimEnv());
     expect(await waitFor(socketUp)).toBe(true);
@@ -161,6 +189,7 @@ d("compiled binaries", () => {
         "sieve_batch",
         "sieve_get",
         "sieve_index",
+        "sieve_read",
         "sieve_run",
         "sieve_search",
         "sieve_stats",

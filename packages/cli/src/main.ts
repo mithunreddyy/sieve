@@ -105,6 +105,16 @@ async function status(json: boolean): Promise<number> {
     `misses   ${s.misses.last24h} in 24h (${s.misses.total} total)${s.misses.lastAt ? ` · last ${ago(s.misses.lastAt)}: ${s.misses.lastReason}` : ""}`,
   );
   console.log(`projects ${s.projects}`);
+  const k = s.counters;
+  console.log(
+    `saved    ${k.folds} folds, ${k.rerunsShortened} reruns shortened, ${k.readsDeclined} reads answered without resending (since daemon start)`,
+  );
+  console.log(`outlines ${s.outlines ? "ready" : "loading"}`);
+  for (const w of s.watchers) {
+    console.log(
+      `watching ${w.worktree} · ${w.files} files, ${w.symbols} symbols${w.scanned ? "" : " (first scan running)"}${w.git ? ` · last git: ${w.git.message}` : ""}${w.error ? ` · ERROR ${w.error}` : ""}`,
+    );
+  }
   if (s.agents.length === 0) console.log("agents   none have called in yet");
   for (const a of s.agents) {
     console.log(
@@ -129,6 +139,7 @@ async function status(json: boolean): Promise<number> {
 
 async function doctor(): Promise<number> {
   let failed = 0;
+  let watchers: { outlines: boolean; list: StatusReport["watchers"] } | null = null;
   const check = (ok: boolean, label: string, fix?: string, warnOnly = false) => {
     console.log(
       `${ok ? "ok  " : warnOnly ? "warn" : "FAIL"}  ${label}${!ok && fix ? `\n      fix: ${fix}` : ""}`,
@@ -170,6 +181,7 @@ async function doctor(): Promise<number> {
           "sieve bench latency",
           true,
         );
+      watchers = { outlines: s.outlines, list: s.watchers };
       check(
         s.misses.last24h === 0,
         `hook misses in 24 h: ${s.misses.last24h}${s.misses.lastReason ? ` (last: ${s.misses.lastReason})` : ""}`,
@@ -210,7 +222,19 @@ async function doctor(): Promise<number> {
     undefined,
     true,
   );
-  check(false, "file watcher: not built yet (slice 3)", undefined, true);
+  if (watchers) {
+    check(
+      watchers.outlines,
+      `outline parsers ${watchers.outlines ? "loaded" : "not loaded (see the daemon log)"}`,
+    );
+    const bad = watchers.list.filter((w) => w.error);
+    check(
+      bad.length === 0,
+      `file watchers: ${watchers.list.length} running${bad.length ? `; errors: ${bad.map((w) => `${w.worktree}: ${w.error}`).join("; ")}` : ""}`,
+      "set watch.enabled = false in ~/.sieve/config.toml to turn watching off",
+      true,
+    );
+  }
   return failed ? 1 : 0;
 }
 

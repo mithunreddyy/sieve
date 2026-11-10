@@ -33,4 +33,7 @@ Read before changing behaviour: [DESIGN.md](DESIGN.md) (protocol, schema, tool s
 - Extractors: add a captured fixture first (extend `packages/core/fixtures/capture.sh`, never hand-edit captured output), list its must-keep facts in `fixtures/index.ts`, then write the extractor. Hand-written fixtures go in `handwritten.py` and stay labelled. Check new fixtures for local paths, usernames and hostnames before committing. Review snapshot diffs; `--update-snapshots` only after reading them.
 - Never run `npx <name>` for a tool that is not installed locally: npx downloads whatever package has that name. Call `node_modules/.bin/<tool>`.
 - The live daemon serves the developer's real agent sessions from `dist/`. After rebuilding, `./dist/sieve daemon stop` so the next hook starts the new build.
+- Tree-sitter never runs on the main thread: parse through `OutlineClient` (worker). Hooks may only read the symbol index. Anything O(n²) or a full diff on a hook is a bug: bound it (see `boundedDiff`) and add the case to `bun run bench latency`.
+- Smart reads and reruns are keyed by session + agent context (`agent_id`) + compaction epoch. Never claim the agent "has" content outside that key.
+- Scripted edits: Biome reformats code, so a text replacement written from memory can silently miss. Assert the old text exists (or use the Edit tool), and re-run the tests.
 - Write ADRs in `docs/adr/` for decisions with trade-offs; update PLAN.md status and deviations when a slice changes.

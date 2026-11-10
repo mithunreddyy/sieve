@@ -50,8 +50,8 @@ One daemon serves every agent on the machine. `<key>` is derived from the repo's
 | Package                         | Responsibility                                                                                          | Status                   |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------ |
 | `packages/protocol`             | Daemon frame schema, shared event schema, MCP tool input schemas (zod), version constants               | built                    |
-| `packages/core`                 | Paths, project resolution, SQLite store + migrations, archive, chunker, search, tokens, fold + receipts | built                    |
-| `packages/daemon`               | `sieved`: socket server, router, priority queue, hook pipeline, `sieve_run` jobs, health, lifecycle     | built                    |
+| `packages/core` | Paths, project resolution, SQLite store + migrations, archive, chunker, search (+ spelling, stale flags), tokens, fold + receipts, extractors, outlines (tree-sitter; parsing in a worker), smart-read and rerun decisions, config | built |
+| `packages/daemon` | `sieved`: socket server, router, priority queue, hook pipeline, `sieve_run`/`sieve_batch` jobs, smart reads, staleness, reruns, file + git watchers, health, lifecycle | built |
 | `packages/adapters/claude-code` | Claude Code hook mapping + `setup`/`remove`/`verify` with backups                                       | built                    |
 | `packages/mcp`                  | `sieve mcp` stdio server; forwards tool calls to the daemon                                             | built                    |
 | `packages/cli`                  | `sieve` entry point; compiled with `bun build --compile`                                                | built (slice 1 commands) |
@@ -200,6 +200,8 @@ In-process plugins (OpenCode, Pi) talk to the daemon over the same socket with t
 
 **Claude Code tool response shapes** Sieve reads and rewrites: Bash `{stdout, stderr, interrupted}`; MCP content-block arrays; Read `{file: {content}}` (read only, never rewritten until slice 3); Grep `{mode, filenames, content?}` (rewritten only in `content` mode). Any other object shape is archived but never rewritten, so an unknown shape cannot break how Claude Code renders a result.
 
+**Claude Code specifics added in slice 3.** Every hook input carries `agent_id` only inside a subagent; Sieve keys what a reader has seen by `session_id` + `agent_id` (or "main"), because each subagent has its own context window. `SessionStart` with `source: "compact"` or `"clear"`, and `PreCompact`, start a new epoch. Reads are handled in `PreToolUse` (`permissionDecision: "deny"` with the smart-read message, once; ADR 0006), never by rewriting a Read result, because Claude Code numbers the lines of whatever a Read returns. A Read result counts as a full read when `file.startLine` is 1 and `file.numLines` equals `file.totalLines`. Edits (`Edit`, `MultiEdit`, `Write`, `NotebookEdit`) record the file's new content as known to that reader. `UserPromptSubmit` may return `additionalContext` naming files that changed on disk since the reader read them.
+
 **Claude Code specifics used in slice 1** (checked against Claude Code 2.1.319). Hook stdin carries `session_id`, `cwd`, `hook_event_name`, and for tool events `tool_name`, `tool_input`, `tool_response`. A `PostToolUse` reply may set `hookSpecificOutput.updatedToolOutput`, which replaces the result of any tool (built-in or MCP) before the model sees it; the older `updatedMCPToolOutput` covers MCP tools only. Sieve sends `updatedToolOutput` in the same shape as the original `tool_response` (for Bash: the same object with `stdout` replaced by the receipt and `stderr` cleared). Errors and interrupted calls are never replaced.
 
 ---
@@ -286,12 +288,28 @@ CREATE TABLE sessions (
   ended_at     INTEGER
 );
 
--- (slice 3) file reads, for staleness and re-read diffs
+-- (slice 3, built) what the watcher knows about each file, and its outline
+CREATE TABLE files (
+  worktree TEXT NOT NULL, path TEXT NOT NULL, size INTEGER NOT NULL, mtime_ms INTEGER NOT NULL,
+  content_id TEXT NOT NULL,              -- same id the archive would give this content
+  lang TEXT, lines INTEGER NOT NULL, tokens INTEGER, updated_at INTEGER NOT NULL,
+  PRIMARY KEY (worktree, path));
+CREATE TABLE symbols (
+  id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL, kind TEXT NOT NULL,
+  start_line INTEGER NOT NULL, end_line INTEGER NOT NULL, depth INTEGER NOT NULL, parent TEXT NOT NULL,
+  signature TEXT NOT NULL);
+-- (slice 3, built) what each reader has seen: per session, agent context ("main" or a subagent)
+-- and compaction epoch (sessions.epoch, bumped on compaction and /clear)
 CREATE TABLE reads (
-  id INTEGER PRIMARY KEY, session_id TEXT, worktree TEXT NOT NULL, path TEXT NOT NULL,
-  archive_id TEXT REFERENCES archive(id), mtime_ns INTEGER, sha256 TEXT, read_no INTEGER,
-  stale INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
-);
+  id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, context TEXT NOT NULL, epoch INTEGER NOT NULL,
+  worktree TEXT NOT NULL, path TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('full','partial','outline','edit')),
+  content_id TEXT NOT NULL, size INTEGER NOT NULL, mtime_ms INTEGER NOT NULL, read_no INTEGER NOT NULL,
+  created_at INTEGER NOT NULL);
+CREATE TABLE runs (
+  id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, context TEXT NOT NULL, epoch INTEGER NOT NULL,
+  worktree TEXT NOT NULL, command_key TEXT NOT NULL, archive_id TEXT NOT NULL, run_no INTEGER NOT NULL,
+  created_at INTEGER NOT NULL);
 
 -- (slice 4) session log and state blocks
 CREATE TABLE session_log (
@@ -357,7 +375,7 @@ Every tool's input is a strict zod object (unknown fields → error naming the f
                   "queries":  { "type": "array", "items": { "type": "string" }, "minItems": 1, "maxItems": 10 },
                   "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 600000 } } }
 
-// sieve_read (slice 3)
+// sieve_read (built in slice 3)
 { "required": ["path"], "additionalProperties": false,
   "properties": { "path": { "type": "string" }, "intent": { "type": "string" },
                   "ranges": { "type": "array", "items": { "type": "string", "pattern": "^\\d+-\\d+$" } },
@@ -442,6 +460,25 @@ interface Extractor {
 **Example: eslint** (captured, `fixtures/eslint/stylish-repeated.txt`): 60 problems in 20 files become three groups, e.g. `20× error no-undef: ‹…› is not defined` with one example and `all 20 locations: /work/js/lint/page1.js:4:42 'undefinedThing', …`.
 
 Every fixture has a snapshot (`packages/core/test/__snapshots__/extract.test.ts.snap`) and a list of facts that must survive (`packages/core/fixtures/index.ts`), checked by the tests and by `bun run bench replay`.
+
+---
+
+## 6a. Configuration (built in slice 3)
+
+`~/.sieve/config.toml`; every key optional, unknown keys are an error. Environment variables override the file.
+
+```toml
+[daemon]
+idle_minutes = 30          # SIEVE_IDLE_MINUTES; 0 = never
+[reads]
+smart = true               # SIEVE_SMART_READS=0 turns smart reads off (ADR 0006)
+outline_above_kb = 16
+[watch]
+enabled = true             # SIEVE_WATCH=0
+max_files = 50000
+[reruns]
+diff = true                # SIEVE_RERUN_DIFF=0
+```
 
 ---
 

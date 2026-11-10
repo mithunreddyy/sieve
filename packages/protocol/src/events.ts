@@ -5,6 +5,8 @@ export type ToolFamily = "shell" | "read" | "edit" | "search" | "web" | "mcp" | 
 export interface EventBase {
   agent: AgentId;
   sessionId: string;
+  /** "main", or a subagent's id: each has its own context window (reads are tracked per context). */
+  context: string;
   cwd: string;
   /** ms since epoch, set by the daemon on receipt */
   at: number;
@@ -26,7 +28,15 @@ export type SieveEvent =
   | { kind: "session.start"; base: EventBase; source: "startup" | "resume" | "clear" | "compact" }
   | { kind: "prompt.submit"; base: EventBase; prompt: string }
   | { kind: "tool.before"; base: EventBase; tool: ToolRef; input: unknown }
-  | { kind: "tool.after"; base: EventBase; tool: ToolRef; input: unknown; output: ToolOutput }
+  | {
+      kind: "tool.after";
+      base: EventBase;
+      tool: ToolRef;
+      input: unknown;
+      output: ToolOutput;
+      /** The agent's own result object, for adapter-specific checks (e.g. was a read whole?). */
+      response?: unknown;
+    }
   | { kind: "compact.before"; base: EventBase; trigger: "auto" | "manual" }
   | { kind: "subagent.start"; base: EventBase; subagentType?: string }
   | { kind: "turn.end"; base: EventBase }

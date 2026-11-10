@@ -26,9 +26,23 @@ function finish(id: string, out: string[], dropped: Array<string | false>, failu
   };
 }
 
+/** Unique matches of `re` (group 1, trimmed) across the output, in order. Used for rerun keys. */
+function keysBy(re: RegExp, clean: (s: string) => string = (s) => s.trim()) {
+  return ({ text }: { text: string }) => {
+    const out = new Set<string>();
+    for (const l of lines(text)) {
+      const m = re.exec(l);
+      if (m?.[1]) out.add(clean(m[1]));
+    }
+    return [...out];
+  };
+}
+const noDuration = (s: string) => s.replace(/\s+\(?\[?[\d.]+\s*m?s\]?\)?$/, "").trim();
+
 // ---------------------------------------------------------------- vitest
 export const vitest: Extractor = {
   id: "vitest",
+  keys: keysBy(/^\s*FAIL\s+(.+)$/, noDuration),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bvitest\b/)
       ? 95
@@ -67,6 +81,7 @@ export const vitest: Extractor = {
 // ---------------------------------------------------------------- jest
 export const jest: Extractor = {
   id: "jest",
+  keys: keysBy(/^\s+● (?!Console)(.+)$/),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bjest\b/)
       ? 95
@@ -128,6 +143,7 @@ export const jest: Extractor = {
 // ---------------------------------------------------------------- bun test
 export const bunTest: Extractor = {
   id: "bun-test",
+  keys: keysBy(/^\(fail\) (.+)$/, noDuration),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bbun\s+test\b/)
       ? 95
@@ -178,6 +194,7 @@ export const bunTest: Extractor = {
 const PY_LIB_LOC = (l: string) => /^\S+:\d+: /.test(l) && LIB_PATH.test(l.split(":")[0]!);
 export const pytest: Extractor = {
   id: "pytest",
+  keys: keysBy(/^(?:FAILED|ERROR) (\S+)/),
   detect: ({ command, text }) =>
     cmdMatches(command, /\b(py\.?test|python3? -m pytest)\b/)
       ? 95
@@ -289,6 +306,7 @@ export const pytest: Extractor = {
 // ---------------------------------------------------------------- go test
 export const goTest: Extractor = {
   id: "go-test",
+  keys: keysBy(/^\s*--- FAIL: (\S+)/),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bgo\s+test\b/)
       ? 95
@@ -333,6 +351,7 @@ export const goTest: Extractor = {
 // ---------------------------------------------------------------- cargo test
 export const cargoTest: Extractor = {
   id: "cargo-test",
+  keys: keysBy(/^test (\S+) \.\.\. FAILED$/),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bcargo\s+(test|nextest)\b/)
       ? 95
@@ -373,6 +392,7 @@ export const cargoTest: Extractor = {
 // ---------------------------------------------------------------- rspec
 export const rspec: Extractor = {
   id: "rspec",
+  keys: keysBy(/^rspec \S+ # (.+)$/),
   detect: ({ command, text }) =>
     cmdMatches(command, /\brspec\b/) ? 95 : /^\d+ examples?, \d+ failures?/m.test(text) ? 90 : 0,
   extract({ text }) {
@@ -401,6 +421,7 @@ export const rspec: Extractor = {
 // ---------------------------------------------------------------- playwright
 export const playwright: Extractor = {
   id: "playwright",
+  keys: keysBy(/^\s+✘\s+\d+ (.+)$/, noDuration),
   detect: ({ command, text }) =>
     cmdMatches(command, /\bplaywright\s+test\b/)
       ? 95

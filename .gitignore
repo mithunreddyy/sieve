@@ -4,3 +4,9 @@ dist/
 *.db-wal
 *.db-shm
 .DS_Store
+CLAUDE.md
+DESIGN.md
+PLAN.md
+prompt.md
+docs/
+

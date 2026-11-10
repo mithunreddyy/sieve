@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUN_VERSION: "1.4.4"
+
+jobs:
+  quality:
+    name: lint, typecheck, Go vet and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Go vet and tests
+        working-directory: shim
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+      - name: Build binaries (sieve and sieve-hook)
+        run: bun run build
+      - name: Test (slices 1–3)
+        run: bun test
+
+  offline:
+    name: zero network calls by default (Linux network namespace)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      # Dependencies are installed and binaries built above; the tests then run with no
+      # network interface at all, so any outbound call fails the test instead of passing.
+      - name: Tests with networking off
+        run: |
+          BUN="$(command -v bun)"
+          sudo env "PATH=$PATH" unshare -n -- "$BUN" test
+          sudo unshare -n -- sh -c 'if ping -c1 -W1 1.1.1.1 >/dev/null 2>&1; then echo "network reachable"; exit 1; else echo "network is off"; fi'
+
+  macos:
+    name: tests on macOS (FSEvents watcher, /var and /tmp symlinks)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Test
+        run: bun test
+      - name: Shim tests
+        working-directory: shim
+        run: go test -count=1 ./...
+
+  bench:
+    name: replay benchmark gate (real output)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      # Deterministic: fails if any must-keep fact is lost on any real output.
+      - run: bun packages/bench/src/main.ts replay
+
+  windows-build:
+    name: Windows shim builds (no tests yet)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      # The Windows daemon transport (named pipe) is not built yet, so only the shim is checked.
+      - working-directory: shim
+        run: GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o /dev/null .

@@ -8,6 +8,10 @@
   },
   "dependencies": {
     "@sieve/protocol": "workspace:*",
-    "js-tiktoken": "^1.0.21"
+    "@vscode/tree-sitter-wasm": "0.3.1",
+    "diff": "^9.0.0",
+    "js-tiktoken": "^1.0.21",
+    "smol-toml": "^1.9.1",
+    "zod": "^4.6.7"
   }
 }

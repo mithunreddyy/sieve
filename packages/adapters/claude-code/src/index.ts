@@ -35,6 +35,7 @@ interface HookInput {
   tool_response?: unknown;
   trigger?: string;
   agent_type?: string;
+  agent_id?: string;
   reason?: string;
 }
 
@@ -125,6 +126,42 @@ export function replacementFor(response: unknown, text: string): unknown | undef
   return undefined;
 }
 
+/** Claude Code's Read input: a full read has no offset, limit or pages. */
+export function readRequest(input: unknown): { path: string; full: boolean } | null {
+  if (!input || typeof input !== "object") return null;
+  const i = input as { file_path?: unknown; offset?: unknown; limit?: unknown; pages?: unknown };
+  if (typeof i.file_path !== "string") return null;
+  return {
+    path: i.file_path,
+    full: i.offset === undefined && i.limit === undefined && i.pages === undefined,
+  };
+}
+
+/** Path written by an editing tool (Edit, MultiEdit, Write, NotebookEdit). */
+export function editedPath(input: unknown): string | null {
+  if (!input || typeof input !== "object") return null;
+  const i = input as { file_path?: unknown; notebook_path?: unknown };
+  return typeof i.file_path === "string"
+    ? i.file_path
+    : typeof i.notebook_path === "string"
+      ? i.notebook_path
+      : null;
+}
+
+/** For a Read result: did the agent get the whole file? */
+export function readWasWhole(response: unknown): boolean {
+  const f = (response as { file?: { startLine?: number; numLines?: number; totalLines?: number } } | null)
+    ?.file;
+  if (!f || typeof f.numLines !== "number" || typeof f.totalLines !== "number") return false;
+  return (f.startLine ?? 1) <= 1 && f.numLines >= f.totalLines;
+}
+
+/** How this agent asks for the rest of a file (wording used in smart-read messages). */
+export const readHints = {
+  again: "read it again",
+  range: (from: number, to: number) => `Read with offset ${from} and limit ${to - from + 1}`,
+};
+
 export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const input = raw as HookInput;
@@ -132,6 +169,8 @@ export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent
   const base = {
     agent: AGENT,
     sessionId: input.session_id ?? "unknown",
+    // agent_id is present only inside subagents, which have their own context window.
+    context: input.agent_id ? `sub:${input.agent_id}` : "main",
     cwd: input.cwd ?? process.cwd(),
     at,
   };
@@ -152,6 +191,7 @@ export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent
         tool: toolRef(input.tool_name ?? ""),
         input: input.tool_input,
         output: outputText(input.tool_response),
+        response: input.tool_response,
       };
     case "PreCompact":
       return { kind: "compact.before", base, trigger: input.trigger === "manual" ? "manual" : "auto" };

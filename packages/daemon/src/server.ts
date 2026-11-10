@@ -94,6 +94,10 @@ export class Daemon {
     if (!acquireLock(this.lockPath)) return false;
     if (existsSync(this.socketPath)) unlinkSync(this.socketPath); // we hold the lock, so it is stale
     warmTokenizer();
+    // Tree-sitter runs in a worker; once its grammars are loaded, outline what was missed.
+    this.ctx.outliner.onReady = () => this.ctx.outlinesLoaded();
+    this.ctx.outliner.onError = (m) => this.log(m);
+    this.ctx.outliner.start();
     let ticks = 0;
     this.server = createServer((sock) => this.accept(sock));
     await new Promise<void>((res, rej) => {
@@ -105,6 +109,7 @@ export class Daemon {
       this.ctx.queue.add("flush-health", () => this.ctx.health.flush());
       // Auto-checkpoint is off in the daemon (see OpenOptions.manualCheckpoint); do it here, every 10 s.
       ticks++;
+      this.ctx.closeIdleWatchers();
       if (ticks % 2 === 0) this.ctx.queue.add("checkpoint", () => this.ctx.checkpointAll());
     }, this.maintenanceMs);
     this.flushTimer.unref?.();
@@ -230,6 +235,9 @@ export class Daemon {
       misses: readMisses(paths.misses()),
       projects: this.ctx.global.projectCount(),
       idleShutdownMinutes: this.idleMs / 60_000,
+      watchers: this.ctx.watcherStatus(),
+      outlines: this.ctx.outliner.ready,
+      counters: { ...this.ctx.counters },
     };
   }
 

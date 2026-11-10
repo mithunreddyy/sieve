@@ -26,6 +26,15 @@ export const GetArgs = z
   })
   .strict();
 
+export const ReadArgs = z
+  .object({
+    path: z.string().min(1),
+    intent: z.string().optional().describe("What you are looking for; its lines are shown with the outline"),
+    ranges: z.array(lineRange).max(10).optional().describe('Line ranges to return, e.g. ["120-180"]'),
+    full: z.boolean().optional().describe("Return the whole file even if it is large or unchanged"),
+  })
+  .strict();
+
 export const SearchArgs = z
   .object({
     query: z.string().min(1),
@@ -72,10 +81,15 @@ export const TOOLS = {
     description:
       "Expand an archived item by id (s_…), in full or a line range, exactly as it was. Also returns status and output of a background run (j_…).",
   },
+  sieve_read: {
+    schema: ReadArgs,
+    description:
+      "Read a file smartly: an outline plus the lines matching your intent for large files, only the changed hunks if it changed since you read it, or a note if it is unchanged. Use ranges for specific lines and full: true to get the whole file.",
+  },
   sieve_search: {
     schema: SearchArgs,
     description:
-      "Search everything Sieve archived or indexed (tool output, runs, indexed files). Returns 5 hits per page with source and id; pass the cursor for more. scope: session, worktree, or project (default). sort: relevance or timeline.",
+      "Search everything Sieve archived or indexed (tool output, runs, files read) and the project's symbols. 5 hits per page with source, id and a flag if the file changed since; pass the cursor for more. scope: session, worktree, or project (default). sort: relevance or timeline.",
   },
   sieve_index: {
     schema: IndexArgs,

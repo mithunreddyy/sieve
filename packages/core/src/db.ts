@@ -89,4 +89,30 @@ export const PROJECT_MIGRATIONS: Migration[] = [
       DELETE FROM chunks_words WHERE rowid = old.id;
     END`);
   },
+  // 3: watcher state, outline symbols, and per-context ledgers of reads and runs.
+  (db) => {
+    db.run("ALTER TABLE sessions ADD COLUMN epoch INTEGER NOT NULL DEFAULT 0");
+    db.run(`CREATE TABLE files (
+      worktree TEXT NOT NULL, path TEXT NOT NULL, size INTEGER NOT NULL, mtime_ms INTEGER NOT NULL,
+      content_id TEXT NOT NULL, lang TEXT, lines INTEGER NOT NULL, tokens INTEGER, updated_at INTEGER NOT NULL,
+      PRIMARY KEY (worktree, path))`);
+    db.run(`CREATE TABLE symbols (
+      id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, path TEXT NOT NULL, name TEXT NOT NULL,
+      kind TEXT NOT NULL, start_line INTEGER NOT NULL, end_line INTEGER NOT NULL, depth INTEGER NOT NULL,
+      parent TEXT NOT NULL, signature TEXT NOT NULL)`);
+    db.run("CREATE INDEX symbols_file ON symbols(worktree, path)");
+    db.run("CREATE INDEX symbols_name ON symbols(name COLLATE NOCASE)");
+    db.run(`CREATE TABLE reads (
+      id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, context TEXT NOT NULL, epoch INTEGER NOT NULL,
+      worktree TEXT NOT NULL, path TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('full','partial','outline','edit')),
+      content_id TEXT NOT NULL, size INTEGER NOT NULL, mtime_ms INTEGER NOT NULL, read_no INTEGER NOT NULL,
+      created_at INTEGER NOT NULL)`);
+    db.run("CREATE INDEX reads_lookup ON reads(session_id, context, path, id)");
+    db.run(`CREATE TABLE runs (
+      id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, context TEXT NOT NULL, epoch INTEGER NOT NULL,
+      worktree TEXT NOT NULL, command_key TEXT NOT NULL, archive_id TEXT NOT NULL, run_no INTEGER NOT NULL,
+      created_at INTEGER NOT NULL)`);
+    db.run("CREATE INDEX runs_lookup ON runs(session_id, context, command_key, id)");
+  },
 ];

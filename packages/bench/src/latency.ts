@@ -8,6 +8,8 @@ const SIEVE = join(REPO, "dist", "sieve");
 export interface LatencyRow {
   case: string;
   n: number;
+  /** How many calls got a reply (a fold, a declined read, context) rather than a pass-through. */
+  replied: number;
   p50: number;
   p99: number;
   max: number;
@@ -66,11 +68,34 @@ export async function runLatency(n = 300): Promise<LatencyRow[]> {
         interrupted: false,
       },
     });
+  const repo = join(home, "repo");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  mkdirSync(repo);
+  writeFileSync(
+    join(repo, "routes.ts"),
+    Array.from(
+      { length: 1800 },
+      (_, i) => `export function handler${i}(req: Request) { return limitRate(req, ${i}); }`,
+    ).join("\n"),
+  );
+  const readPre = JSON.stringify({
+    session_id: "b",
+    cwd: repo,
+    hook_event_name: "PreToolUse",
+    tool_name: "Read",
+    tool_input: { file_path: join(repo, "routes.ts") },
+  });
   const rows: LatencyRow[] = [];
   const measure = async (name: string, cmd: string[], input: (i: number) => string, count: number) => {
     const xs: number[] = [];
-    for (let i = 0; i < count; i++) xs.push((await call(cmd, input(i), env)).ms);
+    let replied = 0;
+    for (let i = 0; i < count; i++) {
+      const r = await call(cmd, input(i), env);
+      xs.push(r.ms);
+      if (r.out.trim()) replied++;
+    }
     rows.push({
+      replied,
       case: name,
       n: count,
       p50: pct(xs, 0.5),
@@ -93,6 +118,12 @@ export async function runLatency(n = 300): Promise<LatencyRow[]> {
       "go shim, warm, PostToolUse 60 KB → receipt",
       [SHIM, "claude-code", "PostToolUse"],
       big,
+      Math.min(n, 100),
+    );
+    await measure(
+      "go shim, warm, PreToolUse Read 100 KB file (outline / pass)",
+      [SHIM, "claude-code", "PreToolUse"],
+      () => readPre,
       Math.min(n, 100),
     );
     await measure(

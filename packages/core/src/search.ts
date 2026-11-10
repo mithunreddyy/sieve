@@ -125,7 +125,9 @@ export function search(db: Database, q: SearchQuery): SearchPage {
          c.start_line AS startLine, c.end_line AS endLine,
          MAX(s.created_at) AS seenAt,
          MAX(CASE WHEN s.session_id = ? THEN 1 ELSE 0 END) AS inSession,
-         (SELECT source FROM sightings x WHERE x.archive_id = c.archive_id ORDER BY x.id DESC LIMIT 1) AS source
+         (SELECT source FROM sightings x WHERE x.archive_id = c.archive_id ORDER BY x.id DESC LIMIT 1) AS source,
+         (SELECT source_kind || char(0) || worktree FROM sightings x WHERE x.archive_id = c.archive_id
+            ORDER BY x.id DESC LIMIT 1) AS origin
        FROM chunks c JOIN sightings s ON s.archive_id = c.archive_id
        WHERE c.id IN (${ids.map(() => "?").join(",")}) ${scopeSql} ${idSql}
        GROUP BY c.id`,
@@ -142,6 +144,7 @@ export function search(db: Database, q: SearchQuery): SearchPage {
     seenAt: number;
     inSession: number;
     source: string;
+    origin: string;
   }>;
 
   const hits: Array<SearchHit & { rowid: number }> = rows.map((r) => {
@@ -158,7 +161,7 @@ export function search(db: Database, q: SearchQuery): SearchPage {
       startLine: r.startLine,
       endLine: r.endLine,
       seenAt: r.seenAt,
-      stale: false,
+      stale: isStale(db, r.archiveId, r.source, r.origin),
       score,
     };
   });
@@ -169,6 +172,25 @@ export function search(db: Database, q: SearchQuery): SearchPage {
   const page = hits.slice(offset, offset + PAGE_SIZE).map(({ rowid: _r, ...h }) => h);
   const next = offset + PAGE_SIZE < hits.length ? String(offset + PAGE_SIZE) : null;
   return { hits: page, total: hits.length, nextCursor: next, corrections };
+}
+
+/**
+ * A hit from a file (read or indexed) is stale when the watcher's current content id for that
+ * path differs from the archived one. Unknown files are not flagged.
+ */
+function isStale(db: Database, archiveId: string, path: string, origin: string): boolean {
+  const [kind, worktree] = origin.split("\u0000");
+  if (kind !== "read" && kind !== "index") return false;
+  try {
+    const f = db
+      .query("SELECT content_id FROM files WHERE worktree = ? AND path = ?")
+      .get(worktree ?? "", path) as {
+      content_id: string;
+    } | null;
+    return !!f && f.content_id !== archiveId;
+  } catch {
+    return false;
+  }
 }
 
 function hasMatch(db: Database, term: string): boolean {

@@ -30,4 +30,9 @@ export interface Extractor {
   detect(input: ExtractInput): number;
   /** Pure: same input, same bytes. Returns null when the text does not parse after all. */
   extract(input: ExtractInput): Extraction | null;
+  /**
+   * Stable identifiers of the failures in this output (failing test names, diagnostic
+   * locations), used to compare a rerun with the previous run. Optional.
+   */
+  keys?(input: ExtractInput): string[];
 }

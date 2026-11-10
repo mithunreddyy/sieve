@@ -29,7 +29,8 @@ async function shim(out: string, goos?: string, goarch?: string) {
 
 async function sieve(out: string, target?: string) {
   const targetArg = target ? [`--target=${target}`] : [];
-  await $`bun build packages/cli/src/main.ts --compile --minify ${targetArg} --outfile ${out}`.quiet();
+  // The outline worker is a second entrypoint so it is embedded in the binary.
+  await $`bun build packages/cli/src/main.ts packages/core/src/outline/worker.ts --compile --minify ${targetArg} --outfile ${out}`.quiet();
   console.log(`built ${out} (${(statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
 }
 

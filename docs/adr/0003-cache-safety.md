@@ -23,3 +23,6 @@ Prompt-cache reads are ~10% of the price of uncached input. A compression scheme
 
 - Tests assert that folding the same input twice produces identical bytes, and that the receipt contains no clock-derived values.
 - Changing an extractor changes receipts for new content only; old conversations keep the bytes they already have.
+
+## Addendum (slice 3, 2026-11-10): outputs that depend on the reader's history
+Rerun comparisons ("same output as run #2", "1 fixed, 1 new") and smart reads ("unchanged since your read #1", changed hunks) depend on what the same reader saw earlier, not only on the input bytes. They stay deterministic in (input, referenced earlier archive item) and they are still first-sight-only: Sieve never edits what was already sent. They are scoped to one session, one agent context and one compaction epoch, so they never refer to content that has left the context window.

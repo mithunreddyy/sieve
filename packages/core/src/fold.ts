@@ -1,5 +1,6 @@
 import { ERROR_LINE } from "./errors.ts";
 import { type Extraction, runExtractors } from "./extract/index.ts";
+import { intentTerms } from "./intent.ts";
 import { queryTerms } from "./search.ts";
 import type { ArchivedItem } from "./store.ts";
 import { byteLength, cleanTerminal, formatInt } from "./text.ts";
@@ -57,11 +58,11 @@ export function fallbackPlan(text: string, budget: FallbackBudget, intent?: stri
   while (t > h && used + byteLength(lines[t - 1]!) + 1 <= budget.tail) used += byteLength(lines[--t]!) + 1;
   if (t <= h) return null;
   const intentLines: string[] = [];
-  const terms = intent ? queryTerms(intent).filter((x) => x.length >= 3 || /^\d+$/.test(x)) : [];
+  const terms = intentTerms(intent, true);
   if (terms.length) {
     // Keep only the best-matching lines, so "row 2500" does not pull in every line that
     // contains "row" or "22500". Whole-word hits count double, the exact phrase most.
-    const phrase = intent!.toLowerCase().trim();
+    const phrase = (intent ?? "").toLowerCase().trim();
     let best = 0;
     const scored: Array<{ i: number; score: number }> = [];
     for (let i = h; i < t; i++) {
@@ -127,12 +128,14 @@ export function renderReceipt(
   plan: FoldPlan,
   originalBytes: number,
   note?: string,
+  preface?: string,
 ): string {
   const { from, to } = plan.omitted;
   const n = to - from + 1;
   const parts = [
     `[sieve ${item.id}] ${formatInt(item.tokens)} tokens (${item.tokenizer}), ${formatInt(item.lines)} lines`,
     `extractor: ${plan.extractor} · dropped: lines ${formatInt(from)}–${formatInt(to)} (${formatInt(n)} lines)${note ? ` · ${note}` : ""}`,
+    ...(preface ? [preface] : []),
     "───",
     plan.head,
   ];
@@ -150,10 +153,16 @@ export function renderReceipt(
 }
 
 /** Receipt for a format-aware extraction. Same purity rules as renderReceipt. */
-export function renderExtraction(item: ArchivedItem, ex: Extraction, originalBytes: number): string {
+export function renderExtraction(
+  item: ArchivedItem,
+  ex: Extraction,
+  originalBytes: number,
+  preface?: string,
+): string {
   return [
     `[sieve ${item.id}] ${formatInt(item.tokens)} tokens (${item.tokenizer}), ${formatInt(item.lines)} lines`,
     `extractor: ${ex.extractor}${ex.dropped.length ? ` · dropped: ${ex.dropped.join(", ")}` : ""}`,
+    ...(preface ? [preface] : []),
     "───",
     ex.body,
     "───",
@@ -172,6 +181,8 @@ export interface FoldInput {
   command?: string;
   toolName?: string;
   pattern?: string;
+  /** A line to put under the receipt header, e.g. a comparison with the previous run. */
+  preface?: string;
 }
 
 export type FoldDecision = { kind: "pass" } | { kind: "replace"; text: string; extractor: string };
@@ -212,13 +223,13 @@ export function decideFold(input: FoldInput, item: ArchivedItem | null): FoldDec
     ...(input.pattern ? { pattern: input.pattern } : {}),
   });
   if (ex) {
-    const receipt = renderExtraction(item, ex, byteLength(text));
+    const receipt = renderExtraction(item, ex, byteLength(text), input.preface);
     if (worthIt(text.length, receipt.length))
       return { kind: "replace", text: receipt, extractor: ex.extractor };
   }
   const plan = fallbackPlan(cleaned, HOOK_BUDGET, input.intent);
   if (!plan) return cleanedOnly();
-  const receipt = renderReceipt(item, plan, byteLength(text));
+  const receipt = renderReceipt(item, plan, byteLength(text), undefined, input.preface);
   return worthIt(text.length, receipt.length)
     ? { kind: "replace", text: receipt, extractor: plan.extractor }
     : cleanedOnly();

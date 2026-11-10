@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { formatInt, search, TOKENIZER } from "@sieve/core";
+import { formatInt, queryTerms, search, TOKENIZER } from "@sieve/core";
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
@@ -9,6 +9,7 @@ import { TOOLS, type ToolName, type ToolResult } from "@sieve/protocol";
 import type { z } from "zod";
 import type { DaemonContext } from "./context.ts";
 import { execute, ISOLATION, type Jobs, type RunRequest, renderRun } from "./jobs.ts";
+import { readTool } from "./reads.ts";
 
 const GET_CAP = 100 * 1024;
 const INDEX_MAX_FILES = 5000;
@@ -178,26 +179,45 @@ export async function callTool(
         sessionId,
         worktree: ref.worktree,
       });
+      const fixed = page.corrections.length
+        ? ` No exact match for ${page.corrections.map((c) => `"${c.from}"`).join(", ")}; searched for ${page.corrections.map((c) => `"${c.to}"`).join(", ")} instead.`
+        : "";
+      // Symbols from the watcher's outline index (first page only).
+      const symbols = a.cursor ? [] : store.findSymbols(ref.worktree, queryTerms(a.query), 8);
+      const out: string[] = [];
+      if (symbols.length) {
+        out.push("symbols:");
+        for (const s of symbols)
+          out.push(
+            `  ${s.path}:${s.startLine}-${s.endLine}  ${s.kind} ${s.parent ? `${s.parent}.` : ""}${s.name}`,
+          );
+        out.push("");
+      }
       if (page.total === 0) {
         const note = scope === "session" && !sessionId ? " (no active session is known for this folder)" : "";
-        return ok(`No matches for "${a.query}" in ${scope} scope${note}.`);
+        out.push(`No archived matches for "${a.query}" in ${scope} scope${note}.${fixed}`);
+        return ok(out.join("\n"));
       }
       const offset = a.cursor ? Number(a.cursor) : 0;
-      const out = [
-        `${page.total} hit(s) for "${a.query}" (${scope} scope), showing ${offset + 1}-${offset + page.hits.length}:`,
-      ];
+      out.push(
+        `${page.total} hit(s) for "${a.query}" (${scope} scope), showing ${offset + 1}-${offset + page.hits.length}:${fixed}`,
+      );
       page.hits.forEach((h, i) => {
         out.push(
-          `\n${offset + i + 1}. ${h.archiveId} #${h.chunk} · ${h.source} · ${h.title} · ${ago(h.seenAt)}${h.stale ? " · CHANGED since read" : ""}`,
+          `\n${offset + i + 1}. ${h.archiveId} #${h.chunk} · ${h.source} · ${h.title} · ${ago(h.seenAt)}${h.stale ? " · CHANGED on disk since this was archived" : ""}`,
           h.snippet.replace(/^/gm, "   "),
         );
       });
       out.push(
-        `\nExpand: sieve_get {"id":"<id>","lines":"a-b"}${
-          page.nextCursor ? ` · More: sieve_search ${JSON.stringify({ ...a, cursor: page.nextCursor })}` : ""
-        }`,
+        `\nExpand: sieve_get {"id":"<id>","lines":"a-b"}${page.nextCursor ? ` · More: sieve_search ${JSON.stringify({ ...a, cursor: page.nextCursor })}` : ""}`,
       );
       return ok(out.join("\n"));
+    }
+
+    case "sieve_read": {
+      const a = parseArgs("sieve_read", rawArgs);
+      const r = await readTool(ctx, store, ref, { sessionId: sessionId ?? "mcp", context: "main" }, cwd, a);
+      return r.isError ? fail(r.text) : ok(r.text);
     }
 
     case "sieve_index": {

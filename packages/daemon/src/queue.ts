@@ -6,6 +6,7 @@ export class BackgroundQueue {
   private tasks: Array<{ name: string; run: () => void | Promise<void> }> = [];
   private running = false;
   private scheduled = false;
+  private stopped = false;
   busy = { hook: 0, tool: 0 };
 
   get depth(): number {
@@ -13,6 +14,7 @@ export class BackgroundQueue {
   }
 
   add(name: string, run: () => void | Promise<void>): void {
+    if (this.stopped) return;
     this.tasks.push({ name, run });
     this.schedule();
   }
@@ -39,6 +41,12 @@ export class BackgroundQueue {
       this.running = false;
     }
     if (this.tasks.length) this.schedule();
+  }
+
+  /** Drop queued work and refuse new work (the databases are about to close). */
+  stop(): void {
+    this.stopped = true;
+    this.tasks = [];
   }
 
   /** Run everything now (tests and shutdown). */

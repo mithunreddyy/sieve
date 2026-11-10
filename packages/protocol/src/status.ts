@@ -18,4 +18,22 @@ export interface StatusReport {
   misses: { total: number; last24h: number; lastAt: number | null; lastReason: string | null };
   projects: number;
   idleShutdownMinutes: number;
+  watchers: Array<{
+    worktree: string;
+    files: number;
+    symbols: number;
+    scanned: boolean;
+    lastEventAt: number | null;
+    git: { at: number; seenAt: number | null; message: string } | null;
+    error: string | null;
+  }>;
+  /** Tree-sitter parsers loaded (outlines available). */
+  outlines: boolean;
+  counters: {
+    folds: number;
+    tokensIn: number;
+    tokensOut: number;
+    readsDeclined: number;
+    rerunsShortened: number;
+  };
 }

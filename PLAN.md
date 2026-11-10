@@ -33,7 +33,7 @@ Each slice is a vertical slice: it ships working and tested before the next star
 
 **Known gaps carried forward**
 - Windows: the shim cross-compiles, but the daemon listens on a Unix socket; named-pipe support and a Windows CI run are needed before Windows is claimed.
-- No CI workflow yet (macOS/Linux/Windows matrix, networking-off test).
+- CI is written (`.github/workflows/ci.yml`) but has **not run yet**: it needs the repo pushed to GitHub. Jobs: lint, typecheck, Go tests and all tests on Linux; the full test suite on macOS; a networking-off test run (Linux network namespace); the replay gate on real output; and a Windows shim build. There is no Windows test job: the daemon listens on a Unix socket and has no named-pipe transport yet (see below).
 - `sieve upgrade`'s drain-and-restart on binary change is designed (DESIGN §2) but not built.
 - Retention (30 days unread, 500 MB cap, 14-day project cleanup) is designed, not built.
 
@@ -63,8 +63,31 @@ Each slice is a vertical slice: it ships working and tested before the next star
 - No captured fixtures yet for cargo, rspec, playwright, gcc (clang only), yarn, poetry; no Windows-specific output.
 - Diff-aware reruns ("2 now pass, 1 new failure") are slice 3, with the watchers.
 
-## Slice 3: Watchers, smart reads, staleness ⬜
-`@parcel/watcher` project watcher with incremental tree-sitter outlines; git watcher (HEAD, refs, index); `sieve_read` (outline + intent ranges for files over 16 KB, "unchanged since read #N", changed hunks only); diff-aware reruns; staleness flags on receipts and search hits; enable folding for `Read`.
+## Slice 3: Watchers, smart reads, staleness ✅ (2026-11-10)
+
+| Item | Status | Where / notes |
+|---|---|---|
+| Project watcher with incremental tree-sitter outlines | ✅ | `daemon/src/watcher.ts`, `core/src/outline/`. Bun `fs.watch` (recursive) + `git ls-files` for the initial set; 12 languages + Markdown; parsing in a worker thread (ADR 0005). |
+| Git watcher | ✅ | Watches HEAD, index, refs via the git dir; records reflog messages; rechecks every known file after a checkout/reset. Attribution uses when the daemon saw the operation (the reflog has whole seconds only). |
+| Smart reads (`sieve_read`, and Claude Code `Read`) | ✅ | Outline + intent lines for files over 16 KB; "unchanged since read #N"; only the changed hunks. Claude Code reads are declined once in `PreToolUse` (ADR 0006); `reads.smart = false` turns it off. |
+| Diff-aware rereads and reruns | ✅ | Identical rerun → one line; tests/diagnostics → fixed / new / still failing (extractor `keys`); other small changes → only the changed lines. Per session + agent context + epoch. |
+| Staleness flags | ✅ | Next prompt names files changed on disk since they were read (with the git operation, if any), once per change; search hits from changed files are flagged. |
+| Symbol search | ✅ | `sieve_search` lists matching symbols (exact names first) above archived hits. |
+| Config file | ✅ | `~/.sieve/config.toml` (DESIGN §6a). |
+| Benchmarks | ✅ | Smart-read and Read-hook latency added. [docs/bench/slice-3.md](docs/bench/slice-3.md). |
+
+**Deviations and decisions**
+- `@parcel/watcher` replaced by Bun's recursive `fs.watch`; `web-tree-sitter` + separate grammars replaced by `@vscode/tree-sitter-wasm` (ADR 0005, with measurements).
+- Reads are steered before they run, not rewritten after (ADR 0006). This is the only place Sieve declines a tool call before Guard (slice 7) and steering (slice 9).
+- Reruns and smart reads depend on what the same reader saw before; ADR 0003 has an addendum.
+- The "reads" table in the original design (one `stale` flag per row) became `files` + `reads` + `runs`: staleness is computed by comparing content ids, so nothing has to be flagged eagerly.
+- Found only by using it live in a Claude Code session, after the slice was declared done: prompts were matched with their harness boilerplate and stopwords, and object-valued top-level consts were missing from outlines (both fixed, with tests; see the bench report).
+- Fixed along the way: `sieve_search` never said when it corrected a spelling (a slice-2 edit that silently did not apply; now tested); `outlinesReady()` was true after the first grammar loaded; queued background work could run after the databases closed; symlinked paths (macOS `/tmp`) broke relative paths and read history.
+
+**Known gaps carried forward**
+- Recursive watching on Linux and Windows is not verified (no CI there yet).
+- Files over 2 MB are never smart-read on a hook (they pass through); files over 10 MB are never read by Sieve.
+- Memory facts tied to changed files (prompt.md §2 git watcher) wait for memory in slice 8.
 
 ## Slice 4: Session log, state block, recall, decisions ⬜
 `session_log`, background state-block precompute after `turn.end`, `sieve_resume`, recall pointers on `prompt.submit` (≤ 3, ≤ 2 KB), decisions with supersession.

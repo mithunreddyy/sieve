@@ -133,12 +133,39 @@ function parseLineStyle(text: string, parse: LineParser): { diags: Diag[]; other
   return { diags, other };
 }
 
+interface DiagSpec {
+  id: string;
+  detect: Extractor["detect"];
+  parse(text: string): { diags: Diag[]; other: string[]; dropped?: string[] };
+}
+
+/** Build an extractor whose extract() and keys() come from the same parser. */
+function diag(spec: DiagSpec): Extractor {
+  return {
+    id: spec.id,
+    detect: spec.detect,
+    extract({ text }) {
+      const { diags, other, dropped } = spec.parse(text);
+      if (!diags.length) return null;
+      const r = renderDiagnostics(spec.id, diags, other, 0);
+      r.dropped.push(...(dropped ?? []));
+      return r;
+    },
+    // A diagnostic is "the same" across runs when its severity, code and location match.
+    keys: ({ text }) =>
+      spec
+        .parse(text)
+        .diags.filter((d) => d.severity === "error" || d.severity === "warning")
+        .map((d) => `${d.severity} ${d.code} ${d.location}`),
+  };
+}
+
 const TSC = /^(.+?)\((\d+),(\d+)\): (error|warning|message) (TS\d+): (.*)$/;
-export const tsc: Extractor = {
+export const tsc = diag({
   id: "tsc",
   detect: ({ command, text }) =>
     cmdMatches(command, /\btsc\b|vue-tsc/) ? 95 : share(lines(text), TSC) > 0.4 ? 85 : 0,
-  extract({ text }) {
+  parse(text: string) {
     const { diags, other } = parseLineStyle(text, (l) => {
       const m = TSC.exec(l);
       return m
@@ -150,16 +177,16 @@ export const tsc: Extractor = {
           }
         : null;
     });
-    return diags.length ? renderDiagnostics("tsc", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 const MYPY = /^(.+?\.pyi?):(\d+)(?::(\d+))?: (error|warning|note): (.*?)(?:\s+\[([\w-]+)\])?$/;
-export const mypy: Extractor = {
+export const mypy = diag({
   id: "mypy",
   detect: ({ command, text }) =>
     cmdMatches(command, /\b(mypy|dmypy)\b/) ? 95 : share(lines(text), MYPY) > 0.5 ? 80 : 0,
-  extract({ text }) {
+  parse(text: string) {
     const { diags, other } = parseLineStyle(text, (l) => {
       const m = MYPY.exec(l);
       return m
@@ -171,14 +198,14 @@ export const mypy: Extractor = {
           }
         : null;
     });
-    return diags.length ? renderDiagnostics("mypy", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 // ------------------------------------------------------------ eslint (stylish)
 const ESL_FILE = /^(\/|[A-Za-z]:\\|\.{0,2}\/)?[^\s:]+\.[\w]+$/;
 const ESL_ROW = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)(?:\s{2,}(\S+))?$/;
-export const eslint: Extractor = {
+export const eslint = diag({
   id: "eslint",
   detect: ({ command, text }) =>
     cmdMatches(command, /\beslint\b/)
@@ -186,7 +213,7 @@ export const eslint: Extractor = {
       : /^✖ \d+ problems? \(/m.test(text) && share(lines(text), ESL_ROW) > 0.4
         ? 85
         : 0,
-  extract({ text }) {
+  parse(text: string) {
     const diags: Diag[] = [];
     const other: string[] = [];
     let file = "";
@@ -206,9 +233,9 @@ export const eslint: Extractor = {
         });
       } else other.push(l);
     }
-    return diags.length ? renderDiagnostics("eslint", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 // ------------------------------------------------------------ block-style parsers
 interface BlockSpec {
@@ -258,7 +285,7 @@ function parseBlocks(text: string, spec: BlockSpec): { diags: Diag[]; other: str
 }
 
 const RUST = /^(error|warning)(?:\[(E\d+|[\w:]+)\])?: (.*)$/;
-export const rustc: Extractor = {
+export const rustc = diag({
   id: "rustc",
   detect: ({ command, text }) =>
     cmdMatches(command, /\b(cargo\s+(build|check|clippy|run)|rustc)\b/)
@@ -268,7 +295,7 @@ export const rustc: Extractor = {
           !/^ --> /m.test(text)
         ? 80
         : 0,
-  extract({ text }) {
+  parse(text: string) {
     let compiling = 0;
     const src = lines(text).filter((l) => {
       if (/^\s+(Compiling|Checking|Downloaded|Downloading|Fresh|Locking|Updating|Adding) /.test(l)) {
@@ -286,16 +313,13 @@ export const rustc: Extractor = {
         return { severity: m[1] as "error" | "warning", code: m[2] ?? "", message: m[3]!, location: loc };
       },
     });
-    if (!diags.length) return null;
-    const r = renderDiagnostics("rustc", diags, other, 0);
-    if (compiling) r.dropped.push(plural(compiling, "Compiling line"));
-    return r;
+    return { diags, other, dropped: compiling ? [plural(compiling, "Compiling line")] : [] };
   },
-};
+});
 
 const CLANG =
   /^(.+?):(\d+):(\d+): (fatal error|error|warning|note): (.*?)(?: \[(-W[\w=+-]*|-Werror[\w=,+-]*)\])?$/;
-export const clang: Extractor = {
+export const clang = diag({
   id: "clang",
   detect: ({ command, text }) =>
     cmdMatches(command, /\b(clang\+?\+?|g\+\+|gcc|cc|c\+\+|make|cmake)\b/) &&
@@ -304,7 +328,7 @@ export const clang: Extractor = {
       : share(lines(text), CLANG) > 0.15
         ? 80
         : 0,
-  extract({ text }) {
+  parse(text: string) {
     const { diags, other } = parseBlocks(text, {
       header: CLANG,
       terminal: /^\d+ (warnings?|errors?)( and \d+ (warnings?|errors?))? generated\.$/,
@@ -315,13 +339,13 @@ export const clang: Extractor = {
         location: `${m[1]}:${m[2]}:${m[3]}`,
       }),
     });
-    return diags.length ? renderDiagnostics("clang", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 const RUFF_FULL = /^([A-Z]+[0-9]+) (?:\[\*\] )?(.*)$/;
 const RUFF_LINE = /^(.+?):(\d+):(\d+): ([A-Z]+[0-9]+) (?:\[\*\] )?(.*)$/;
-export const ruff: Extractor = {
+export const ruff = diag({
   id: "ruff",
   detect: ({ command, text }) =>
     cmdMatches(command, /\bruff\b/)
@@ -331,7 +355,7 @@ export const ruff: Extractor = {
         : share(lines(text), RUFF_LINE) > 0.5
           ? 75
           : 0,
-  extract({ text }) {
+  parse(text: string) {
     if (share(lines(text), RUFF_LINE) > 0.3) {
       const { diags, other } = parseLineStyle(text, (l) => {
         const m = RUFF_LINE.exec(l);
@@ -339,7 +363,7 @@ export const ruff: Extractor = {
           ? { severity: "error", code: m[4]!, message: m[5]!, location: `${m[1]}:${m[2]}:${m[3]}` }
           : null;
       });
-      return diags.length ? renderDiagnostics("ruff", diags, other, 0) : null;
+      return { diags, other };
     }
     const { diags, other } = parseBlocks(text, {
       header: RUFF_FULL,
@@ -349,16 +373,16 @@ export const ruff: Extractor = {
         return loc ? { severity: "error", code: m[1]!, message: m[2]!, location: loc } : null;
       },
     });
-    return diags.length ? renderDiagnostics("ruff", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 const BIOME = /^(\S+?):(\d+):(\d+) (\S+)(?:\s+FIXABLE)?\s+━+$/;
-export const biome: Extractor = {
+export const biome = diag({
   id: "biome",
   detect: ({ command, text }) =>
     cmdMatches(command, /\bbiome\b/) ? 95 : share(lines(text), BIOME) > 0.03 && /━━━━/.test(text) ? 80 : 0,
-  extract({ text }) {
+  parse(text: string) {
     const { diags, other } = parseBlocks(text, {
       header: BIOME,
       terminal:
@@ -375,8 +399,8 @@ export const biome: Extractor = {
         };
       },
     });
-    return diags.length ? renderDiagnostics("biome", diags, other, 0) : null;
+    return { diags, other };
   },
-};
+});
 
 export const DIAGNOSTIC_EXTRACTORS: Extractor[] = [tsc, mypy, eslint, rustc, clang, ruff, biome];
