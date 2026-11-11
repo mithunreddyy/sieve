@@ -165,3 +165,45 @@ func TestMiniJSON(t *testing.T) {
 		t.Fatal(jsonString("a\"b\\\n\x01é"))
 	}
 }
+
+// Installed both ways (the Claude Code plugin and `sieve setup`'s settings.json hooks), two hooks
+// would answer every event; for smart reads one could report "unchanged" for content the agent
+// never got. Exactly one route acts: the plugin's call defers to the settings.json hooks.
+func TestPluginRouteDefersToSetupHooks(t *testing.T) {
+	home := setup(t)
+	cfg := filepath.Join(home, "claude")
+	_ = os.MkdirAll(cfg, 0o700)
+	t.Setenv("CLAUDE_CONFIG_DIR", cfg)
+	t.Setenv("SIEVE_ROUTE", "plugin")
+	asked := 0
+	fakeDaemon(t, home, func(string) string {
+		asked++
+		return `{"v":1,"id":"h","ok":true,"daemon":"0.1.0","result":{"stdout":"RECEIPT","exitCode":0}}` + "\n"
+	})
+	in := `{"tool_name":"Bash"}`
+
+	// no settings.json hooks: the plugin route acts
+	var out bytes.Buffer
+	if code := run([]string{"claude-code", "PostToolUse"}, strings.NewReader(in), &out); code != 0 || out.String() != "RECEIPT" {
+		t.Fatalf("plugin alone: code=%d out=%q", code, out.String())
+	}
+
+	// settings.json also runs sieve-hook for claude-code: the plugin route stays silent, and it is not a miss
+	settings := `{"hooks":{"PostToolUse":[{"matcher":"*","hooks":[{"type":"command","command":"\"/x/sieve-hook\" claude-code PostToolUse"}]}]}}`
+	_ = os.WriteFile(filepath.Join(cfg, "settings.json"), []byte(settings), 0o600)
+	out.Reset()
+	before := asked
+	if code := run([]string{"claude-code", "PostToolUse"}, strings.NewReader(in), &out); code != 0 || out.String() != "" {
+		t.Fatalf("both routes: code=%d out=%q", code, out.String())
+	}
+	if asked != before || misses(t, home) != "" {
+		t.Fatalf("deferred call reached the daemon (%d) or logged a miss: %q", asked-before, misses(t, home))
+	}
+
+	// the settings route itself (no SIEVE_ROUTE) still acts
+	t.Setenv("SIEVE_ROUTE", "")
+	out.Reset()
+	if code := run([]string{"claude-code", "PostToolUse"}, strings.NewReader(in), &out); code != 0 || out.String() != "RECEIPT" {
+		t.Fatalf("settings route: code=%d out=%q", code, out.String())
+	}
+}

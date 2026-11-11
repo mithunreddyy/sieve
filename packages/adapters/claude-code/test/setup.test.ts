@@ -163,6 +163,7 @@ describe("claude-code event mapping", () => {
   });
   test("renders a replacement in the original shape and context only where allowed", () => {
     const raw = {
+      session_id: "s1",
       hook_event_name: "PostToolUse",
       tool_name: "Bash",
       tool_response: { stdout: "long", stderr: "e", interrupted: false },
@@ -174,7 +175,7 @@ describe("claude-code event mapping", () => {
       stderr: "",
       interrupted: false,
     });
-    const stop = toEvent("Stop", { hook_event_name: "Stop" }, 0)!;
+    const stop = toEvent("Stop", { session_id: "s1", hook_event_name: "Stop" }, 0)!;
     expect(render(stop, { context: "nope" }, {})).toBe("");
     expect(archiveId("x")).toMatch(/^s_/);
   });
@@ -196,7 +197,82 @@ describe("tool response shapes", () => {
   test("unknown object shapes are never replaced", async () => {
     const { replacementFor, render, toEvent } = await import("../src/index.ts");
     expect(replacementFor({ weird: 1 }, "R")).toBeUndefined();
-    const raw = { hook_event_name: "PostToolUse", tool_name: "X", tool_response: { weird: 1 } };
+    const raw = {
+      session_id: "s1",
+      hook_event_name: "PostToolUse",
+      tool_name: "X",
+      tool_response: { weird: 1 },
+    };
     expect(render(toEvent("PostToolUse", raw, 0)!, { replaceOutput: "R" }, raw)).toBe("");
+  });
+});
+
+describe("claude-code through the Sieve plugin", () => {
+  function withPlugin(enabled?: boolean) {
+    const s = sandbox();
+    mkdirSync(join(s.configDir, "plugins"));
+    writeFileSync(
+      join(s.configDir, "plugins", "installed_plugins.json"),
+      JSON.stringify({ version: 2, plugins: { "sieve@sieve": [{ scope: "user", version: "0.1.0" }] } }),
+    );
+    if (enabled !== undefined) {
+      const settings = JSON.parse(s.settingsText);
+      writeFileSync(
+        join(s.configDir, "settings.json"),
+        JSON.stringify({ ...settings, enabledPlugins: { "sieve@sieve": enabled } }),
+      );
+    }
+    // the plugin runs binaries from ~/.sieve/bin; here, the sandbox's bin folder
+    return { ...s, opts: { ...s.opts, pluginBinDir: join(s.dir, "bin") } };
+  }
+
+  test("setup refuses to register hooks a second time, and says how to choose", () => {
+    const s = withPlugin();
+    expect(() => planSetup(s.opts)).toThrow("claude plugin uninstall sieve@sieve");
+    expect(() => planSetup(s.opts, true)).not.toThrow(); // removing old setup entries is always allowed
+  });
+
+  test("a plugin-only install is healthy when its binaries are installed, and says what to run when not", () => {
+    const s = withPlugin();
+    expect(verifySetup(s.opts)).toEqual([]);
+    const missing = { ...s.opts, pluginBinDir: join(s.dir, "nowhere") };
+    expect(verifySetup(missing)).toEqual([
+      `the Sieve plugin is installed but its binaries are not (${join(s.dir, "nowhere")}): run /sieve:install`,
+    ]);
+  });
+
+  test("plugin and setup hooks together are reported (the plugin route stays silent, but one should go)", () => {
+    const s = withPlugin();
+    const settings = JSON.parse(s.settingsText);
+    settings.hooks.PostToolUse.push({
+      matcher: "*",
+      hooks: [{ type: "command", command: `${s.opts.shimPath} claude-code PostToolUse` }],
+    });
+    writeFileSync(join(s.configDir, "settings.json"), JSON.stringify(settings));
+    expect(verifySetup(s.opts)[0]).toContain("sieve setup --remove --agents claude-code");
+  });
+
+  test("a disabled plugin counts as not installed", () => {
+    const s = withPlugin(false);
+    expect(() => planSetup(s.opts)).not.toThrow();
+    expect(verifySetup(s.opts).some((p) => p.includes("is not registered"))).toBe(true);
+  });
+});
+
+describe("fix line", () => {
+  test("a problem that names its own fix wins; otherwise re-run setup", async () => {
+    const { fixFor } = await import("@sieve/adapter-kit");
+    expect(fixFor("claude-code", ["hook Stop is not registered"])).toBe("sieve setup --agents claude-code");
+    expect(
+      fixFor("claude-code", [
+        "the Sieve plugin is installed but its binaries are not (/h/bin): run /sieve:install",
+      ]),
+    ).toBe("/sieve:install");
+    expect(
+      fixFor("claude-code", [
+        "Sieve is registered twice: … remove them to use the plugin: sieve setup --remove --agents claude-code",
+      ]),
+    ).toBe("sieve setup --remove --agents claude-code");
+    expect(fixFor("kiro", ["MCP command not found: /x/sieve"])).toBe("sieve setup --agents kiro");
   });
 });

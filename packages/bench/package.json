@@ -6,6 +6,13 @@
   "dependencies": {
     "@sieve/protocol": "workspace:*",
     "@sieve/core": "workspace:*",
-    "@sieve/daemon": "workspace:*"
+    "@sieve/daemon": "workspace:*",
+    "@sieve/adapter-claude-code": "workspace:*",
+    "@sieve/adapter-gemini-cli": "workspace:*",
+    "@sieve/adapter-opencode": "workspace:*",
+    "@sieve/adapter-cursor": "workspace:*",
+    "@sieve/adapter-codex": "workspace:*",
+    "@sieve/adapter-copilot-cli": "workspace:*",
+    "@sieve/adapter-kit": "workspace:*"
   }
 }

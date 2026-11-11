@@ -35,6 +35,7 @@ export function smartReadBefore(
   path: string,
   cwd: string,
   hints: Hints,
+  opts: { trustHistory?: boolean } = {},
 ): string | null {
   if (!ctx.config.reads.smart) return null;
   const f = loadFile(ref.worktree, path, cwd);
@@ -45,7 +46,7 @@ export function smartReadBefore(
     ctx.declines.delete(key);
     if (until > Date.now()) return null; // asked again: give the whole file
   }
-  const d = decide(ctx, store, ref, reader, f, hints);
+  const d = decide(ctx, store, ref, reader, f, hints, undefined, undefined, opts.trustHistory !== false);
   if (d === null) {
     // A large source file that is not indexed yet: let this read through and outline it in
     // the worker, so the next read of it is smart. A hook never waits on a parser.
@@ -70,8 +71,11 @@ function decide(
   hints: Hints,
   intent?: string,
   preParsed?: OutlineSymbol[] | null,
+  trustHistory = true,
 ): ReadDecision | null {
-  const last = store.lastRead(reader, ref.worktree, f.rel);
+  // Without trusted history every read is treated as a first read: an outline for a large
+  // file, otherwise the file. Never "unchanged" or only-the-changed-hunks.
+  const last = trustHistory ? store.lastRead(reader, ref.worktree, f.rel) : null;
   const lastText =
     last && last.contentId !== f.row.contentId ? (store.get(last.contentId)?.text ?? null) : null;
   const big = f.row.size > ctx.config.reads.outline_above_kb * 1024;
@@ -83,7 +87,9 @@ function decide(
   if (big && symbols === null && f.row.lang && f.row.lang !== "markdown" && !knowsIt) return null;
   return decideRead({
     path: f.rel,
-    text: f.text,
+    // The archived earlier version has its secrets masked; compare like with like, or every
+    // line holding a secret would show up as changed.
+    text: lastText === null ? f.text : store.mask(f.text, ref.worktree),
     state: f.row,
     tokens,
     last,

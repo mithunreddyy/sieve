@@ -64,8 +64,24 @@ export interface SieveReply {
 export interface AgentCapabilities {
   replace: "all" | "mcp-only" | "none";
   route: boolean;
-  contextAt: Array<"session.start" | "prompt.submit" | "compact.before" | "subagent.start">;
+  /**
+   * Where the agent lets Sieve add context. "tool.after" is the fallback for agents with no
+   * slot on prompts or compaction: notes for the model wait and ride on the next tool result.
+   */
+  contextAt: Array<"session.start" | "prompt.submit" | "compact.before" | "subagent.start" | "tool.after">;
   deny: boolean;
   ask: boolean;
   events: EventKind[];
+  /**
+   * Can Sieve tell when the context window was reset? "reliable": compaction is signalled
+   * every time it happens. "manual-only": only a user-triggered compaction is signalled
+   * reliably (an automatic signal may fire without compacting), so Sieve never claims the
+   * agent still has earlier content ("unchanged since your read") for that agent.
+   */
+  compaction: "reliable" | "manual-only";
+  /**
+   * "verified": a recorded real-agent run passed (docs/e2e). "live": used in real sessions by a
+   * developer, but no recorded run. "preview": neither; the mapping comes from docs or source.
+   */
+  support: "verified" | "live" | "preview";
 }

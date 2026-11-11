@@ -36,6 +36,13 @@ jobs:
         run: |
           go vet ./...
           go test -count=1 ./...
+      - name: Linux sandbox helper (vet, tests, cross-compile; it is not run)
+        working-directory: helpers/linux-sandbox
+        run: |
+          go vet ./...
+          go test -count=1 ./...
+          GOOS=linux GOARCH=amd64 go vet ./...
+          GOOS=linux GOARCH=arm64 go vet ./...
       - name: Build binaries (sieve and sieve-hook)
         run: bun run build
       - name: Test (slices 1–3)
@@ -106,3 +113,29 @@ jobs:
       # The Windows daemon transport (named pipe) is not built yet, so only the shim is checked.
       - working-directory: shim
         run: GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o /dev/null .
+
+  sandbox-linux:
+    name: sandbox on Linux (bubblewrap) -- NOT YET RUN
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Install bubblewrap and allow unprivileged user namespaces
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+          # Ubuntu 24.04 runners restrict unprivileged user namespaces through AppArmor.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --ro-bind / / --unshare-net /bin/true && echo "bwrap works"
+      # The sandbox tests skip, saying so, where no backend works; here one must.
+      - name: Sandbox tests (a real backend is required)
+        run: |
+          bun scripts/require-sandbox.ts bwrap
+          bun test packages/sandbox packages/daemon/test/sandbox.test.ts

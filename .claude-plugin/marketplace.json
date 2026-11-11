@@ -1,0 +1,15 @@
+{
+  "name": "sieve",
+  "owner": { "name": "Mithun Reddy", "url": "https://github.com/mithunreddyy" },
+  "description": "Sieve: a local context engine for AI coding agents.",
+  "plugins": [
+    {
+      "name": "sieve",
+      "source": "./plugins/sieve",
+      "description": "Archives large tool output on your machine, returns short receipts, and makes everything searchable. Hooks, MCP tools, and /sieve:doctor, /sieve:stats, /sieve:install.",
+      "category": "productivity",
+      "tags": ["context", "local", "mcp", "hooks"]
+    }
+  ]
+}
+

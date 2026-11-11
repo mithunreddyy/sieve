@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve as resolvePath } from "node:path";
 import {
   byteLength,
   cleanTerminal,
+  describeHits,
   fallbackPlan,
   jobId,
   type ProjectRef,
@@ -14,6 +15,9 @@ import {
   renderReceipt,
   runExtractors,
 } from "@sieve/core";
+import type { Observed } from "@sieve/guard";
+import { defaultPolicy, describe, type Mode, realish, wrap } from "@sieve/sandbox";
+import type { BehaviourWatcher } from "./behaviour.ts";
 
 export const RUN_LIMITS = {
   defaultTimeoutMs: 600_000,
@@ -25,9 +29,6 @@ export const RUN_LIMITS = {
   killGraceMs: 2000,
 } as const;
 
-/** Isolation actually in force. Slice 6 replaces this with Seatbelt / bwrap / AppContainer. */
-export const ISOLATION = "none (code runs as you, with full file and network access)";
-
 export interface RunRequest {
   language: string;
   code: string;
@@ -35,6 +36,23 @@ export interface RunRequest {
   intent?: string;
   timeoutMs?: number;
   background?: boolean;
+  /** Hosts the code needs: any entry turns the network on (all hosts; not filtered). */
+  network?: string[];
+  /** Extra folders the code may write to. */
+  writable?: string[];
+  /** Environment variable names to pass through. */
+  env?: string[];
+}
+
+/** Where a run is allowed to write, and how strictly it is isolated. */
+export interface SandboxContext {
+  /** The worktree, and the git common dir's root for linked worktrees. */
+  project: string[];
+  mode: Mode;
+  /** Never readable by the code, besides the usual credential folders (e.g. SIEVE_HOME). */
+  denyRead?: string[];
+  /** Guard's behaviour checks: clauses to put in the profile, and the watcher that records the run. */
+  behaviour?: { report: string[]; deny: string[]; watcher: BehaviourWatcher };
 }
 
 interface Lang {
@@ -77,6 +95,10 @@ function language(name: string): Lang {
 }
 
 export interface RunOutcome {
+  /** The isolation that was in force, as described on the receipt. */
+  isolation: string;
+  /** What the sandbox saw the run do (files, network, programs), when Guard's behaviour checks ran. */
+  observed?: Observed[];
   exitCode: number | null;
   signal: string | null;
   timedOut: boolean;
@@ -91,6 +113,7 @@ export function execute(
   req: RunRequest,
   cwd: string,
   onData?: (total: number) => void,
+  sb: SandboxContext = { project: [cwd], mode: "auto" },
 ): {
   done: Promise<RunOutcome>;
   kill: () => void;
@@ -101,7 +124,39 @@ export function execute(
   const script = join(dir, `script${lang.ext}`);
   writeFileSync(script, req.code, { mode: 0o600 });
   const timeoutMs = Math.min(req.timeoutMs ?? RUN_LIMITS.defaultTimeoutMs, RUN_LIMITS.maxTimeoutMs);
-  const [cmd, ...args] = lang.argv(script);
+  // The run folder is the scratch space: the script lives in it, TMPDIR points into it, and it
+  // is deleted afterwards. Grants are checked before anything starts.
+  let wrapped: ReturnType<typeof wrap>;
+  try {
+    const policy = defaultPolicy(sb.project, dir, {
+      writable: (req.writable ?? []).map((w) => resolvePath(cwd, w)),
+      network: (req.network?.length ?? 0) > 0,
+      networkHosts: req.network ?? [],
+      env: req.env ?? [],
+    });
+    // Seatbelt matches real paths only (macOS /tmp is a symlink), so extras are resolved too.
+    // A deny must never cover a folder the run needs (a project inside SIEVE_HOME, say).
+    const needed = [...policy.project, policy.scratch, realish(cwd)];
+    if (sb.behaviour) {
+      policy.reportClauses = sb.behaviour.report;
+      policy.denyClauses = sb.behaviour.deny;
+    }
+    policy.denyRead = [...new Set([...policy.denyRead, ...(sb.denyRead ?? []).map(realish)])].filter(
+      (d) => !needed.some((n) => n === d || n.startsWith(`${d}/`)),
+    );
+    wrapped = wrap(
+      lang.argv(script),
+      cwd,
+      policy,
+      process.env,
+      { ...(lang.env ?? {}), ...(req.file ? { SIEVE_FILE: req.file } : {}) },
+      sb.mode,
+    );
+  } catch (e) {
+    rmSync(dir, { recursive: true, force: true });
+    throw e;
+  }
+  const { cmd, args } = wrapped;
   const started = performance.now();
   const parts: Buffer[] = [];
   let kept = 0;
@@ -109,12 +164,18 @@ export function execute(
   const tail: Buffer[] = [];
   let tailBytes = 0;
 
-  const child = spawn(cmd!, args, {
+  const since = sb.behaviour?.watcher.position() ?? 0;
+  const child = spawn(cmd, args, {
     cwd,
     detached: process.platform !== "win32",
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, ...(lang.env ?? {}), ...(req.file ? { SIEVE_FILE: req.file } : {}) },
+    env: wrapped.env,
   });
+  // The run is its own process group (detached): the watcher attributes sandbox reports to it.
+  const recording =
+    sb.behaviour && wrapped.level.kind === "seatbelt" && child.pid
+      ? sb.behaviour.watcher.begin(child.pid, since)
+      : undefined;
   const onChunk = (b: Buffer) => {
     if (kept + b.length <= RUN_LIMITS.memoryCap / 2) {
       parts.push(b);
@@ -155,12 +216,15 @@ export function execute(
     child.on("error", (e) => {
       spawnError = e.message;
     });
-    child.on("close", (code, signal) => {
+    child.on("close", async (code, signal) => {
       clearTimeout(timer);
       // Make sure no grandchild outlives the run.
       killTree("SIGKILL");
       rmSync(dir, { recursive: true, force: true });
+      const observed = recording ? await recording.finish().catch(() => undefined) : undefined;
       resolve({
+        isolation: describe(wrapped.level),
+        ...(observed ? { observed } : {}),
         exitCode: code,
         signal,
         timedOut,
@@ -179,7 +243,7 @@ export function execute(
  * and a preview is returned (≤ 4 KB on success; on failure up to 16 KB, weighted to the end
  * where errors usually are). The archive id lets the agent expand any part of it.
  */
-export function renderRun(
+function renderRunBody(
   o: RunOutcome,
   req: RunRequest,
   store: ProjectStore,
@@ -193,15 +257,20 @@ export function renderRun(
       : o.signal
         ? `killed by ${o.signal}`
         : `exit ${o.exitCode}`;
-  const header = `[sieve run] ${status} · ${(o.durationMs / 1000).toFixed(1)} s · isolation: ${ISOLATION}`;
-  const text = cleanTerminal(o.output);
+  // Output is masked before it is stored or returned: it may print an environment variable,
+  // a .env file or a token the script was handed.
+  const masked = store.maskResult(o.output, ref.worktree);
+  const hits = describeHits(masked.hits);
+  const header = `[sieve run] ${status} · ${(o.durationMs / 1000).toFixed(1)} s · isolation: ${o.isolation}${hits ? ` · ${hits}` : ""}`;
+  const text = cleanTerminal(masked.text);
   if (!text) return `${header}\n(no output)`;
   const item = store.put(o.output, {
+    masked: masked.text,
     sessionId,
     worktree: ref.worktree,
     agent: null,
     sourceKind: "run",
-    source: `${req.language}: ${req.code.replace(/\s+/g, " ").slice(0, 160)}`,
+    source: `${req.language}: ${store.mask(req.code, ref.worktree).replace(/\s+/g, " ").slice(0, 160)}`,
   });
   if (byteLength(text) <= RUN_LIMITS.returnCap) return `${header} · archived ${item.id}\n${text}`;
   const failed = o.exitCode !== 0 || o.timedOut || !!o.signal;
@@ -224,6 +293,26 @@ export function renderRun(
   return `${header}\n${renderReceipt(item, plan, byteLength(o.output))}`;
 }
 
+/**
+ * Render a run, with Guard's behaviour findings (what the sandbox saw the code do that a rule
+ * speaks about) right under the header line.
+ */
+export function renderRun(
+  o: RunOutcome,
+  req: RunRequest,
+  store: ProjectStore,
+  ref: ProjectRef,
+  sessionId: string | null,
+  notes: string[] = [],
+): string {
+  const text = renderRunBody(o, req, store, ref, sessionId);
+  if (!notes.length) return text;
+  const nl = text.indexOf("\n");
+  const shown = notes.slice(0, 6).map((n) => `[sieve guard] behaviour ${n}`);
+  if (notes.length > 6) shown.push(`[sieve guard] behaviour: ${notes.length - 6} more (sieve guard log)`);
+  return `${nl === -1 ? text : text.slice(0, nl)}\n${shown.join("\n")}${nl === -1 ? "" : text.slice(nl)}`;
+}
+
 export interface Job {
   id: string;
   startedAt: number;
@@ -244,7 +333,7 @@ export class Jobs {
     return n;
   }
 
-  start(req: RunRequest, cwd: string, finish: (o: RunOutcome) => string): Job {
+  start(req: RunRequest, cwd: string, finish: (o: RunOutcome) => string, sb?: SandboxContext): Job {
     const id = jobId();
     const job: Job = {
       id,
@@ -255,9 +344,14 @@ export class Jobs {
       partial: () => "",
       kill: () => {},
     };
-    const run = execute(req, cwd, (n) => {
-      job.bytes = n;
-    });
+    const run = execute(
+      req,
+      cwd,
+      (n) => {
+        job.bytes = n;
+      },
+      sb,
+    );
     job.partial = run.partial;
     job.kill = run.kill;
     this.jobs.set(id, job);

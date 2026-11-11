@@ -1,14 +1,31 @@
 #!/usr/bin/env bun
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as claude from "@sieve/adapter-claude-code";
-import { GlobalStore, paths } from "@sieve/core";
+import * as codex from "@sieve/adapter-codex";
+import * as copilotCli from "@sieve/adapter-copilot-cli";
+import * as cursor from "@sieve/adapter-cursor";
+import * as gemini from "@sieve/adapter-gemini-cli";
+import { type AgentSetup, applySetup, fixFor, restoreBackup } from "@sieve/adapter-kit";
+import { mcpOnlySetups } from "@sieve/adapter-mcp-only";
+import * as opencode from "@sieve/adapter-opencode";
+import { GlobalStore, loadConfig, paths } from "@sieve/core";
 import { Daemon, DaemonClient } from "@sieve/daemon";
 import { PROTOCOL_VERSION, SIEVE_VERSION, type StatusReport, type ToolResult } from "@sieve/protocol";
+import { detect as detectSandbox } from "@sieve/sandbox";
+import { dashCommand, tuiCommand } from "./dash.ts";
+import { guardCommand, guardStatusLine } from "./guard.ts";
 import { runHook } from "./hook.ts";
+import { memoryCommand, memoryStatusLine } from "./memory.ts";
+import { notifyProblems } from "./notify.ts";
+import { proxyCommand } from "./proxy.ts";
+import { serviceCommand } from "./service.ts";
+import { sessionCommand } from "./session.ts";
+import { skillsCommand } from "./skills.ts";
+import { syncCommand } from "./sync.ts";
+import { upgradeCommand } from "./upgrade.ts";
 
 const compiled = Bun.main.startsWith("/$bunfs") || Bun.main.startsWith("B:\\~BUN");
 const repoRoot = compiled ? null : resolve(fileURLToPath(new URL("../../..", import.meta.url)));
@@ -75,11 +92,32 @@ function shimVersion(path: string): string | null {
   }
 }
 
+/** Every agent Sieve can set up. "preview": not yet exercised by a real session of that agent. */
+const SETUPS: AgentSetup[] = [
+  claude.setupSpec as AgentSetup,
+  gemini.setupSpec as AgentSetup,
+  opencode.setupSpec as AgentSetup,
+  cursor.setupSpec as AgentSetup,
+  codex.setupSpec as AgentSetup,
+  copilotCli.setupSpec as AgentSetup,
+  ...(mcpOnlySetups as AgentSetup[]),
+];
+
+/** Installed agents and what is wrong with their config (empty: points at Sieve). */
+function setupChecks(): Array<{ agent: string; support: string; problems: string[] }> {
+  const opts = { shimPath: shimPath(), sievePath: sieveInvocation().path };
+  return SETUPS.filter((a) => a.detect()).map((a) => ({
+    agent: a.agent,
+    support: a.support,
+    problems: a.verify(opts),
+  }));
+}
+
 async function status(json: boolean): Promise<number> {
   const c = await DaemonClient.connect({ autostart: false });
-  const problems = claude.verifySetup({ shimPath: shimPath(), sievePath: sieveInvocation().path });
+  const checks = setupChecks();
   if (!c) {
-    if (json) console.log(JSON.stringify({ daemon: null, claudeCode: problems }));
+    if (json) console.log(JSON.stringify({ daemon: null, setup: checks }));
     else
       console.log(
         "daemon: not running (it starts on the next hook or MCP call; `sieve daemon run` starts it now)",
@@ -91,7 +129,7 @@ async function status(json: boolean): Promise<number> {
   if (!r.ok) return die(r.error.message);
   const s = r.result as StatusReport;
   if (json) {
-    console.log(JSON.stringify({ ...s, claudeCode: problems }, null, 2));
+    console.log(JSON.stringify({ ...s, setup: checks }, null, 2));
     return 0;
   }
   const mb = (s.daemon.rssBytes / 1024 / 1024).toFixed(0);
@@ -105,6 +143,15 @@ async function status(json: boolean): Promise<number> {
     `misses   ${s.misses.last24h} in 24h (${s.misses.total} total)${s.misses.lastAt ? ` · last ${ago(s.misses.lastAt)}: ${s.misses.lastReason}` : ""}`,
   );
   console.log(`projects ${s.projects}`);
+  console.log(`isolation ${isolationLine().text.replace(/^isolation: /, "")}`);
+  try {
+    const gs = guardStatusLine();
+    console.log(`guard    ${gs.text}`);
+    for (const p of gs.problems) console.log(`! guard: ${p}`);
+  } catch {}
+  try {
+    console.log(`memory   ${memoryStatusLine()}`);
+  } catch {}
   const k = s.counters;
   console.log(
     `saved    ${k.folds} folds, ${k.rerunsShortened} reruns shortened, ${k.readsDeclined} reads answered without resending (since daemon start)`,
@@ -123,18 +170,45 @@ async function status(json: boolean): Promise<number> {
     for (const e of a.events)
       console.log(`           ${e.event.padEnd(18)} ${String(e.count).padStart(7)} · ${ago(e.lastAt)}`);
   }
-  const installed = existsSync(join(homedir(), ".claude"));
-  const cc = s.agents.find((a) => a.agent === "claude-code");
-  if (installed && problems.length && problems.length < 10) {
-    console.log("! claude-code: config no longer points at Sieve:");
-    for (const p of problems) console.log(`    - ${p}`);
-    console.log("  fix: sieve setup --agents claude-code");
-  } else if (installed && !problems.length && cc?.lastHookAt && Date.now() - cc.lastHookAt > 7 * 86_400_000) {
-    console.log(
-      "! claude-code: hooks are registered but have not fired in 7 days. Is Claude Code loading this settings file?",
-    );
+  for (const ch of checks) {
+    const seen = s.agents.find((a) => a.agent === ch.agent);
+    const tag = ch.support === "preview" ? " (preview adapter)" : "";
+    // Nothing of Sieve's in the config at all: the user never set this agent up. Say nothing.
+    const neverSetUp = !seen && ch.problems.every((p) => /not registered/.test(p));
+    if (neverSetUp) continue;
+    if (ch.problems.length) {
+      console.log(`! ${ch.agent}${tag}: config no longer points at Sieve:`);
+      for (const p of ch.problems) console.log(`    - ${p}`);
+      console.log(`  fix: ${fixFor(ch.agent, ch.problems)}`);
+    } else if (!seen?.lastHookAt) {
+      console.log(`! ${ch.agent}${tag}: set up, but no hook has fired since the daemon started`);
+    } else if (Date.now() - seen.lastHookAt > 7 * 86_400_000) {
+      console.log(`! ${ch.agent}${tag}: hooks are registered but have not fired in 7 days`);
+    }
   }
   return 0;
+}
+
+/** What `sieve_run` is isolated by on this machine, stated as it is (also in every run receipt). */
+function isolationLine(): { ok: boolean; text: string; fix?: string } {
+  const mode = loadConfig().sandbox.mode;
+  if (mode === "off")
+    return {
+      ok: false,
+      text: "isolation: none — turned off in config (sandbox.mode = off); sieve_run code runs as you, with full file and network access",
+      fix: 'remove sandbox.mode = "off" from ~/.sieve/config.toml',
+    };
+  const av = detectSandbox();
+  if (av.kind === "none")
+    return {
+      ok: false,
+      text: `isolation: none — ${av.detail}; sieve_run code runs as you, with full file and network access${mode === "require" ? " (sandbox.mode = require: runs are refused)" : ""}`,
+      fix: process.platform === "linux" ? "install bubblewrap (bwrap) and allow user namespaces" : undefined,
+    };
+  return {
+    ok: true,
+    text: `isolation: ${av.kind} — sieve_run writes only to the project and a scratch folder, network off, credential folders unreadable, environment allowlisted; memory and process counts are not limited`,
+  };
 }
 
 async function doctor(): Promise<number> {
@@ -167,20 +241,23 @@ async function doctor(): Promise<number> {
         `daemon version ${s.daemon.version}`,
         "sieve daemon stop (the next call starts the new one)",
       );
-      const cc = s.agents.find((a) => a.agent === "claude-code");
-      check(
-        !!cc && Date.now() - (cc.lastHookAt ?? 0) < 86_400_000,
-        `claude-code hooks fired in the last 24 h (last: ${ago(cc?.lastHookAt ?? null)})`,
-        "open Claude Code in a project; if it stays silent, run sieve setup --agents claude-code",
-        true,
-      );
-      if (cc)
+      for (const ch of setupChecks()) {
+        const a = s.agents.find((x) => x.agent === ch.agent);
+        if (ch.problems.length && !a) continue; // installed, never set up: reported below
         check(
-          cc.latencyMs.p99 < 30,
-          `hook handling p99 ${cc.latencyMs.p99} ms in daemon (budget 30 ms end to end)`,
-          "sieve bench latency",
+          !!a && Date.now() - (a.lastHookAt ?? 0) < 86_400_000,
+          `${ch.agent} hooks fired in the last 24 h (last: ${ago(a?.lastHookAt ?? null)})`,
+          `open ${ch.agent} in a project; if it stays silent, run sieve setup --agents ${ch.agent}`,
           true,
         );
+        if (a)
+          check(
+            a.latencyMs.p99 < 30,
+            `${ch.agent} hook handling p99 ${a.latencyMs.p99} ms in daemon (budget 30 ms end to end)`,
+            "sieve bench latency",
+            true,
+          );
+      }
       watchers = { outlines: s.outlines, list: s.watchers };
       check(
         s.misses.last24h === 0,
@@ -190,13 +267,15 @@ async function doctor(): Promise<number> {
       );
     }
   }
-  const problems = claude.verifySetup({ shimPath: shim, sievePath: sieveInvocation().path });
-  check(
-    problems.length === 0,
-    `claude-code config${problems.length ? `: ${problems.join("; ")}` : " points at Sieve"}`,
-    "sieve setup --agents claude-code",
-    true,
-  );
+  for (const ch of setupChecks()) {
+    const tag = ch.support === "preview" ? " (preview adapter, not yet verified by a live session)" : "";
+    check(
+      ch.problems.length === 0,
+      `${ch.agent} config${ch.problems.length ? `: ${ch.problems.join("; ")}` : " points at Sieve"}${tag}`,
+      fixFor(ch.agent, ch.problems),
+      true,
+    );
+  }
   try {
     const g = new GlobalStore();
     const q = g.db.query("PRAGMA quick_check").get() as { quick_check: string };
@@ -216,12 +295,19 @@ async function doctor(): Promise<number> {
       ? `MCP handshake: ${mcp.tools} tools, schemas ≈ ${mcp.tokens} tokens`
       : `MCP handshake failed: ${mcp.error}`,
   );
-  check(
-    false,
-    "isolation: none — sieve_run code runs as you with full file and network access (sandbox lands in slice 6)",
-    undefined,
-    true,
-  );
+  const iso = isolationLine();
+  check(iso.ok, iso.text, iso.fix, true);
+  try {
+    const gs = guardStatusLine();
+    check(
+      gs.problems.length === 0,
+      `guard: ${gs.text}${gs.problems.length ? `; ${gs.problems.join("; ")}` : ""}`,
+      "sieve guard test; sieve guard log --verify",
+      true,
+    );
+  } catch (e) {
+    check(false, `guard: ${(e as Error).message}`, undefined, true);
+  }
   if (watchers) {
     check(
       watchers.outlines,
@@ -291,48 +377,92 @@ async function setup(args: string[]): Promise<number> {
   const restore = flag(args, "--restore");
   const shim = shimPath(flag(args, "--shim"));
   if (restore) {
-    const files = claude.restoreBackup(resolve(restore));
+    const files = restoreBackup(resolve(restore));
     console.log(files.length ? `Restored:\n  ${files.join("\n  ")}` : "Nothing to restore.");
     return 0;
   }
-  const wanted =
-    agents === "all" || agents === "detect" ? ["claude-code"] : agents.split(",").map((s) => s.trim());
-  const unknown = wanted.filter((a) => a !== "claude-code");
-  if (unknown.length) console.log(`Not supported yet (coming in slice 5/12): ${unknown.join(", ")}`);
-  if (!wanted.includes("claude-code")) return unknown.length ? 1 : 0;
-  if (agents === "detect" && !existsSync(join(homedir(), ".claude")) && !Bun.which("claude")) {
-    console.log("No supported agents detected (looked for Claude Code).");
-    return 0;
+  const names = SETUPS.map((a) => a.agent);
+  let chosen: AgentSetup[];
+  if (agents === "all") chosen = SETUPS;
+  else if (agents === "detect") {
+    chosen = SETUPS.filter((a) => a.detect());
+    if (!chosen.length) {
+      console.log(`No supported agents detected (looked for ${names.join(", ")}).`);
+      return 0;
+    }
+  } else {
+    const wanted = agents
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const unknown = wanted.filter((w) => !names.includes(w));
+    if (unknown.length)
+      console.log(`Not supported yet: ${unknown.join(", ")} (supported: ${names.join(", ")})`);
+    chosen = SETUPS.filter((a) => wanted.includes(a.agent));
+    if (!chosen.length) return 1;
   }
   if (!remove && !existsSync(shim))
     return die(`shim not found at ${shim}. Build it (bun run build) or pass --shim <path>.`);
   const inv = sieveInvocation();
   const opts = { shimPath: shim, sievePath: inv.path, sieveArgs: inv.args };
-  const plan = claude.planSetup(opts, remove);
-  if (plan.length === 0) {
-    console.log(`claude-code: already ${remove ? "removed" : "set up"}; nothing to change.`);
-    return 0;
+  let failed = 0;
+  for (const a of chosen) {
+    const tag = a.support === "preview" ? " (preview: not yet verified by a live session)" : "";
+    let plan: ReturnType<typeof a.plan>;
+    try {
+      plan = a.plan(opts, remove);
+    } catch (e) {
+      // An adapter refuses rather than overwrite a file it cannot round-trip; nothing was written.
+      failed++;
+      console.error(`sieve: ${a.agent}${tag}: ${(e as Error).message}`);
+      continue;
+    }
+    if (plan.length === 0) {
+      console.log(`${a.agent}: already ${remove ? "removed" : "set up"}; nothing to change.`);
+      continue;
+    }
+    console.log(`Plan for ${a.agent}${tag}${dryRun ? " (dry run, nothing written)" : ""}:`);
+    for (const c of plan) {
+      console.log(`  ${c.file}${c.before === null ? " (new file)" : ""}`);
+      for (const x of c.summary) console.log(`    - ${x}`);
+    }
+    if (dryRun) continue;
+    const r = applySetup(a, opts, remove);
+    if (r.rolledBack) {
+      failed++;
+      console.error(`sieve: ${a.agent}: setup check failed, its files were restored: ${r.error}`);
+      continue;
+    }
+    if (a.after) console.log(`${a.agent}: ${a.after}`);
+    console.log(
+      `${a.agent}: done. Backups: ${r.backupDir}\n  Undo: sieve setup --restore ${r.backupDir}   (or: sieve setup --agents ${a.agent} --remove)`,
+    );
   }
-  console.log(`Plan for claude-code${dryRun ? " (dry run, nothing written)" : ""}:`);
-  for (const c of plan) {
-    console.log(`  ${c.file}${c.before === null ? " (new file)" : ""}`);
-    for (const s of c.summary) console.log(`    - ${s}`);
-  }
-  if (dryRun) return 0;
-  const r = claude.applySetup(opts, remove);
-  if (r.rolledBack) return die(`setup check failed, every file was restored: ${r.error}`);
-  console.log(
-    `Done. Backups: ${r.backupDir}\nUndo: sieve setup --restore ${r.backupDir}   (or: sieve setup --remove)`,
-  );
-  console.log("Sieve did not touch CLAUDE.md or any other instruction file.");
-  return 0;
+  if (!dryRun)
+    console.log("Sieve did not touch CLAUDE.md, GEMINI.md, AGENTS.md or any other instruction file.");
+  return failed ? 1 : 0;
 }
 
 const HELP = `sieve ${SIEVE_VERSION} — local context engine for coding agents
 
-  sieve setup [--agents claude-code|detect] [--dry-run] [--remove] [--restore <backup-dir>] [--shim <path>]
+  sieve setup [--agents claude-code,gemini-cli,opencode,cursor,codex,copilot-cli|all|detect] [--dry-run] [--remove] [--restore <backup-dir>] [--shim <path>]
   sieve status [--json]          daemon, connected agents, hook health, misses
   sieve doctor                   checks with a fix for each failure
+  sieve guard check <command>|--read <path>|--write <path>|--url <url>   what the rules say, and why
+  sieve guard test [--preset <name>]    run every rule's saved tests
+  sieve guard log [-n 20] [--verify] [--json]   decisions; --verify checks the hash chain
+  sieve guard mode <enforce|monitor> [--reason "why"]   block or just log (loosening needs a reason)
+  sieve guard init [observe|balanced|locked]   write ~/.sieve/guard.toml
+  sieve memory list [subject] [--history] | review | sync [--dry-run] | edit <id> (--object v | --retract) | prune [--days 90] [--yes]
+  sieve skills add <git-url|folder> | list | enable|disable|remove <name> | verify [name] | match "<prompt>"
+  sieve dash [--port N]          local web dashboard (127.0.0.1, token in the printed URL)
+  sieve tui [--once]             live terminal view; --once prints one frame
+  sieve proxy [--port N]         local gateway for Anthropic/OpenAI/Gemini-shaped APIs (trim, receipts, cache marks, budgets)
+  sieve session list | export [<id>] [-o file] [--encrypt] | import <file> [--as id]   move a session between machines
+  sieve sync init <folder> | push | pull | status   encrypted sync through a folder you sync yourself
+  sieve service install|uninstall|status [--dry-run]   start the daemon at login
+  sieve upgrade --from <file|https-url> --sha256 <hex> | --sha256-file SHA256SUMS   replace this binary with a verified one
+  sieve notify-check [--dry-run]  OS notification for an agent whose config no longer points at Sieve
   sieve search <query> [--scope session|worktree|project] [--sort relevance|timeline]
   sieve get <id> [--lines a-b]   expand an archived item exactly
   sieve stats
@@ -370,6 +500,36 @@ async function main(argv: string[]): Promise<number> {
       return status(bool(args, "--json"));
     case "doctor":
       return doctor();
+    case "guard":
+      return guardCommand(args);
+    case "memory":
+      return memoryCommand(args);
+    case "dash":
+      return dashCommand(args);
+    case "proxy":
+      return proxyCommand(args);
+    case "notify-check": {
+      const problems = setupChecks().filter((c) => c.problems.length);
+      if (bool(args, "--dry-run")) {
+        for (const c of problems) for (const p of c.problems) console.log(`${c.agent}: ${p}`);
+        if (!problems.length) console.log("Every detected agent points at Sieve.");
+        return 0;
+      }
+      for (const l of notifyProblems(problems)) console.log(`notified: ${l}`);
+      return 0;
+    }
+    case "session":
+      return sessionCommand(args);
+    case "sync":
+      return syncCommand(args);
+    case "service":
+      return serviceCommand(args);
+    case "upgrade":
+      return upgradeCommand(args);
+    case "tui":
+      return tuiCommand(args);
+    case "skills":
+      return skillsCommand(args);
     case "setup":
       return setup(args);
     case "get": {

@@ -22,6 +22,8 @@ export const capabilities: AgentCapabilities = {
   deny: true,
   ask: true,
   events: Object.values(HOOK_EVENTS),
+  compaction: "reliable",
+  support: "live",
 };
 
 interface HookInput {
@@ -53,9 +55,18 @@ const FAMILY: Record<string, ToolFamily> = {
   WebSearch: "web",
 };
 
+/**
+ * Sieve's MCP server as Claude Code names it when the Sieve plugin registers it:
+ * `mcp__plugin_<plugin>_<server>__<tool>` (shape seen in real transcripts, e.g. mcp__plugin_figma_figma__…).
+ * It must read as server "sieve", or Sieve would fold its own sieve_get output and Guard would re-check it.
+ */
+export const PLUGIN_NAME = "sieve";
+const PLUGIN_SERVER = `plugin_${PLUGIN_NAME}_sieve`;
+
 export function toolRef(name: string): ToolRef {
   if (name.startsWith("mcp__")) {
-    const server = name.split("__")[1];
+    const raw = name.split("__")[1];
+    const server = raw === PLUGIN_SERVER ? "sieve" : raw;
     return { name, family: "mcp", ...(server ? { server } : {}) };
   }
   return { name, family: FAMILY[name] ?? "other" };
@@ -156,6 +167,70 @@ export function readWasWhole(response: unknown): boolean {
   return (f.startLine ?? 1) <= 1 && f.numLines >= f.totalLines;
 }
 
+export interface AnsweredQuestion {
+  header?: string;
+  question: string;
+  answer: string;
+}
+
+const asRecord = (v: unknown): Record<string, unknown> | null =>
+  v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+
+/**
+ * Answers the user gave through AskUserQuestion. The tool's input lists `questions`; the
+ * answers are keyed by question text, in the result or (filled in by the permission prompt)
+ * in the input. Shape from the tool's schema; not yet checked against a live session in CI.
+ */
+export function answeredQuestions(toolName: string, input: unknown, response: unknown): AnsweredQuestion[] {
+  if (toolName !== "AskUserQuestion") return [];
+  const i = asRecord(input);
+  const r = asRecord(response);
+  const qs = (
+    Array.isArray(r?.questions) ? r.questions : Array.isArray(i?.questions) ? i.questions : []
+  ) as unknown[];
+  const answers = asRecord(r?.answers) ?? asRecord(i?.answers) ?? {};
+  const notes = asRecord(r?.annotations) ?? asRecord(i?.annotations) ?? {};
+  const out: AnsweredQuestion[] = [];
+  for (const q of qs) {
+    const qr = asRecord(q);
+    if (!qr || typeof qr.question !== "string") continue;
+    const a = answers[qr.question];
+    const answer = Array.isArray(a) ? a.map(String).join(", ") : typeof a === "string" ? a : "";
+    if (!answer.trim()) continue;
+    const note = asRecord(notes[qr.question])?.notes;
+    out.push({
+      ...(typeof qr.header === "string" && qr.header ? { header: qr.header } : {}),
+      question: qr.question,
+      answer: typeof note === "string" && note.trim() ? `${answer} (note: ${note.trim()})` : answer,
+    });
+  }
+  return out;
+}
+
+/** The plan text of an approved ExitPlanMode call (the tool succeeds only when the user approves). */
+export function approvedPlan(toolName: string, input: unknown, response: unknown): string | null {
+  if (toolName !== "ExitPlanMode") return null;
+  const plan = asRecord(response)?.plan ?? asRecord(input)?.plan;
+  return typeof plan === "string" && plan.trim() ? plan : null;
+}
+
+/** The todo list written by TodoWrite: its open items are the session's next steps. */
+export function todoList(
+  toolName: string,
+  input: unknown,
+): Array<{ content: string; status: string }> | null {
+  if (toolName !== "TodoWrite") return null;
+  const todos = asRecord(input)?.todos;
+  if (!Array.isArray(todos)) return null;
+  return todos
+    .map(asRecord)
+    .filter((t): t is Record<string, unknown> => !!t && typeof t.content === "string")
+    .map((t) => ({
+      content: t.content as string,
+      status: typeof t.status === "string" ? t.status : "pending",
+    }));
+}
+
 /** How this agent asks for the rest of a file (wording used in smart-read messages). */
 export const readHints = {
   again: "read it again",
@@ -165,10 +240,14 @@ export const readHints = {
 export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent | null {
   if (!raw || typeof raw !== "object") return null;
   const input = raw as HookInput;
+  // Cursor imports Claude Code hook configs and runs the same command with its own payload
+  // (conversation_id, no session_id). Those calls belong to the Cursor adapter, not to a
+  // phantom Claude Code session.
+  if (typeof input.session_id !== "string" || !input.session_id) return null;
   const name = (input.hook_event_name ?? eventName) as ClaudeHookEvent;
   const base = {
     agent: AGENT,
-    sessionId: input.session_id ?? "unknown",
+    sessionId: input.session_id,
     // agent_id is present only inside subagents, which have their own context window.
     context: input.agent_id ? `sub:${input.agent_id}` : "main",
     cwd: input.cwd ?? process.cwd(),

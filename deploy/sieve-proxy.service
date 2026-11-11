@@ -1,0 +1,16 @@
+# systemd user unit:  cp deploy/sieve-proxy.service ~/.config/systemd/user/ && systemctl --user enable --now sieve-proxy
+[Unit]
+Description=Sieve local proxy
+After=network.target
+
+[Service]
+ExecStart=%h/.local/bin/sieve proxy
+Restart=on-failure
+RestartSec=5
+# The proxy sends requests only to the upstreams in ~/.sieve/config.toml
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=%h/.sieve
+
+[Install]
+WantedBy=default.target

@@ -1,4 +1,4 @@
-import { ERROR_LINE } from "../errors.ts";
+import { isErrorLine } from "../errors.ts";
 import { byteLength } from "../text.ts";
 import { DIAGNOSTIC_EXTRACTORS } from "./diagnostics.ts";
 import { GIT_EXTRACTORS } from "./git.ts";
@@ -57,7 +57,7 @@ export function runExtractors(input: ExtractInput): Extraction | null {
     }
     const errs = ls
       .slice(i)
-      .filter((l) => ERROR_LINE.test(l))
+      .filter((l) => isErrorLine(l))
       .slice(0, 60);
     keep.push(
       `… extractor output cut at ${Math.round(limit / 1024)} KB (${ls.length - i} more lines in the archive)`,

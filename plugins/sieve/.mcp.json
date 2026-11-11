@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "sieve": {
+      "type": "stdio",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/sieve",
+      "args": ["mcp"]
+    }
+  }
+}

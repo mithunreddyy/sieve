@@ -25,7 +25,7 @@ Status markers used below: **built** (in the repo, tested), **designed** (decide
  │  router ── hook pipeline ── adapters/* (agent JSON ⇄ shared events)          │
  │    │            │                                                            │
  │    │            ├─ fold: thresholds → extractor → receipt (deterministic)    │
- │    │            ├─ guard (slice 7)      ├─ recall / state block (slice 4)    │
+ │    │            ├─ guard (slice 7)      ├─ recall / state block (built)      │
  │    │                                                                         │
  │  priority queue:  P0 hook replies  >  P1 tool calls  >  P2 background       │
  │    P2: chunk + FTS indexing, state-block precompute, retention, watchers     │
@@ -58,8 +58,8 @@ One daemon serves every agent on the machine. `<key>` is derived from the repo's
 | `packages/bench`                | Latency micro-benchmarks, offline replay of 5 tasks, paired-run harness                                 | built (harness)          |
 | `shim/`                         | `sieve-hook` (Go)                                                                                       | built                    |
 | `packages/adapters/*` (others)  | One per agent                                                                                           | designed                 |
-| `packages/sandbox`              | Seatbelt / bwrap+Landlock / AppContainer helpers                                                        | designed                 |
-| `packages/guard`                | Command parser, rule engine, presets, audit log                                                         | designed                 |
+| `packages/sandbox`              | Seatbelt profile + bubblewrap command line, environment allowlist, grant checks, isolation report       | macOS built; Linux unrun; Windows designed |
+| `packages/guard`                | Shell parser, facts, rule engine, presets, hash-chained audit log                                       | built (static analysis; no behaviour recording) |
 | `packages/proxy`                | Local gateway                                                                                           | designed                 |
 | `packages/dashboard`            | Vite + React + Tailwind, embedded in the binary                                                         | designed                 |
 
@@ -181,26 +181,28 @@ Mapping is from each agent's public docs as of November 2026. **Every row except
 | Agent           | Integration                      | session.start          | prompt.submit       | tool.before                                              | tool.after                                            | compact.before                  | subagent.start | turn.end              | session.end      | Replace                   | Route                               | Context at              | Deny / Ask |
 | --------------- | -------------------------------- | ---------------------- | ------------------- | -------------------------------------------------------- | ----------------------------------------------------- | ------------------------------- | -------------- | --------------------- | ---------------- | ------------------------- | ----------------------------------- | ----------------------- | ---------- |
 | Claude Code     | hooks in `settings.json` + MCP   | SessionStart           | UserPromptSubmit    | PreToolUse                                               | PostToolUse                                           | PreCompact                      | SubagentStart  | Stop                  | SessionEnd       | all (`updatedToolOutput`) | yes (`permissionDecision` + reason) | start, prompt, subagent | yes / yes  |
-| Codex CLI       | hooks in `config.toml` + MCP     | SessionStart           | UserPromptSubmit    | PreToolUse                                               | PostToolUse                                           | — (gap)                         | —              | Stop                  | —                | none                      | yes                                 | start, prompt           | yes / no   |
-| Gemini CLI      | extension, hooks                 | — (gap: first prompt)  | BeforeAgent         | BeforeTool                                               | AfterTool                                             | PreCompress                     | —              | AfterAgent            | SessionEnd       | all                       | yes                                 | prompt, compact         | yes / no   |
+| Codex CLI       | hooks.json / config.toml + MCP (OpenAI docs) | SessionStart (also after compaction, `source: compact`) | UserPromptSubmit | PreToolUse | PostToolUse | PreCompact | SubagentStart | Stop | SessionEnd | none (a block replaces the result with feedback; effect on the model undocumented) | yes | start, prompt | yes / no |
+| Gemini CLI      | hooks in `settings.json` + MCP (read from 0.65.0) | SessionStart | BeforeAgent | BeforeTool | AfterTool | PreCompress (advisory; fires every turn; only `manual` is a reset) | — | AfterAgent | SessionEnd | none (a deny is shown as a failed tool) | yes | start, prompt | yes / no |
 | Qwen Code       | hooks + MCP                      | SessionStart           | UserPromptSubmit    | PreToolUse                                               | PostToolUse                                           | —                               | —              | Stop                  | —                | none                      | yes                                 | start, prompt           | yes / no   |
-| Copilot CLI     | hooks + MCP                      | sessionStart           | userPromptSubmitted | preToolUse                                               | postToolUse                                           | —                               | —              | —                     | sessionEnd       | none                      | yes                                 | start                   | yes / no   |
+| Copilot CLI     | hooks file (`~/.copilot/hooks/*.json`) + MCP (GitHub docs) | sessionStart | userPromptSubmitted (output dropped) | preToolUse (fail-closed) | postToolUse | preCompact (notification only) | subagentStart | agentStop | sessionEnd | all (`modifiedResult`) | yes | start, next tool result | yes / yes |
 | VS Code Copilot | agent hooks + MCP                | SessionStart           | UserPromptSubmit    | PreToolUse                                               | PostToolUse                                           | PreCompact                      | SubagentStart  | Stop                  | —                | none                      | yes                                 | start, prompt           | yes / yes  |
-| Cursor          | `hooks.json` + MCP               | — (gap)                | beforeSubmitPrompt  | beforeShellExecution, beforeMCPExecution, beforeReadFile | afterShellExecution, afterMCPExecution, afterFileEdit | —                               | —              | stop                  | —                | none                      | yes                                 | — (gap: MCP + rules)    | yes / yes  |
+| Cursor          | `hooks.json` + MCP (read from agent 2026.04.28) | sessionStart | beforeSubmitPrompt (no context slot) | preToolUse | postToolUse | preCompact (no context slot) | subagentStart | stop | sessionEnd | none | yes | start, next tool result | yes / yes |
 | Windsurf        | Cascade hooks + MCP              | —                      | pre_user_prompt     | pre_run_command, pre_read_code, pre_mcp_tool_use         | post_run_command, post_mcp_tool_use                   | —                               | —              | post_cascade_response | —                | none                      | yes                                 | —                       | yes / no   |
 | Cline           | hooks + MCP                      | TaskStart / TaskResume | UserPromptSubmit    | PreToolUse                                               | PostToolUse                                           | PreCompact                      | —              | —                     | TaskCancel       | none                      | yes                                 | start, prompt           | yes / no   |
 | Roo             | MCP + instructions               | —                      | —                   | —                                                        | —                                                     | —                               | —              | —                     | —                | none                      | no                                  | —                       | no / no    |
 | Kiro            | agent hooks + MCP                | —                      | promptSubmit        | preToolUse                                               | postToolUse                                           | —                               | —              | agentStop             | —                | none                      | yes                                 | prompt                  | yes / no   |
 | Zed             | MCP (context server) + rules     | —                      | —                   | —                                                        | —                                                     | —                               | —              | —                     | —                | none                      | no                                  | —                       | no / no    |
-| OpenCode        | in-process TS plugin             | session.created        | chat.message        | tool.execute.before                                      | tool.execute.after                                    | experimental.session.compacting | —              | session.idle          | —                | all                       | yes                                 | all                     | yes / yes  |
+| OpenCode        | in-process TS plugin (read from 1.19.4) | session.created (event) | chat.message | tool.execute.before | tool.execute.after | experimental.session.compacting | — (child sessions) | session.idle (event) | session.deleted (event) | all | yes (throw) | prompt, compact | yes / no |
 | Pi              | in-process TS extension          | session_start          | before_agent_start  | tool_call                                                | tool_result                                           | session_before_compact          | —              | agent_end             | session_shutdown | all                       | yes                                 | all                     | yes / no   |
 | Aider, Goose    | MCP (Goose) / CLI + instructions | —                      | —                   | —                                                        | —                                                     | —                               | —              | —                     | —                | none                      | no                                  | —                       | no / no    |
 
-In-process plugins (OpenCode, Pi) talk to the daemon over the same socket with the same frames, so they get full coverage including recall pointers.
+Rows marked "read from <version>" were checked against that installed version's own docs and source (ADR 0008); the others are still from public docs. In-process plugins (OpenCode, Pi) talk to the daemon over the same socket with the same frames, so they get full coverage including recall pointers.
 
 **Claude Code tool response shapes** Sieve reads and rewrites: Bash `{stdout, stderr, interrupted}`; MCP content-block arrays; Read `{file: {content}}` (read only, never rewritten until slice 3); Grep `{mode, filenames, content?}` (rewritten only in `content` mode). Any other object shape is archived but never rewritten, so an unknown shape cannot break how Claude Code renders a result.
 
 **Claude Code specifics added in slice 3.** Every hook input carries `agent_id` only inside a subagent; Sieve keys what a reader has seen by `session_id` + `agent_id` (or "main"), because each subagent has its own context window. `SessionStart` with `source: "compact"` or `"clear"`, and `PreCompact`, start a new epoch. Reads are handled in `PreToolUse` (`permissionDecision: "deny"` with the smart-read message, once; ADR 0006), never by rewriting a Read result, because Claude Code numbers the lines of whatever a Read returns. A Read result counts as a full read when `file.startLine` is 1 and `file.numLines` equals `file.totalLines`. Edits (`Edit`, `MultiEdit`, `Write`, `NotebookEdit`) record the file's new content as known to that reader. `UserPromptSubmit` may return `additionalContext` naming files that changed on disk since the reader read them.
+
+**Claude Code specifics added in slice 4.** `SessionStart` with `source: "compact"` gets the state block as `additionalContext`; `"startup"` gets the worktree's decisions in force; `"clear"` gets nothing and starts the state block afresh. `Stop` queues the state-block rebuild. `PostToolUse` of `AskUserQuestion` (answers keyed by question text, in the result or the input) and of `ExitPlanMode` (success = approved) record decisions; `TodoWrite` records the todo list. These shapes are from the tools' schemas and are not yet verified by a live session (ADR 0007).
 
 **Claude Code specifics used in slice 1** (checked against Claude Code 2.1.319). Hook stdin carries `session_id`, `cwd`, `hook_event_name`, and for tool events `tool_name`, `tool_input`, `tool_response`. A `PostToolUse` reply may set `hookSpecificOutput.updatedToolOutput`, which replaces the result of any tool (built-in or MCP) before the model sees it; the older `updatedMCPToolOutput` covers MCP tools only. Sieve sends `updatedToolOutput` in the same shape as the original `tool_response` (for Bash: the same object with `stdout` replaced by the receipt and `stderr` cleared). Errors and interrupted calls are never replaced.
 
@@ -311,22 +313,26 @@ CREATE TABLE runs (
   worktree TEXT NOT NULL, command_key TEXT NOT NULL, archive_id TEXT NOT NULL, run_no INTEGER NOT NULL,
   created_at INTEGER NOT NULL);
 
--- (slice 4) session log and state blocks
+-- (slice 4, built) session log, state blocks, decisions (ADR 0007).
+-- sessions gains: epoch_at (when the current epoch began), cleared_seq (last row before a /clear)
 CREATE TABLE session_log (
   session_id TEXT NOT NULL, seq INTEGER NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('prompt','edit','command','error','decision','index')),
-  summary TEXT NOT NULL, detail_archive_id TEXT REFERENCES archive(id),
+  kind TEXT NOT NULL CHECK (kind IN ('prompt','edit','command','error','decision','index','todo')),
+  context TEXT NOT NULL, worktree TEXT NOT NULL,
+  summary TEXT NOT NULL,                  -- one line; todo: JSON list of {content, status}
+  key TEXT,                               -- command key (command/error), topic (decision), 'request' (prompt with content)
   files TEXT,                             -- JSON array
+  detail_archive_id TEXT REFERENCES archive(id) ON DELETE SET NULL,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (session_id, seq)
 );
 CREATE TABLE state_blocks (session_id TEXT PRIMARY KEY, upto_seq INTEGER NOT NULL, body TEXT NOT NULL, built_at INTEGER NOT NULL);
 CREATE TABLE decisions (
-  id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, topic TEXT NOT NULL, text TEXT NOT NULL,
+  id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, topic TEXT NOT NULL, label TEXT NOT NULL, text TEXT NOT NULL,
   session_id TEXT, seq INTEGER, created_at INTEGER NOT NULL, superseded_by INTEGER REFERENCES decisions(id)
 );
 
--- (slice 8) memory facts with two timelines
+-- (slice 8, built; `predicates` also has `codebase INTEGER`, see ADR 0011) memory facts with two timelines
 CREATE TABLE facts (
   id INTEGER PRIMARY KEY,
   subject TEXT NOT NULL, predicate TEXT NOT NULL, object TEXT NOT NULL,
@@ -367,7 +373,10 @@ Every tool's input is a strict zod object (unknown fields → error naming the f
     "file":      { "type": "string", "description": "Exposed to the script as SIEVE_FILE" },
     "intent":    { "type": "string", "description": "What you are looking for; ranks the lines kept" },
     "timeoutMs": { "type": "integer", "minimum": 1, "maximum": 600000 },
-    "background":{ "type": "boolean" } } }
+    "background":{ "type": "boolean" },
+    "network":   { "type": "array", "items": { "type": "string" }, "description": "Any entry turns the network on for all hosts (not filtered); recorded in the receipt" },
+    "writable":  { "type": "array", "items": { "type": "string" }, "description": "Extra folders the code may write to" },
+    "env":       { "type": "array", "items": { "type": "string" }, "description": "Environment variable names to pass through" } } }
 
 // sieve_batch (built in slice 2; timeoutMs is the total for all commands)
 { "required": ["commands", "queries"], "additionalProperties": false,
@@ -398,10 +407,13 @@ Every tool's input is a strict zod object (unknown fields → error naming the f
   "properties": { "path": { "type": "string" }, "content": { "type": "string" }, "title": { "type": "string" },
                   "url": { "type": "string", "format": "uri" } } }
 
-// sieve_resume (slice 4)
+// sieve_resume (built in slice 4): no args → the state block; seq → that log row in full
 { "additionalProperties": false, "properties": { "seq": { "type": "integer", "minimum": 1 } } }
 
-// sieve_remember / sieve_recall (slice 8)
+// sieve_schema (built in slice 10): { tool } → the untrimmed definition
+{ "required": ["tool"], "additionalProperties": false, "properties": { "tool": { "type": "string" } } }
+
+// sieve_remember / sieve_recall (built in slice 8; scope defaults to repo)
 { "required": ["subject", "predicate", "object"], "additionalProperties": false,
   "properties": { "subject": {"type":"string"}, "predicate": {"type":"string"}, "object": {"type":"string"},
                   "scope": { "enum": ["everywhere","repo","project","worktree"] }, "retract": { "type": "boolean" } } }
@@ -478,11 +490,18 @@ enabled = true             # SIEVE_WATCH=0
 max_files = 50000
 [reruns]
 diff = true                # SIEVE_RERUN_DIFF=0
+[sandbox]                  # slice 6
+mode = "auto"              # SIEVE_SANDBOX=off|require; auto isolates when the OS can and says so when not
+[session]                  # slice 4
+state_block = true         # SIEVE_STATE_BLOCK=0: log and build, but do not deliver
+recall = true              # SIEVE_RECALL=0
 ```
 
 ---
 
-## 7. Guard rule grammar (slice 7)
+## 7. Guard rule grammar (built in slice 7)
+
+Built: see [ADR 0010](docs/adr/0010-guard.md) for what it reads, the trust model for repo files, the default (enforce mode) and what it cannot see. Additions to the grammar below: `[settings]` (`production`, `protected_branches` tighten from any scope; `approved_registries`, `allowed_hosts`, `allowed_mcp` loosen and count from the user file only), `[audit] verbose`, matchers `any_flags`, `tool`, `production`, and `not = [...]` / `in = [...]` forms for `host`, `flag_values`, `mcp_server`, `mcp_tool`. File operations are `read`, `write`, `delete`, `chmod`, `list`, `any`. The audit trail is `~/.sieve/guard/audit.jsonl` (hash-chained), not a table. Matcher `deletes` and the allow-needs-`reason` rule are also built. On macOS, `sieve_run` additionally applies file, program and network rules to what the sandbox observes the code do (ADR 0010).
 
 One TOML file per scope: `~/.sieve/guard.toml` (user), `<repo>/.sieve/guard.toml` (repo), `<worktree>/.sieve/guard.local.toml` (worktree). Narrower scopes are evaluated first; within a file, `deny` beats `ask` beats `allow` beats `log` when several rules match. Keys are written in stable order.
 
@@ -594,4 +613,4 @@ Full output archived (14 KB). Expand: sieve_get {"id":"s_k3m9q2xv7hab"}, or a ra
 Do not re-run the command to see more.
 ```
 
-Isolation is stated on every `sieve_run` receipt: `isolation: none (slice 1)` until slice 6 lands.
+Isolation is stated on every `sieve_run` receipt, as it is in force: `isolation: seatbelt · writes: project + scratch only · network: off · env: allowlist · reads: credential folders denied · limits: …`, or `isolation: none (<reason>; code runs as you, with full file and network access)`. Secrets in the output are masked first and counted in the header (`2 secrets masked (github_token ×1, secret_value ×1)`). See ADR 0009.

@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import {
   chmodSync,
   closeSync,
@@ -5,10 +6,12 @@ import {
   mkdirSync,
   openSync,
   readFileSync,
+  statSync,
   unlinkSync,
   writeSync,
 } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
+import { basename } from "node:path";
 import { paths, warmTokenizer } from "@sieve/core";
 import {
   PROTOCOL_VERSION,
@@ -30,6 +33,8 @@ export interface DaemonOptions {
   idleMinutes?: number;
   /** Interval of the maintenance tick (health flush; WAL checkpoint every second tick). Default 5000. */
   maintenanceMs?: number;
+  /** Longest a shutdown may take before the process exits anyway (default 30 s). */
+  shutdownMs?: number;
   log?: (msg: string) => void;
 }
 
@@ -68,12 +73,20 @@ export class Daemon {
   private server: Server | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
+  private notifyTimer: ReturnType<typeof setInterval> | null = null;
   private readonly startedAt = Date.now();
   private readonly socketPath: string;
   private readonly lockPath: string;
   private readonly idleMs: number;
   private readonly maintenanceMs: number;
+  private readonly shutdownMs: number;
+  private readonly notifyMs = 10 * 60_000;
   private stopping = false;
+  private exited = false;
+  /** The socket file's inode: if it disappears or is replaced, this daemon is no longer reachable. */
+  private socketIno = -1;
+  private readonly sockets = new Set<Socket>();
+  private inflight = 0;
   private log: (msg: string) => void;
   onStop: (() => void) | null = null;
 
@@ -83,6 +96,7 @@ export class Daemon {
     const idle = opts.idleMinutes ?? Number(process.env.SIEVE_IDLE_MINUTES ?? 30);
     this.idleMs = Number.isFinite(idle) && idle > 0 ? idle * 60_000 : 0;
     this.maintenanceMs = opts.maintenanceMs ?? 5000;
+    this.shutdownMs = opts.shutdownMs ?? 30_000;
     this.log = opts.log ?? ((m) => console.error(`[sieved ${new Date().toISOString()}] ${m}`));
     this.ctx = new DaemonContext();
   }
@@ -105,7 +119,15 @@ export class Daemon {
       this.server!.listen(this.socketPath, () => res());
     });
     chmodSync(this.socketPath, 0o600);
+    this.socketIno = statSync(this.socketPath).ino;
     this.flushTimer = setInterval(() => {
+      // Nobody can reach a daemon whose socket file was deleted (SIEVE_HOME removed) or replaced:
+      // stop instead of lingering until the idle timeout.
+      if (!this.ownsSocket()) {
+        this.log("socket file is gone or replaced; stopping");
+        void this.stop();
+        return;
+      }
       this.ctx.queue.add("flush-health", () => this.ctx.health.flush());
       // Auto-checkpoint is off in the daemon (see OpenOptions.manualCheckpoint); do it here, every 10 s.
       ticks++;
@@ -113,6 +135,21 @@ export class Daemon {
       if (ticks % 2 === 0) this.ctx.queue.add("checkpoint", () => this.ctx.checkpointAll());
     }, this.maintenanceMs);
     this.flushTimer.unref?.();
+    // Optional (off by default): every 10 minutes ask the sieve binary whether an installed agent
+    // has stopped pointing at Sieve, and notify once if so. A child process: nothing runs on the hook path.
+    const bin =
+      process.env.SIEVE_BIN || (basename(process.execPath).startsWith("sieve") ? process.execPath : "");
+    if (this.ctx.config.notify.enabled && bin) {
+      this.notifyTimer = setInterval(() => {
+        try {
+          spawn(bin, ["notify-check"], { stdio: "ignore", detached: false, env: process.env }).on(
+            "error",
+            () => {},
+          );
+        } catch {}
+      }, this.notifyMs);
+      this.notifyTimer.unref?.();
+    }
     this.touch();
     this.log(`listening on ${this.socketPath} (pid ${process.pid}, v${SIEVE_VERSION})`);
     return true;
@@ -128,7 +165,17 @@ export class Daemon {
     }, this.idleMs);
   }
 
+  private ownsSocket(): boolean {
+    try {
+      return statSync(this.socketPath).ino === this.socketIno;
+    } catch {
+      return false;
+    }
+  }
+
   private accept(sock: Socket): void {
+    this.sockets.add(sock);
+    sock.on("close", () => this.sockets.delete(sock));
     let buf = "";
     sock.setEncoding("utf8");
     sock.on("data", (d: string) => {
@@ -146,8 +193,13 @@ export class Daemon {
 
   private async respond(sock: Socket, line: string): Promise<void> {
     this.touch();
-    const reply = await this.handleLine(line);
-    if (!sock.destroyed) sock.write(`${JSON.stringify(reply)}\n`);
+    this.inflight++;
+    try {
+      const reply = await this.handleLine(line);
+      if (!sock.destroyed) sock.write(`${JSON.stringify(reply)}\n`);
+    } finally {
+      this.inflight--;
+    }
   }
 
   /** Parse and dispatch one frame. Exposed for in-process tests. */
@@ -244,18 +296,53 @@ export class Daemon {
   async stop(): Promise<void> {
     if (this.stopping) return;
     this.stopping = true;
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    if (this.flushTimer) clearInterval(this.flushTimer);
-    this.jobs.killAll();
-    await new Promise<void>((res) => (this.server ? this.server.close(() => res()) : res()));
-    await this.ctx.queue.drain();
-    this.ctx.close();
-    for (const f of [this.socketPath, this.lockPath]) {
+    // Whatever fails below, the process must end. Found: when SIEVE_HOME was deleted during shutdown,
+    // the final flush threw, onStop never ran, and the half-stopped daemon spun at 100% CPU for good.
+    const deadline = setTimeout(() => {
+      // Queued indexing that is cut here is not lost: rows stay `indexed = 0` and sieve_search resumes them.
+      this.log(`shutdown took over ${this.shutdownMs} ms; exiting anyway`);
+      this.exit();
+    }, this.shutdownMs);
+    const step = async (name: string, f: () => unknown) => {
       try {
-        unlinkSync(f);
-      } catch {}
+        await f();
+      } catch (e) {
+        this.log(`shutdown: ${name} failed: ${(e as Error).message}`);
+      }
+    };
+    try {
+      if (this.idleTimer) clearTimeout(this.idleTimer);
+      if (this.flushTimer) clearInterval(this.flushTimer);
+      if (this.notifyTimer) clearInterval(this.notifyTimer);
+      await step("jobs", () => this.jobs.killAll());
+      // Stop accepting, let replies already being computed go out (up to 2 s), then drop the
+      // connections that remain: close() waits for every open one, and a connected MCP proxy
+      // never disconnects by itself (measured: close() was still waiting after 3 s).
+      await step("server", async () => {
+        const closed = new Promise<void>((res) => (this.server ? this.server.close(() => res()) : res()));
+        for (let i = 0; i < 100 && this.inflight > 0; i++) await Bun.sleep(20);
+        for (const s of this.sockets) s.end();
+        await Bun.sleep(10);
+        for (const s of this.sockets) s.destroy();
+        await closed;
+      });
+      await step("queue", () => this.ctx.queue.drain());
+      await step("databases", () => this.ctx.close());
+      // Remove the socket and lock only while they are still ours, never a newer daemon's.
+      if (this.ownsSocket()) await step("socket", () => unlinkSync(this.socketPath));
+      await step("lock", () => {
+        if (readFileSync(this.lockPath, "utf8").trim() === String(process.pid)) unlinkSync(this.lockPath);
+      });
+      await step("log", () => this.log("stopped"));
+    } finally {
+      clearTimeout(deadline);
+      this.exit();
     }
-    this.log("stopped");
+  }
+
+  private exit(): void {
+    if (this.exited) return;
+    this.exited = true;
     this.onStop?.();
   }
 }

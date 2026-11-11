@@ -75,6 +75,11 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 	if err != nil || len(input) > maxInput {
 		return miss("input-too-large")
 	}
+	// Exactly one route acts per event. Started by the Claude Code plugin while `sieve setup`'s
+	// hooks are also in settings.json, this call stays silent and those hooks answer.
+	if agent == "claude-code" && os.Getenv("SIEVE_ROUTE") == "plugin" && setupHooksPresent() {
+		return 0
+	}
 	input = bytes.TrimSpace(input)
 	if len(input) == 0 || (input[0] != '{' && input[0] != '[') {
 		return miss("bad-input")
@@ -143,6 +148,24 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 		}
 	}
 	return int(exitCode)
+}
+
+// setupHooksPresent reports whether Claude Code's user settings run sieve-hook for claude-code,
+// which is what `sieve setup --agents claude-code` writes. One small file read, no process.
+func setupHooksPresent() bool {
+	dir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return false
+		}
+		dir = filepath.Join(home, ".claude")
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "settings.json"))
+	if err != nil {
+		return false
+	}
+	return bytes.Contains(b, []byte("sieve-hook")) && bytes.Contains(b, []byte("claude-code"))
 }
 
 // sieveBinary finds the main binary: $SIEVE_BIN, then next to this shim, then PATH.

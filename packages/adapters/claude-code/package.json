@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@sieve/protocol": "workspace:*",
-    "@sieve/core": "workspace:*"
+    "@sieve/core": "workspace:*",
+    "@sieve/adapter-kit": "workspace:*"
   }
 }

@@ -1,21 +1,11 @@
 # Security
 
-Report vulnerabilities privately through GitHub security advisories on this repository. Please do not open public issues for security bugs.
+Report vulnerabilities privately through GitHub security advisories on this repository. Please do not open public issues for security bugs. Include the version (`sieve version`), your OS, and steps to reproduce. You will get an acknowledgement; there is no bounty program.
 
-## Threat model (slice 1)
+The threat model (what each part protects, against whom, and where it stops, including what is unbuilt or untested) is in [docs/threat-model.md](docs/threat-model.md). Short version:
 
-Sieve runs as the user and is local only. These are the boundaries that exist today and what they do and do not protect.
-
-**Daemon socket** (`~/.sieve/run/sieved.sock`)
-- Directory mode `0700`, socket mode `0600`: only the same user can connect. Any process running as that user can talk to the daemon, archive content, run `sieve_run`, and read anything archived. This is the same trust level as the user's shell; the socket does not defend against malware already running as the user.
-- Frames are size-bounded by the shim (64 MB input) and validated with zod. Tool arguments are strict (unknown fields rejected).
-
-**`sieve_run`: no isolation yet.** Code runs as the user with full file and network access, exactly like the agent's own shell tool. Every receipt and `sieve doctor` say so. OS sandboxing (Seatbelt, bwrap/Landlock, AppContainer) is slice 6. Do not treat `sieve_run` as a security boundary until then.
-
-**Archive.** Tool output is stored gzip-compressed in `~/.sieve/projects/<key>/sieve.db` (mode `0700` directory). **Secrets are not masked yet** (slice 6): anything a tool printed, including credentials, is stored on disk. Purge with `rm -rf ~/.sieve/projects/<key>` until `sieve purge` lands.
-
-**Setup.** Only Sieve's own entries are written to agent config files, every touched file is backed up first, and a failed post-write check restores them. Instruction files (CLAUDE.md, AGENTS.md) are never edited.
-
-**Network.** The default mode makes no network calls. Slice 1 has no URL fetching.
-
-**Guard** (command and behaviour rules) is slice 7 and does not exist yet.
+- Sieve runs as you and is local by default. It makes no network call unless you start something that does (`sieve proxy`, `sieve skills add <git url>`, `sieve upgrade --from https://…`, an opt-in extraction model).
+- The hook path fails open: a Sieve fault must never block your agent.
+- Secrets are masked before anything is stored. Masking is best-effort.
+- `sieve_run` is sandboxed on macOS only. Linux and Windows isolation have not run; receipts and `sieve doctor` say what is in force.
+- Guard defaults to enforce with the balanced preset; it is a safety net for accidents and prompt injection, not a security boundary.

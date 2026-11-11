@@ -1,4 +1,4 @@
-import { ERROR_LINE } from "./errors.ts";
+import { ERROR_LINE, isErrorLine } from "./errors.ts";
 import { type Extraction, runExtractors } from "./extract/index.ts";
 import { intentTerms } from "./intent.ts";
 import { queryTerms } from "./search.ts";
@@ -93,7 +93,7 @@ export function fallbackPlan(text: string, budget: FallbackBudget, intent?: stri
   const taken = new Set<number>();
   let eb = 0;
   for (let i = h; i < t && eb < budget.errors; i++) {
-    if (!ERROR_LINE.test(lines[i]!)) continue;
+    if (!isErrorLine(lines[i]!)) continue;
     for (let k = i; k < Math.min(i + 3, t); k++) {
       if (taken.has(k)) continue;
       const shown = numbered(k, lines[k]!);

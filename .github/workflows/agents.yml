@@ -1,0 +1,85 @@
+name: agents
+
+# Real-agent runs behind the support matrix (docs/support-matrix.md). Each job installs one
+# agent, runs `bun run bench agent-e2e <agent> --run` (one short model call on that agent's
+# own account, in a throwaway repo with project-level Sieve config), and uploads the record.
+# NOT YET RUN: needs the secrets below and a GitHub repo; install commands are unchecked.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.4"
+
+jobs:
+  e2e:
+    name: ${{ matrix.agent }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { agent: claude-code, install: "npm i -g @anthropic-ai/claude-code", key: ANTHROPIC_API_KEY }
+          - { agent: gemini-cli, install: "npm i -g @google/gemini-cli", key: GEMINI_API_KEY }
+          - { agent: codex, install: "npm i -g @openai/codex", key: OPENAI_API_KEY }
+          - { agent: copilot-cli, install: "npm i -g @github/copilot", key: COPILOT_GITHUB_TOKEN }
+          - { agent: opencode, install: "npm i -g opencode-ai", key: ANTHROPIC_API_KEY }
+          - { agent: cursor, install: "curl https://cursor.com/install -fsS | bash", key: CURSOR_API_KEY }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - name: Install ${{ matrix.agent }}
+        run: ${{ matrix.install }}
+      - name: Run ${{ matrix.agent }} against this build
+        env:
+          KEY: ${{ matrix.key }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          if [ -z "${!KEY}" ]; then echo "secret $KEY is not set; skipping (the matrix keeps this agent as preview)"; exit 0; fi
+          bun run bench agent-e2e ${{ matrix.agent }} --run
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-${{ matrix.agent }}
+          path: docs/e2e/*.json
+          if-no-files-found: ignore
+
+  matrix:
+    name: support matrix
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          path: docs/e2e
+          pattern: e2e-*
+          merge-multiple: true
+      - run: bun run bench matrix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: support-matrix
+          path: docs/support-matrix.md

@@ -1,0 +1,9 @@
+name = "sieve-proxy"
+main = "index.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+ANTHROPIC_UPSTREAM = "https://api.anthropic.com"
+OPENAI_UPSTREAM = "https://api.openai.com"
+TRIM_BYTES = "1500"
+# Optional shared secret: clients send it as x-sieve-token. Set with `wrangler secret put PROXY_TOKEN`.

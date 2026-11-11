@@ -12,6 +12,9 @@ export interface ProjectRef {
   worktree: string;
 }
 
+/** The archive behind the local proxy (slice 10): a project of its own, so `sieve_get` can expand what it archived. */
+export const PROXY_PROJECT: ProjectRef = { key: "proxy", root: "", name: "proxy", worktree: "" };
+
 const cache = new Map<string, { ref: ProjectRef; at: number }>();
 const CACHE_MS = 60_000; // re-check now and then, so a later `git init` is picked up
 

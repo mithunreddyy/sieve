@@ -1,0 +1,11 @@
+{
+  "name": "sieve",
+  "displayName": "Sieve",
+  "version": "0.1.0",
+  "description": "Local context engine: archives large tool output, returns short receipts that expand exactly, and makes everything searchable. Nothing leaves your machine.",
+  "author": { "name": "Mithun Reddy", "url": "https://github.com/mithunreddyy" },
+  "homepage": "https://github.com/mithunreddyy/sieve",
+  "repository": "https://github.com/mithunreddyy/sieve",
+  "license": "Apache-2.0",
+  "keywords": ["context", "local", "mcp", "hooks", "archive", "search"]
+}

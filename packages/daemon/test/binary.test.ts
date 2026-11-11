@@ -190,7 +190,11 @@ d("compiled binaries", () => {
         "sieve_get",
         "sieve_index",
         "sieve_read",
+        "sieve_recall",
+        "sieve_remember",
+        "sieve_resume",
         "sieve_run",
+        "sieve_schema",
         "sieve_search",
         "sieve_stats",
       ]);

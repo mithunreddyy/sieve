@@ -11,6 +11,18 @@
     "@sieve/core": "workspace:*",
     "@sieve/daemon": "workspace:*",
     "@sieve/mcp": "workspace:*",
-    "@sieve/adapter-claude-code": "workspace:*"
+    "@sieve/adapter-claude-code": "workspace:*",
+    "@sieve/adapter-gemini-cli": "workspace:*",
+    "@sieve/adapter-kit": "workspace:*",
+    "@sieve/adapter-opencode": "workspace:*",
+    "@sieve/adapter-cursor": "workspace:*",
+    "@sieve/adapter-codex": "workspace:*",
+    "@sieve/adapter-copilot-cli": "workspace:*",
+    "@sieve/sandbox": "workspace:*",
+    "@sieve/guard": "workspace:*",
+    "smol-toml": "^1.9.1",
+    "@sieve/dashboard": "workspace:*",
+    "@sieve/proxy": "workspace:*",
+    "@sieve/adapter-mcp-only": "workspace:*"
   }
 }

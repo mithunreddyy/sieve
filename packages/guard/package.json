@@ -1,0 +1,13 @@
+{
+  "name": "@sieve/guard",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "smol-toml": "^1.9.1",
+    "zod": "^4"
+  }
+}

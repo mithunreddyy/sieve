@@ -14,6 +14,71 @@
       "name": "@sieve/adapter-claude-code",
       "version": "0.1.0",
       "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+    },
+    "packages/adapters/codex": {
+      "name": "@sieve/adapter-codex",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+        "smol-toml": "^1.9.1",
+      },
+    },
+    "packages/adapters/copilot-cli": {
+      "name": "@sieve/adapter-copilot-cli",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+    },
+    "packages/adapters/cursor": {
+      "name": "@sieve/adapter-cursor",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+      "devDependencies": {
+        "@sieve/adapter-claude-code": "workspace:*",
+      },
+    },
+    "packages/adapters/gemini-cli": {
+      "name": "@sieve/adapter-gemini-cli",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+    },
+    "packages/adapters/kit": {
+      "name": "@sieve/adapter-kit",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/core": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+    },
+    "packages/adapters/mcp-only": {
+      "name": "@sieve/adapter-mcp-only",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
+      },
+    },
+    "packages/adapters/opencode": {
+      "name": "@sieve/adapter-opencode",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/adapter-kit": "workspace:*",
         "@sieve/core": "workspace:*",
         "@sieve/protocol": "workspace:*",
       },
@@ -22,6 +87,13 @@
       "name": "@sieve/bench",
       "version": "0.1.0",
       "dependencies": {
+        "@sieve/adapter-claude-code": "workspace:*",
+        "@sieve/adapter-codex": "workspace:*",
+        "@sieve/adapter-copilot-cli": "workspace:*",
+        "@sieve/adapter-cursor": "workspace:*",
+        "@sieve/adapter-gemini-cli": "workspace:*",
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/adapter-opencode": "workspace:*",
         "@sieve/core": "workspace:*",
         "@sieve/daemon": "workspace:*",
         "@sieve/protocol": "workspace:*",
@@ -35,10 +107,22 @@
       },
       "dependencies": {
         "@sieve/adapter-claude-code": "workspace:*",
+        "@sieve/adapter-codex": "workspace:*",
+        "@sieve/adapter-copilot-cli": "workspace:*",
+        "@sieve/adapter-cursor": "workspace:*",
+        "@sieve/adapter-gemini-cli": "workspace:*",
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/adapter-mcp-only": "workspace:*",
+        "@sieve/adapter-opencode": "workspace:*",
         "@sieve/core": "workspace:*",
         "@sieve/daemon": "workspace:*",
+        "@sieve/dashboard": "workspace:*",
+        "@sieve/guard": "workspace:*",
         "@sieve/mcp": "workspace:*",
         "@sieve/protocol": "workspace:*",
+        "@sieve/proxy": "workspace:*",
+        "@sieve/sandbox": "workspace:*",
+        "smol-toml": "^1.9.1",
       },
     },
     "packages/core": {
@@ -58,9 +142,34 @@
       "version": "0.1.0",
       "dependencies": {
         "@sieve/adapter-claude-code": "workspace:*",
+        "@sieve/adapter-codex": "workspace:*",
+        "@sieve/adapter-copilot-cli": "workspace:*",
+        "@sieve/adapter-cursor": "workspace:*",
+        "@sieve/adapter-gemini-cli": "workspace:*",
+        "@sieve/adapter-kit": "workspace:*",
+        "@sieve/adapter-opencode": "workspace:*",
         "@sieve/core": "workspace:*",
+        "@sieve/guard": "workspace:*",
         "@sieve/protocol": "workspace:*",
+        "@sieve/sandbox": "workspace:*",
         "zod": "^4.6.7",
+      },
+    },
+    "packages/dashboard": {
+      "name": "@sieve/dashboard",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/core": "workspace:*",
+        "@sieve/guard": "workspace:*",
+        "@sieve/protocol": "workspace:*",
+      },
+    },
+    "packages/guard": {
+      "name": "@sieve/guard",
+      "version": "0.1.0",
+      "dependencies": {
+        "smol-toml": "^1.9.1",
+        "zod": "^4",
       },
     },
     "packages/mcp": {
@@ -79,6 +188,17 @@
       "dependencies": {
         "zod": "^4.6.7",
       },
+    },
+    "packages/proxy": {
+      "name": "@sieve/proxy",
+      "version": "0.1.0",
+      "dependencies": {
+        "@sieve/core": "workspace:*",
+      },
+    },
+    "packages/sandbox": {
+      "name": "@sieve/sandbox",
+      "version": "0.1.0",
     },
   },
   "packages": {
@@ -110,6 +230,20 @@
 
     "@sieve/adapter-claude-code": ["@sieve/adapter-claude-code@workspace:packages/adapters/claude-code"],
 
+    "@sieve/adapter-codex": ["@sieve/adapter-codex@workspace:packages/adapters/codex"],
+
+    "@sieve/adapter-copilot-cli": ["@sieve/adapter-copilot-cli@workspace:packages/adapters/copilot-cli"],
+
+    "@sieve/adapter-cursor": ["@sieve/adapter-cursor@workspace:packages/adapters/cursor"],
+
+    "@sieve/adapter-gemini-cli": ["@sieve/adapter-gemini-cli@workspace:packages/adapters/gemini-cli"],
+
+    "@sieve/adapter-kit": ["@sieve/adapter-kit@workspace:packages/adapters/kit"],
+
+    "@sieve/adapter-mcp-only": ["@sieve/adapter-mcp-only@workspace:packages/adapters/mcp-only"],
+
+    "@sieve/adapter-opencode": ["@sieve/adapter-opencode@workspace:packages/adapters/opencode"],
+
     "@sieve/bench": ["@sieve/bench@workspace:packages/bench"],
 
     "@sieve/cli": ["@sieve/cli@workspace:packages/cli"],
@@ -118,9 +252,17 @@
 
     "@sieve/daemon": ["@sieve/daemon@workspace:packages/daemon"],
 
+    "@sieve/dashboard": ["@sieve/dashboard@workspace:packages/dashboard"],
+
+    "@sieve/guard": ["@sieve/guard@workspace:packages/guard"],
+
     "@sieve/mcp": ["@sieve/mcp@workspace:packages/mcp"],
 
     "@sieve/protocol": ["@sieve/protocol@workspace:packages/protocol"],
+
+    "@sieve/proxy": ["@sieve/proxy@workspace:packages/proxy"],
+
+    "@sieve/sandbox": ["@sieve/sandbox@workspace:packages/sandbox"],
 
     "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
 

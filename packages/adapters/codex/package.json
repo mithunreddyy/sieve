@@ -1,0 +1,15 @@
+{
+  "name": "@sieve/adapter-codex",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@sieve/adapter-kit": "workspace:*",
+    "@sieve/core": "workspace:*",
+    "@sieve/protocol": "workspace:*",
+    "smol-toml": "^1.9.1"
+  }
+}

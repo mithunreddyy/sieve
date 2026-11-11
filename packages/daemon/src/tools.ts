@@ -1,15 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { formatInt, queryTerms, search, TOKENIZER } from "@sieve/core";
+import { ago, formatInt, paths, queryTerms, search, TOKENIZER } from "@sieve/core";
+import type { GuardEvent } from "@sieve/guard";
+import { detect, GrantError } from "@sieve/sandbox";
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 import { TOOLS, type ToolName, type ToolResult } from "@sieve/protocol";
 import type { z } from "zod";
+import { BehaviourWatcher } from "./behaviour.ts";
 import type { DaemonContext } from "./context.ts";
-import { execute, ISOLATION, type Jobs, type RunRequest, renderRun } from "./jobs.ts";
+import { guardMcp } from "./guard.ts";
+import { execute, type Jobs, type RunRequest, renderRun, type SandboxContext } from "./jobs.ts";
+import { recallTool, rememberTool } from "./memory.ts";
 import { readTool } from "./reads.ts";
+import { resumeTool } from "./session.ts";
 
 const GET_CAP = 100 * 1024;
 const INDEX_MAX_FILES = 5000;
@@ -42,16 +48,99 @@ export function parseArgs<T extends ToolName>(tool: T, args: unknown): z.infer<(
   return r.data as z.infer<(typeof TOOLS)[T]["schema"]>;
 }
 
+/**
+ * The sandbox context for a run, with Guard's behaviour checks when this machine can do them
+ * (macOS Seatbelt): rules that can be expressed as a file, program or network operation become
+ * clauses in the profile, and the watcher records the run. Any problem here runs the plain
+ * sandbox instead; the run is never refused because recording failed.
+ */
+async function sandboxWithBehaviour(
+  ctx: DaemonContext,
+  ref: { worktree: string; root: string },
+  cwd: string,
+): Promise<SandboxContext> {
+  const sb = sandboxFor(ctx, ref);
+  try {
+    if (
+      !ctx.config.guard.enabled ||
+      sb.mode === "off" ||
+      !BehaviourWatcher.available() ||
+      detect().kind !== "seatbelt"
+    )
+      return sb;
+    const c = ctx.guard.behaviourClauses({ repoRoot: ref.root, worktree: ref.worktree, cwd });
+    if (!c.report.length && !c.deny.length) return sb;
+    if (!(await ctx.behaviour.ready())) return sb;
+    // Every program start is reported as well: it is the spec's "processes started", and without
+    // it the sandbox does not reliably report file reads by programs that re-exec (Python, Bun).
+    return {
+      ...sb,
+      behaviour: {
+        report: ["(allow process-exec* (with report))", ...c.report],
+        deny: c.deny,
+        watcher: ctx.behaviour,
+      },
+    };
+  } catch {
+    ctx.counters.sessionErrors++;
+    return sb;
+  }
+}
+
+/** Apply the rules to what a run did; returns the lines for the receipt. */
+function judge(
+  ctx: DaemonContext,
+  observed: Parameters<typeof ctx.guard.judgeObserved>[0],
+  tool: string,
+  ref: { worktree: string; root: string },
+  sessionId: string | null,
+  cwd: string,
+): string[] {
+  try {
+    const { lines, findings } = ctx.guard.judgeObserved(observed, {
+      ...mcpEvent(tool, ctx, ref, sessionId),
+      cwd,
+    });
+    ctx.counters[findings.some((f) => f.blocked) ? "guardBlocked" : "guardWouldBlock"] += findings.length
+      ? 1
+      : 0;
+    return lines;
+  } catch {
+    ctx.counters.sessionErrors++;
+    return [];
+  }
+}
+
+/** The Guard event for one of Sieve's own tools: who called it, from where. */
+function mcpEvent(
+  tool: string,
+  ctx: DaemonContext,
+  ref: { worktree: string; root: string },
+  sessionId: string | null,
+): GuardEvent {
+  void ctx;
+  return {
+    tool,
+    family: "mcp",
+    mcp: { server: "sieve", tool },
+    ...(sessionId ? { sessionId } : {}),
+    worktree: ref.worktree,
+    repoRoot: ref.root,
+    agent: "mcp",
+  };
+}
+
+/** Where `sieve_run` may write, and how strictly: the project (and the git root of linked worktrees). */
+function sandboxFor(ctx: DaemonContext, ref: { worktree: string; root: string }): SandboxContext {
+  return {
+    project: [...new Set([ref.worktree, ref.root])],
+    mode: ctx.config.sandbox.mode,
+    denyRead: [paths.home()],
+  };
+}
+
 const ok = (content: string): ToolResult => ({ content, isError: false });
 const fail = (content: string): ToolResult => ({ content, isError: true });
-
-function ago(ms: number, now = Date.now()): string {
-  const s = Math.max(0, Math.round((now - ms) / 1000));
-  if (s < 90) return `${s}s ago`;
-  if (s < 5400) return `${Math.round(s / 60)}m ago`;
-  if (s < 129600) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
-}
 
 export async function callTool(
   ctx: DaemonContext,
@@ -67,38 +156,84 @@ export async function callTool(
   switch (tool as ToolName) {
     case "sieve_run": {
       const a = parseArgs("sieve_run", rawArgs) as RunRequest;
+      // Policy first: the code is read, and what it asks for (network, folders, env names) is checked.
+      const refused = guardMcp(ctx, {
+        ...mcpEvent("sieve_run", ctx, ref, sessionId),
+        run: {
+          language: a.language,
+          code: a.code,
+          ...(a.network ? { network: a.network } : {}),
+          ...(a.writable ? { writable: a.writable } : {}),
+          ...(a.env ? { env: a.env } : {}),
+        },
+        cwd,
+      });
+      if (refused) return fail(refused);
+      const sb = await sandboxWithBehaviour(ctx, ref, cwd);
       const finish = (o: Parameters<typeof renderRun>[0]) => {
-        const text = renderRun(o, a, store, ref, sessionId);
+        const notes = o.observed ? judge(ctx, o.observed, "sieve_run", ref, sessionId, cwd) : [];
+        const text = renderRun(o, a, store, ref, sessionId, notes);
         for (const id of store.unindexed(5)) ctx.indexLater(store, id);
         return text;
       };
-      if (a.background) {
-        const job = jobs.start(a, cwd, finish);
-        return ok(`[sieve run] started in background: ${job.id}\nPoll with sieve_get {"id":"${job.id}"}`);
+      try {
+        if (a.background) {
+          const job = jobs.start(a, cwd, finish, sb);
+          return ok(`[sieve run] started in background: ${job.id}\nPoll with sieve_get {"id":"${job.id}"}`);
+        }
+        const outcome = await execute(a, cwd, undefined, sb).done;
+        return ok(finish(outcome));
+      } catch (e) {
+        // A refused grant (or sandbox = "require" with none available): nothing ran.
+        if (e instanceof GrantError) return fail(`[sieve run] not run: ${e.message}`);
+        throw e;
       }
-      const outcome = await execute(a, cwd).done;
-      return ok(finish(outcome));
     }
 
     case "sieve_batch": {
       const a = parseArgs("sieve_batch", rawArgs);
       const deadline = Date.now() + (a.timeoutMs ?? 600_000);
       const ids: string[] = [];
-      const out = [`[sieve batch] ${plural(a.commands.length, "command")} · isolation: ${ISOLATION}`];
+      const sb = await sandboxWithBehaviour(ctx, ref, cwd);
+      const av = detect();
+      const out = [
+        `[sieve batch] ${plural(a.commands.length, "command")} · isolation: ${sb.mode === "off" ? "none (sandbox turned off in config)" : av.kind === "none" ? `none (${av.detail})` : `${av.kind} (each command: writes limited to the project and a scratch folder, no network, allowlisted env)`}`,
+      ];
       for (const [i, cmd] of a.commands.entries()) {
         const left = deadline - Date.now();
         if (left <= 0) {
           out.push(`${i + 1}. skipped (batch time used up) · ${cmd}`);
           continue;
         }
-        const o = await execute({ language: "shell", code: cmd, timeoutMs: left }, cwd).done;
+        const refused = guardMcp(ctx, {
+          ...mcpEvent("sieve_batch", ctx, ref, sessionId),
+          family: "shell",
+          input: { command: cmd },
+          cwd,
+        });
+        if (refused) {
+          out.push(`${i + 1}. not run · ${refused}`);
+          continue;
+        }
+        let o: Awaited<ReturnType<typeof execute>["done"]>;
+        try {
+          o = await execute({ language: "shell", code: cmd, timeoutMs: left }, cwd, undefined, sb).done;
+        } catch (e) {
+          if (e instanceof GrantError) return fail(`[sieve batch] not run: ${e.message}`);
+          throw e;
+        }
         const status = o.spawnError
           ? `failed to start: ${o.spawnError}`
           : o.timedOut
             ? "timed out"
             : `exit ${o.exitCode}`;
+        const behaviour = o.observed ? judge(ctx, o.observed, "sieve_batch", ref, sessionId, cwd) : [];
+        const noteLines = behaviour.slice(0, 4).map((n) => `   [sieve guard] behaviour ${n}`);
         if (!o.output) {
-          out.push(`${i + 1}. ${status} · ${(o.durationMs / 1000).toFixed(1)} s · no output · ${cmd}`);
+          out.push(
+            `${i + 1}. ${status} · ${(o.durationMs / 1000).toFixed(1)} s · no output · ${cmd}`,
+            ...noteLines,
+          );
           continue;
         }
         const item = store.put(o.output, {
@@ -111,6 +246,7 @@ export async function callTool(
         ids.push(item.id);
         out.push(
           `${i + 1}. ${status} · ${(o.durationMs / 1000).toFixed(1)} s · ${formatInt(item.tokens)} tokens · ${item.id} · ${cmd}`,
+          ...noteLines,
         );
       }
       for (const q of a.queries) {
@@ -138,7 +274,7 @@ export async function callTool(
         if (!job)
           return fail(`No background run ${a.id} in this daemon (runs are kept until the daemon restarts).`);
         if (job.result !== null) return ok(job.result);
-        const partial = job.partial();
+        const partial = store.mask(job.partial(), ref.worktree);
         const tail = partial.length > 2048 ? `…\n${partial.slice(-2048)}` : partial;
         return ok(
           `[sieve run ${a.id}] still running · ${ago(job.startedAt)} started · ${formatInt(job.bytes)} bytes so far\n${tail}`,
@@ -146,7 +282,9 @@ export async function callTool(
       }
       const range = a.lines ? a.lines.split("-").map(Number) : null;
       if (range && range[0]! > range[1]!) return fail("lines: start must not be after end");
-      const got = store.get(a.id, range ? { from: range[0]!, to: range[1]! } : undefined);
+      const rng = range ? { from: range[0]!, to: range[1]! } : undefined;
+      // What the proxy archived lives in its own project database; look there if this project has no such id.
+      const got = store.get(a.id, rng) ?? ctx.proxyStore()?.get(a.id, rng) ?? null;
       if (!got)
         return fail(
           `Unknown id ${a.id} in project ${ref.name}. It may have expired (30 days unread) or belong to another project.`,
@@ -178,6 +316,7 @@ export async function callTool(
         ...(a.cursor ? { cursor: a.cursor } : {}),
         sessionId,
         worktree: ref.worktree,
+        ...(ctx.reranker ? { rerank: ctx.reranker } : {}),
       });
       const fixed = page.corrections.length
         ? ` No exact match for ${page.corrections.map((c) => `"${c.from}"`).join(", ")}; searched for ${page.corrections.map((c) => `"${c.to}"`).join(", ")} instead.`
@@ -216,6 +355,13 @@ export async function callTool(
 
     case "sieve_read": {
       const a = parseArgs("sieve_read", rawArgs);
+      const refused = guardMcp(ctx, {
+        ...mcpEvent("sieve_read", ctx, ref, sessionId),
+        family: "read",
+        input: { path: a.path },
+        cwd,
+      });
+      if (refused) return fail(refused);
       const r = await readTool(ctx, store, ref, { sessionId: sessionId ?? "mcp", context: "main" }, cwd, a);
       return r.isError ? fail(r.text) : ok(r.text);
     }
@@ -233,6 +379,13 @@ export async function callTool(
         return ok(`Indexed ${a.title ?? "content"} as ${item.id} (${formatInt(item.tokens)} tokens).`);
       }
       const given = resolve(cwd, a.path!);
+      const refused = guardMcp(ctx, {
+        ...mcpEvent("sieve_index", ctx, ref, sessionId),
+        family: "read",
+        input: { path: a.path },
+        cwd,
+      });
+      if (refused) return fail(refused);
       if (!existsSync(given)) return fail(`No such path: ${given}`);
       const target = realpathSync(given);
       const files = statSync(target).isDirectory() ? listFiles(target) : [target];
@@ -265,6 +418,42 @@ export async function callTool(
       return ok(
         `Indexed ${indexed} file(s), ${formatInt(tokens)} tokens; skipped ${skipped} (binary, empty, or over 2 MB).${capped}`,
       );
+    }
+
+    case "sieve_resume": {
+      const a = parseArgs("sieve_resume", rawArgs);
+      const r = resumeTool(store, ref, sessionId, a.seq);
+      return r.isError ? fail(r.text) : ok(r.text);
+    }
+
+    case "sieve_remember": {
+      const a = parseArgs("sieve_remember", rawArgs);
+      const r = rememberTool(ctx, ref, sessionId ?? "", a);
+      return r.isError ? fail(r.text) : ok(r.text);
+    }
+
+    case "sieve_recall": {
+      const a = parseArgs("sieve_recall", rawArgs);
+      const r = recallTool(ctx, ref, a);
+      return r.isError ? fail(r.text) : ok(r.text);
+    }
+
+    case "sieve_schema": {
+      const a = parseArgs("sieve_schema", rawArgs);
+      const row = ctx.global.db.query("SELECT definition FROM proxy_schemas WHERE name = ?").get(a.tool) as {
+        definition: string;
+      } | null;
+      if (!row) {
+        const names = (
+          ctx.global.db.query("SELECT name FROM proxy_schemas ORDER BY seen_at DESC LIMIT 10").all() as {
+            name: string;
+          }[]
+        ).map((r) => r.name);
+        return fail(
+          `No trimmed definition stored for "${a.tool}". Only the Sieve proxy trims tool descriptions${names.length ? `; it has trimmed: ${names.join(", ")}` : " and it has not trimmed any yet"}.`,
+        );
+      }
+      return ok(JSON.stringify(JSON.parse(row.definition), null, 2));
     }
 
     case "sieve_stats": {

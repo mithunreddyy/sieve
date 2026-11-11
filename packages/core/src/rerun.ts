@@ -1,10 +1,14 @@
 import { boundedDiff } from "./boundeddiff.ts";
 import { candidates, type ExtractInput } from "./extract/index.ts";
+import { maskSecrets } from "./secrets.ts";
 import type { ArchivedItem } from "./store.ts";
 import { byteLength, cleanTerminal, formatInt } from "./text.ts";
 
-/** Same command, normalised: surrounding space trimmed, runs of whitespace collapsed. */
-export const commandKey = (cmd: string) => cmd.trim().replace(/\s+/g, " ");
+/**
+ * A command's identity for reruns: surrounding space trimmed, runs of whitespace collapsed.
+ * Secrets in it are masked, because the key is stored in the database.
+ */
+export const commandKey = (cmd: string) => maskSecrets(cmd.trim().replace(/\s+/g, " ")).text;
 
 export interface PreviousRun {
   runNo: number;

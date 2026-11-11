@@ -1,4 +1,5 @@
 import type { Database } from "bun:sqlite";
+import type { Reranker } from "./embed.ts";
 
 export interface SearchQuery {
   query: string;
@@ -11,6 +12,8 @@ export interface SearchQuery {
   archiveIds?: string[];
   /** Replace words with zero matches by the closest indexed word (default true). */
   spellfix?: boolean;
+  /** Reorders the lexical candidates by closeness to the whole query; fused with the lexical order. */
+  rerank?: Reranker;
   now?: number;
 }
 
@@ -147,6 +150,20 @@ export function search(db: Database, q: SearchQuery): SearchPage {
     origin: string;
   }>;
 
+  // A reranker orders the same candidates by similarity; its order joins the lexical lists in the fusion.
+  if (q.rerank && rows.length > 1) {
+    const sims = q.rerank(
+      q.query,
+      rows.map((r) => ({ id: r.id, text: `${r.title}\n${r.body}` })),
+    );
+    [...rows]
+      .filter((r) => sims.has(r.id))
+      .sort((a, b) => (sims.get(b.id) ?? 0) - (sims.get(a.id) ?? 0) || a.id - b.id)
+      .forEach((r, rank) => {
+        rrf.set(r.id, (rrf.get(r.id) ?? 0) + 1 / (RRF_K + rank + 1));
+      });
+  }
+
   const hits: Array<SearchHit & { rowid: number }> = rows.map((r) => {
     const ageDays = Math.max(0, now - r.seenAt) / 86_400_000;
     const score =
@@ -178,7 +195,7 @@ export function search(db: Database, q: SearchQuery): SearchPage {
  * A hit from a file (read or indexed) is stale when the watcher's current content id for that
  * path differs from the archived one. Unknown files are not flagged.
  */
-function isStale(db: Database, archiveId: string, path: string, origin: string): boolean {
+export function isStale(db: Database, archiveId: string, path: string, origin: string): boolean {
   const [kind, worktree] = origin.split("\u0000");
   if (kind !== "read" && kind !== "index") return false;
   try {

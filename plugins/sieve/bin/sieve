@@ -1,0 +1,7 @@
+#!/bin/sh
+# The `sieve` command for the plugin's MCP server and for Claude's Bash tool (the plugin's bin/ is
+# on its PATH). It runs the installed binary only, never a PATH lookup, so it cannot find itself.
+bin="${SIEVE_HOME:-$HOME/.sieve}/bin/sieve"
+[ -x "$bin" ] && exec "$bin" "$@"
+echo "sieve: not installed at $bin. Run /sieve:install (or sieve-install --from <folder with sieve and sieve-hook>)." >&2
+exit 127

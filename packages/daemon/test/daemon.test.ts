@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { archiveId, paths } from "@sieve/core";
 import { type HookResult, PROTOCOL_VERSION, type StatusReport, type ToolResult } from "@sieve/protocol";
-import { acquireLock, Daemon } from "../src/index.ts";
+import { detect } from "@sieve/sandbox";
+import { acquireLock, Daemon, DaemonClient } from "../src/index.ts";
 import { bashPost, bigOutput, freshHome, runShim } from "./helpers.ts";
 
 let env: ReturnType<typeof freshHome>;
@@ -75,12 +76,12 @@ describe("hook path through the real Go shim", () => {
 
   test("Sieve's own MCP results and file reads are not folded", async () => {
     const out = bigOutput();
-    const own = {
-      ...bashPost(out, project),
-      tool_name: "mcp__sieve__sieve_get",
-      tool_response: [{ type: "text", text: out }],
-    };
-    expect((await runShim(own)).stdout).toBe("");
+    // Registered by `sieve setup`, and through the Claude Code plugin (tools are then named
+    // mcp__plugin_<plugin>_<server>__<tool>): folding sieve_get would make archives unexpandable.
+    for (const tool_name of ["mcp__sieve__sieve_get", "mcp__plugin_sieve_sieve__sieve_get"]) {
+      const own = { ...bashPost(out, project), tool_name, tool_response: [{ type: "text", text: out }] };
+      expect((await runShim(own)).stdout).toBe("");
+    }
     const read = {
       ...bashPost(out, project),
       tool_name: "Read",
@@ -176,7 +177,8 @@ describe("sieve_run", () => {
       file: "a.txt",
     });
     expect(r.content).toContain("exit 0");
-    expect(r.content).toContain("isolation: none");
+    // Whatever this machine can enforce is what the receipt must say (seatbelt, bwrap, or none).
+    expect(r.content).toContain(`isolation: ${detect().kind}`);
     expect(r.content).toContain("hello\na.txt");
   });
   test("output over 16 KB is archived with a preview of at most ~4 KB", async () => {
@@ -305,6 +307,89 @@ describe("lifecycle", () => {
     await Bun.sleep(200);
     await d.stop();
     expect(n).toBeGreaterThan(0);
+  });
+  test("a shutdown step that throws still ends the process (found: orphans spinning at 100% CPU)", async () => {
+    const d = new Daemon({
+      idleMinutes: 0,
+      socketPath: join(env.home, "t.sock"),
+      lockPath: join(env.home, "t.lock"),
+      log: () => {},
+    });
+    expect(await d.start()).toBe(true);
+    const close = d.ctx.close.bind(d.ctx);
+    d.ctx.close = () => {
+      close();
+      throw new Error("disk I/O error"); // what SQLite reports once SIEVE_HOME was deleted
+    };
+    let stopped = 0;
+    d.onStop = () => stopped++;
+    await d.stop();
+    expect(stopped).toBe(1);
+    expect(existsSync(join(env.home, "t.lock"))).toBe(false);
+  });
+  test("the daemon stops itself when its socket file is gone (home deleted, or replaced)", async () => {
+    const sock = join(env.home, "g.sock");
+    const d = new Daemon({
+      idleMinutes: 0,
+      maintenanceMs: 20,
+      socketPath: sock,
+      lockPath: join(env.home, "g.lock"),
+      log: () => {},
+    });
+    let stopped = 0;
+    d.onStop = () => stopped++;
+    expect(await d.start()).toBe(true);
+    unlinkSync(sock);
+    for (let i = 0; i < 50 && !stopped; i++) await Bun.sleep(20);
+    expect(stopped).toBe(1);
+  });
+  test("stop: a request in flight still gets its reply, and a client that stays connected does not hold stop open", async () => {
+    const sock = join(env.home, "f.sock");
+    const d = new Daemon({
+      idleMinutes: 0,
+      socketPath: sock,
+      lockPath: join(env.home, "f.lock"),
+      log: () => {},
+    });
+    expect(await d.start()).toBe(true);
+    const handle = d.handleLine.bind(d);
+    d.handleLine = async (line) => {
+      await Bun.sleep(300); // a slow request
+      return handle(line);
+    };
+    const idle = await DaemonClient.tryConnect(sock); // like an MCP proxy: connected, never closes
+    const busy = await DaemonClient.tryConnect(sock);
+    expect(idle && busy).toBeTruthy();
+    const reply = busy!.request({ type: "status" });
+    await Bun.sleep(50);
+    let stopped = 0;
+    d.onStop = () => stopped++;
+    const t0 = Date.now();
+    await d.stop();
+    expect((await reply).ok).toBe(true);
+    expect(stopped).toBe(1);
+    expect(Date.now() - t0).toBeLessThan(3000);
+    idle!.close();
+    busy!.close();
+  });
+  test("a shutdown step that never finishes: the process still ends at the deadline", async () => {
+    const d = new Daemon({
+      idleMinutes: 0,
+      shutdownMs: 150,
+      socketPath: join(env.home, "h.sock"),
+      lockPath: join(env.home, "h.lock"),
+      log: () => {},
+    });
+    expect(await d.start()).toBe(true);
+    const drain = d.ctx.queue.drain.bind(d.ctx.queue);
+    d.ctx.queue.drain = () => new Promise<void>(() => {}); // hangs forever
+    let stopped = 0;
+    d.onStop = () => stopped++;
+    void d.stop();
+    await Bun.sleep(400);
+    expect(stopped).toBe(1);
+    d.ctx.queue.drain = drain;
+    d.ctx.close();
   });
   test("socket is private to the user", () => {
     const mode = Bun.spawnSync(["stat", "-f", "%Lp", paths.socket()]).stdout.toString().trim();

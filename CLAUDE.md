@@ -13,18 +13,23 @@ Read before changing behaviour: [DESIGN.md](DESIGN.md) (protocol, schema, tool s
 - From source: `bun packages/cli/src/main.ts <command>`
 
 ## Layout
-`packages/protocol` frames, events, tool zod schemas · `packages/core` paths, project resolution, SQLite store, chunker, search, tokens, fold/receipts, `src/extract/` format-aware extractors, `fixtures/` real tool output + must-keep facts · `packages/daemon` socket server, hook pipeline, `sieve_run` jobs, tool handlers, client · `packages/adapters/claude-code` hook mapping + setup · `packages/mcp` MCP proxy · `packages/cli` the `sieve` binary · `packages/bench` · `shim/` Go shim.
+`packages/protocol` frames, events, tool zod schemas · `packages/core` paths, project resolution, SQLite store, chunker, search, tokens, fold/receipts, `src/extract/` format-aware extractors, `fixtures/` real tool output + must-keep facts · `packages/daemon` socket server, hook pipeline, `sieve_run` jobs, tool handlers, client · `packages/adapters/*` one per agent (hook mapping + setup; `kit` is the shared setup machinery; start from ADR 0008) · `packages/core/src/memory*.ts` + `skills.ts` long-term facts, Markdown sync, skills registry (ADR 0011) · `packages/guard` shell parser, facts, rules, presets, audit (ADR 0010) · `packages/sandbox` Seatbelt/bwrap isolation · `packages/mcp` MCP proxy · `packages/cli` the `sieve` binary · `plugins/sieve` + `.claude-plugin/marketplace.json` the Claude Code plugin (hooks.json must match the claude-code adapter's EVENTS; plugin.json version must match SIEVE_VERSION; both are tested) · `packages/bench` · `shim/` Go shim.
 
 ## Invariants (do not break)
 1. **Never block the agent.** The hook path fails open: any error → empty stdout, exit 0, a line in `run/misses.log`. Heavy work (chunking, FTS indexing, DB flushes) goes on the background queue, never the hook path.
-2. **Nothing is lost.** Archive the original (`store.put`) before returning anything shortened. Every receipt carries an id that `sieve_get` expands exactly.
+2. **Nothing is lost.** Archive the original (`store.put`) before returning anything shortened. Every receipt carries an id that `sieve_get` expands exactly, except that secrets are masked before storage (`<secret:kind#N>`; raw secrets never reach the database, see ADR 0009). The archive id is the hash of the original bytes.
 3. **Cache-safe.** Receipts are pure functions of their input: no clocks, session ids, counters, or randomness. Archive ids are content-addressed. A test asserts byte-identical receipts across sessions.
 4. **Errors are never cut**, only cleaned of terminal codes; error/failure lines in a dropped middle are lifted into the receipt.
-5. **Honest.** Never claim isolation, agent support, or savings that tests or CI have not shown. Receipts and `sieve doctor` state `isolation: none` until slice 6.
+5. **Honest.** Never claim isolation, agent support, or savings that tests or CI have not shown. Receipts, `sieve doctor` and `sieve status` state the isolation actually in force, including `none (<why>)`. Linux (bwrap) has never run and Windows has no backend.
 6. **Local by default.** No network calls unless the user enables them.
 7. Tool args are strict zod objects; unknown fields are rejected by name. Tool descriptions stay under 400 characters.
 
 ## Gotchas
+- **Behaviour recording (macOS)**: Seatbelt only matches verified name-regex shapes (`guard/src/behaviour.ts`), needs real paths, and reports only through `log stream` run under `script` (a pipe block-buffers). Always keep the `(allow process-exec* (with report))` clause, take `watcher.position()` before spawn, and let a marker barrier flush before reading. Allow rules need a `reason`; `deletes` is a file matcher.
+- **Memory/skills (ADR 0011)**: facts are shown to models, so never store a credential (refused), cap trust by writer (Markdown files and agents are never `asserted` unless the user said it), and keep the core block free of clocks. A skill is added disabled, is never executed, and refuses to load if its checksum changed. Memory tests that call tools use `freshHome()`; skills need the registry under `SIEVE_HOME/skills`.
+- **Guard defaults to enforce** (the balanced preset blocks; `sieve guard mode monitor --reason …` only logs) and repo rule files can never loosen the user's policy. A rule or preset change needs tests in the rule itself (`[[rule.test]]`); `sieve guard test` must stay green. Any new tool input shape an adapter delivers (string vs object) must reach Guard as an object: an unreadable input is allowed, not refused.
+- Seatbelt matches **real paths** only (macOS `/tmp` is `/private/tmp`): resolve every path put in a profile (`realish`). Sandbox tests try to escape on the real backend and skip, saying so, where there is none.
+- Test source must not contain contiguous secret-shaped strings (they trip secret scanners and Sieve's own masking): build them from pieces, as `core/test/secrets.test.ts` does. A mask change needs the false-positive sweep (fixtures, this repo, the lockfile) to stay at zero hits.
 - Unix socket paths are limited to ~104 bytes on macOS: tests use `mkdtemp("/tmp/sv-")`, not `os.tmpdir()`.
 - Tests that host the daemon in-process must spawn subprocesses with async `Bun.spawn`, never `spawnSync` (it blocks the daemon's event loop and every hook times out).
 - `SIEVE_HOME` relocates all state; `SIEVE_BIN` tells the shim which binary to start; `SIEVE_HOOK_TIMEOUT_MS` (default 250) and `SIEVE_IDLE_MINUTES` (default 30, 0 = never).
@@ -37,3 +42,4 @@ Read before changing behaviour: [DESIGN.md](DESIGN.md) (protocol, schema, tool s
 - Smart reads and reruns are keyed by session + agent context (`agent_id`) + compaction epoch. Never claim the agent "has" content outside that key.
 - Scripted edits: Biome reformats code, so a text replacement written from memory can silently miss. Assert the old text exists (or use the Edit tool), and re-run the tests.
 - Write ADRs in `docs/adr/` for decisions with trade-offs; update PLAN.md status and deviations when a slice changes.
+- For any critical decision, call advisor on Fable 5.2

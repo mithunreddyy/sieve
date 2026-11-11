@@ -2,9 +2,12 @@ import type { Database } from "bun:sqlite";
 import { type Chunk, chunkText } from "./chunk.ts";
 import { GLOBAL_MIGRATIONS, type OpenOptions, openDatabase, PROJECT_MIGRATIONS } from "./db.ts";
 import { archiveId } from "./ids.ts";
+import { Memory } from "./memory.ts";
 import type { OutlineSymbol } from "./outline/index.ts";
 import { paths } from "./paths.ts";
 import type { ProjectRef } from "./project.ts";
+import { EnvValues, type MaskResult, maskSecrets } from "./secrets.ts";
+import { SessionLog } from "./session.ts";
 import { countLines } from "./text.ts";
 import { countTokens, TOKENIZER } from "./tokens.ts";
 
@@ -12,9 +15,15 @@ export interface ArchiveMeta {
   sessionId?: string | null;
   worktree: string;
   agent?: string | null;
-  sourceKind: "tool" | "run" | "index" | "read";
+  /** "log": the original behind a session-log row (a long prompt, an approved plan). */
+  sourceKind: "tool" | "run" | "index" | "read" | "log";
   source: string;
   at?: number;
+  /**
+   * The content with secrets already masked, when the caller has computed it (the hook path
+   * masks once and reuses it). The id is always derived from the original content.
+   */
+  masked?: string;
 }
 
 export interface ArchivedItem {
@@ -72,6 +81,9 @@ export interface SymbolRow extends OutlineSymbol {
 /** One repo's database: archive, chunks + FTS, sightings, sessions, files, symbols, ledgers. */
 export class ProjectStore {
   readonly db: Database;
+  /** Session log, state blocks and decisions (slice 4). */
+  readonly log: SessionLog;
+  private envValues = new EnvValues();
   /** Chunks of items being indexed in steps (see indexStep). */
   private pending = new Map<string, { chunks: Chunk[]; next: number }>();
 
@@ -81,6 +93,7 @@ export class ProjectStore {
     opts: OpenOptions = {},
   ) {
     this.db = openDatabase(file, PROJECT_MIGRATIONS, opts);
+    this.log = new SessionLog(this.db);
   }
 
   /** Move WAL content into the database without blocking readers or writers. */
@@ -89,8 +102,24 @@ export class ProjectStore {
   }
 
   /**
-   * Store an original before anything is shortened. Content-addressed, so storing the same
-   * bytes twice is a no-op apart from a new sighting. Returns the id and real token count.
+   * Mask secrets in text bound for the database or a receipt: known key formats, private keys,
+   * values assigned to secret-looking names, and the values in the worktree's .env files.
+   */
+  mask(text: string, worktree: string): string {
+    return this.maskResult(text, worktree).text;
+  }
+
+  /** `mask`, with what was masked (for the header of a run result). */
+  maskResult(text: string, worktree: string): MaskResult {
+    return maskSecrets(text, { values: this.envValues.get(worktree) });
+  }
+
+  /**
+   * Store an original before anything is shortened. Content-addressed (by the original bytes,
+   * so a file's id matches the watcher's), so storing the same bytes twice is a no-op apart
+   * from a new sighting. What is stored has its secrets masked: raw secrets never reach the
+   * database, so sieve_get is exact except for `<secret:…>` tokens. Returns the id and real
+   * token count (of the stored text).
    */
   put(content: string, meta: ArchiveMeta): ArchivedItem {
     const id = archiveId(content);
@@ -103,13 +132,14 @@ export class ProjectStore {
       this.db.run("UPDATE archive SET last_read_at = ? WHERE id = ?", [at, id]);
       item = { id, ...existing, isNew: false };
     } else {
-      const raw = Buffer.from(content, "utf8");
+      const raw = Buffer.from(meta.masked ?? this.mask(content, meta.worktree), "utf8");
+      const stored = raw.toString("utf8");
       item = {
         id,
         bytes: raw.length,
-        tokens: countTokens(content),
+        tokens: countTokens(stored),
         tokenizer: TOKENIZER,
-        lines: countLines(content),
+        lines: countLines(stored),
         isNew: true,
       };
       this.db.run(
@@ -121,7 +151,15 @@ export class ProjectStore {
     this.db.run(
       `INSERT INTO sightings (archive_id, session_id, worktree, agent, source_kind, source, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, meta.sessionId ?? null, meta.worktree, meta.agent ?? null, meta.sourceKind, meta.source, at],
+      [
+        id,
+        meta.sessionId ?? null,
+        meta.worktree,
+        meta.agent ?? null,
+        meta.sourceKind,
+        maskSecrets(meta.source).text,
+        at,
+      ],
     );
     return item;
   }
@@ -204,7 +242,7 @@ export class ProjectStore {
   touchSession(id: string, agent: string, worktree: string, at = Date.now()): void {
     this.db.run(
       `INSERT INTO sessions (id, agent, worktree, started_at, last_seen_at) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET last_seen_at = excluded.last_seen_at`,
+       ON CONFLICT(id) DO UPDATE SET last_seen_at = excluded.last_seen_at, ended_at = NULL`,
       [id, agent, worktree, at, at],
     );
   }
@@ -234,9 +272,17 @@ export class ProjectStore {
   }
 
   /** Called on compaction or /clear: everything read before is no longer in the context window. */
-  bumpEpoch(sessionId: string): number {
-    this.db.run("UPDATE sessions SET epoch = epoch + 1 WHERE id = ?", [sessionId]);
+  bumpEpoch(sessionId: string, at = Date.now()): number {
+    this.db.run("UPDATE sessions SET epoch = epoch + 1, epoch_at = ? WHERE id = ?", [at, sessionId]);
     return this.epoch(sessionId);
+  }
+
+  /** When the session's current epoch began (0: the session start). */
+  epochAt(sessionId: string): number {
+    const r = this.db.query("SELECT epoch_at FROM sessions WHERE id = ?").get(sessionId) as {
+      epoch_at: number;
+    } | null;
+    return r?.epoch_at ?? 0;
   }
 
   // ------------------------------------------------------------- reads
@@ -299,6 +345,62 @@ export class ProjectStore {
       .all(r.sessionId, r.context, worktree, this.epoch(r.sessionId), limit) as ReadRow[];
   }
 
+  // ------------------------------------------------------------- folds and command stats (slice 9)
+  recordFold(r: {
+    at: number;
+    sessionId: string;
+    agent: string;
+    tool: string;
+    kind: "fold" | "rerun" | "pass";
+    extractor?: string | null;
+    archiveId?: string | null;
+    tokensIn: number;
+    tokensOut: number;
+    source?: string | null;
+    canary?: boolean;
+  }): void {
+    this.db.run(
+      `INSERT INTO folds (at, session_id, agent, tool, kind, extractor, archive_id, tokens_in, tokens_out, source, canary)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        r.at,
+        r.sessionId,
+        r.agent,
+        r.tool,
+        r.kind,
+        r.extractor ?? null,
+        r.archiveId ?? null,
+        r.tokensIn,
+        r.tokensOut,
+        r.source ?? null,
+        r.canary ? 1 : 0,
+      ],
+    );
+  }
+
+  /** Remember how much a kind of command printed (for steering the next one). */
+  bumpCommand(worktree: string, family: string, tokens: number, at = Date.now()): void {
+    this.db.run(
+      `INSERT INTO command_stats (worktree, family, runs, last_tokens, max_tokens, total_tokens, updated_at)
+       VALUES (?, ?, 1, ?, ?, ?, ?)
+       ON CONFLICT(worktree, family) DO UPDATE SET runs = runs + 1, last_tokens = excluded.last_tokens,
+         max_tokens = MAX(max_tokens, excluded.max_tokens), total_tokens = total_tokens + excluded.total_tokens,
+         updated_at = excluded.updated_at`,
+      [worktree, family, tokens, tokens, tokens, at],
+    );
+  }
+
+  commandStat(
+    worktree: string,
+    family: string,
+  ): { runs: number; lastTokens: number; maxTokens: number } | null {
+    return this.db
+      .query(
+        "SELECT runs, last_tokens AS lastTokens, max_tokens AS maxTokens FROM command_stats WHERE worktree = ? AND family = ?",
+      )
+      .get(worktree, family) as { runs: number; lastTokens: number; maxTokens: number } | null;
+  }
+
   // ------------------------------------------------------------- runs
   recordRun(r: ReaderRef, worktree: string, commandKey: string, archiveId: string, at = Date.now()): number {
     const prev = this.db
@@ -354,7 +456,17 @@ export class ProjectStore {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         );
         for (const s of symbols ?? [])
-          ins.run(worktree, path, s.name, s.kind, s.startLine, s.endLine, s.depth, s.parent, s.signature);
+          ins.run(
+            worktree,
+            path,
+            s.name,
+            s.kind,
+            s.startLine,
+            s.endLine,
+            s.depth,
+            s.parent,
+            maskSecrets(s.signature).text,
+          );
       }
     })();
   }
@@ -430,6 +542,13 @@ export class ProjectStore {
       .slice(0, limit);
   }
 
+  /** Does the worktree define a symbol with exactly this name (case-insensitive)? Uses symbols_name. */
+  hasSymbol(worktree: string, name: string): boolean {
+    return !!this.db
+      .query("SELECT 1 FROM symbols WHERE name = ? COLLATE NOCASE AND worktree = ? LIMIT 1")
+      .get(name, worktree);
+  }
+
   totals(): { items: number; bytes: number; tokens: number; sightings: number } {
     return this.db
       .query(
@@ -447,8 +566,11 @@ export class ProjectStore {
 /** Machine-wide state: project registry and per-agent hook health. */
 export class GlobalStore {
   readonly db: Database;
+  /** Long-term memory (slice 8). */
+  readonly memory: Memory;
   constructor(file = paths.globalDb(), opts: OpenOptions = {}) {
     this.db = openDatabase(file, GLOBAL_MIGRATIONS, opts);
+    this.memory = new Memory(this.db);
   }
 
   checkpoint(): void {

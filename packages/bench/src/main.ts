@@ -1,6 +1,11 @@
+import { readFileSync } from "node:fs";
+import { AGENTS, runAgentE2E } from "./agent-e2e.ts";
 import { runLatency } from "./latency.ts";
+import { loadRecords, renderMatrix } from "./matrix.ts";
+import { analysePaired, renderPaired } from "./paired.ts";
 import { runReadBench } from "./reads.ts";
 import { type ReplayRow, runFixtureReplay, runSyntheticReplay } from "./replay.ts";
+import { runRerankEval } from "./rerank.ts";
 
 const which = process.argv[2] ?? "all";
 let failed = false;
@@ -23,6 +28,20 @@ function table(rows: ReplayRow[], withSource: boolean) {
     `\nTotal: ${tin} → ${tout} tokens (${Math.round((1 - tout / tin) * 100)}% fewer); ${lost} of ${rows.length} lost a fact.\n`,
   );
   return lost;
+}
+
+if (which === "paired") {
+  const file = process.argv[3];
+  if (!file) {
+    console.error("usage: bun run bench paired <results.json>   (see docs/bench-protocol.md)");
+    process.exit(2);
+  }
+  console.log(renderPaired(analysePaired(JSON.parse(readFileSync(file, "utf8")))));
+  process.exit(0);
+}
+if (which === "rerank") {
+  console.log(JSON.stringify(runRerankEval(), null, 2));
+  process.exit(0);
 }
 
 if (which === "replay" || which === "all") {
@@ -66,6 +85,35 @@ if (which === "latency" || which === "all") {
   const warm = rows.filter((r) => r.case.startsWith("go shim, warm"));
   failed = warm.some((r) => r.p99 > 30);
   console.log(`\nRelease gate (warm go shim p99 ≤ 30 ms): ${failed ? "FAIL" : "pass"}`);
+}
+
+// Output piped into a reader that stops early (`| head`, `| tail`) must end the run quietly,
+// not as an unhandled EPIPE stack trace.
+process.stdout.on("error", (e: NodeJS.ErrnoException) => {
+  if (e.code === "EPIPE") process.exit(0);
+  throw e;
+});
+
+if (which === "matrix") {
+  // bun run bench matrix : write docs/support-matrix.md from the adapters and docs/e2e/*.json
+  const text = renderMatrix(loadRecords("docs/e2e"));
+  await Bun.write("docs/support-matrix.md", text);
+  console.log(text);
+}
+
+if (which === "agent-e2e") {
+  // bun run bench agent-e2e <agent|all> [--run] : the real-agent check (spends one model call per agent with --run)
+  const want = process.argv[3] ?? "all";
+  const run = process.argv.includes("--run");
+  const chosen = AGENTS.filter((a) => want === "all" || a.agent === want);
+  if (!chosen.length) {
+    console.error(`unknown agent ${want}; known: ${AGENTS.map((a) => a.agent).join(", ")}`);
+    process.exit(2);
+  }
+  for (const a of chosen) {
+    const r = await runAgentE2E(a, { run, record: run ? "docs/e2e" : undefined });
+    if (r && !r.passed) failed = true;
+  }
 }
 
 console.log(failed ? "\nBench gate: FAIL" : "\nBench gate: pass");

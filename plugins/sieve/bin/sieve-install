@@ -1,0 +1,75 @@
+#!/bin/sh
+# Install Sieve's binaries (sieve, sieve-hook) into ${SIEVE_HOME:-~/.sieve}/bin for the Claude Code plugin.
+#
+#   sieve-install                     download the release matching this plugin's version, verify it
+#                                     against the release's SHA256SUMS, install
+#   sieve-install --from <dir>        copy sieve and sieve-hook from a local folder (no network)
+#   sieve-install --from <dir> --link symlink instead of copy (for a development build)
+#   sieve-install --version 0.1.0     a specific release
+#
+# This is the only part of the plugin that uses the network, and only when you run it.
+# SIEVE_RELEASE_BASE overrides the download location (a mirror, or file:// for testing).
+set -eu
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+dest="${SIEVE_HOME:-$HOME/.sieve}/bin"
+from="" link=0
+version=$(sed -n 's/.*"version"[^"]*"\([^"]*\)".*/\1/p' "$here/.claude-plugin/plugin.json" | head -1)
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --from) from="${2:?--from needs a folder}"; shift 2 ;;
+    --link) link=1; shift ;;
+    --version) version="${2:?--version needs a value}"; shift 2 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    *) echo "sieve-install: unknown option $1" >&2; exit 2 ;;
+  esac
+done
+
+mkdir -p "$dest"
+# Stage beside the destination (same filesystem), so the final mv is an atomic rename.
+stage=$(mktemp -d "$dest/.install.XXXXXX")
+trap 'rm -rf "$stage"' EXIT
+
+if [ -n "$from" ]; then
+  from=$(cd "$from" && pwd)
+  for f in sieve sieve-hook; do
+    [ -x "$from/$f" ] || { echo "sieve-install: $from/$f is missing or not executable" >&2; exit 1; }
+  done
+  if [ "$link" = 1 ]; then
+    for f in sieve sieve-hook; do ln -sf "$from/$f" "$stage/$f"; done
+  else
+    for f in sieve sieve-hook; do cp "$from/$f" "$stage/$f"; done
+  fi
+else
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) plat=darwin-arm64 ;;
+    Darwin-x86_64) plat=darwin-x64 ;;
+    Linux-x86_64) plat=linux-x64 ;;
+    Linux-aarch64|Linux-arm64) plat=linux-arm64 ;;
+    *) echo "sieve-install: no release for $(uname -s) $(uname -m)" >&2; exit 1 ;;
+  esac
+  base="${SIEVE_RELEASE_BASE:-https://github.com/mithunreddyy/sieve/releases/download/v$version}"
+  archive="sieve-$version-$plat.tar.gz"
+  echo "Downloading $base/$archive and SHA256SUMS"
+  curl -fsSL "$base/$archive" -o "$stage/$archive"
+  curl -fsSL "$base/SHA256SUMS" -o "$stage/SHA256SUMS"
+  want=$(awk -v f="$archive" '$2 == f || $2 == "*" f { print $1 }' "$stage/SHA256SUMS")
+  if command -v shasum >/dev/null 2>&1; then got=$(shasum -a 256 "$stage/$archive" | awk '{print $1}')
+  else got=$(sha256sum "$stage/$archive" | awk '{print $1}'); fi
+  [ -n "$want" ] || { echo "sieve-install: SHA256SUMS has no line for $archive" >&2; exit 1; }
+  [ "$want" = "$got" ] || { echo "sieve-install: checksum mismatch for $archive (expected $want, got $got). Nothing installed." >&2; exit 1; }
+  tar -xzf "$stage/$archive" -C "$stage"
+  for f in sieve sieve-hook; do mv "$stage/sieve-$version-$plat/$f" "$stage/$f"; done
+fi
+
+# The new binary must run before anything is replaced.
+"$stage/sieve" version >/dev/null 2>&1 || { echo "sieve-install: the new sieve binary does not run. Nothing installed." >&2; exit 1; }
+for f in sieve-hook sieve; do
+  if [ -L "$stage/$f" ]; then ln -sfn "$(readlink "$stage/$f")" "$dest/$f"
+  else mv -f "$stage/$f" "$dest/$f"; fi
+done
+echo "Installed $("$dest/sieve" version) to $dest"
+# A running daemon finishes its work and exits; the next hook starts the new binary.
+"$dest/sieve" daemon stop >/dev/null 2>&1 || true
+echo "Check it with /sieve:doctor."

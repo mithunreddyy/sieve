@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const REPO = resolve(import.meta.dir, "../../..");
@@ -44,7 +44,13 @@ async function call(
 export async function runLatency(n = 300): Promise<LatencyRow[]> {
   if (!existsSync(SHIM) || !existsSync(SIEVE)) throw new Error("run `bun run build` first");
   const home = mkdtempSync("/tmp/svb-");
-  const env = { SIEVE_HOME: home, SIEVE_BIN: SIEVE, SIEVE_HOOK_TIMEOUT_MS: "1000" };
+  // CLAUDE_CONFIG_DIR: a Claude config with no `sieve setup` hooks, so the plugin route acts.
+  const env = {
+    SIEVE_HOME: home,
+    SIEVE_BIN: SIEVE,
+    SIEVE_HOOK_TIMEOUT_MS: "1000",
+    CLAUDE_CONFIG_DIR: join(home, "claude"),
+  };
   const cwd = join(home);
   const small = JSON.stringify({
     session_id: "b",
@@ -69,7 +75,7 @@ export async function runLatency(n = 300): Promise<LatencyRow[]> {
       },
     });
   const repo = join(home, "repo");
-  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { mkdirSync } = await import("node:fs");
   mkdirSync(repo);
   writeFileSync(
     join(repo, "routes.ts"),
@@ -120,12 +126,124 @@ export async function runLatency(n = 300): Promise<LatencyRow[]> {
       big,
       Math.min(n, 100),
     );
+    // The Claude Code plugin's route: hooks/run.sh finds the binaries in $SIEVE_HOME/bin and execs the shim.
+    const { symlinkSync } = await import("node:fs");
+    mkdirSync(join(home, "bin"));
+    symlinkSync(SHIM, join(home, "bin", "sieve-hook"));
+    symlinkSync(SIEVE, join(home, "bin", "sieve"));
+    const pluginHook = join(import.meta.dir, "..", "..", "..", "plugins", "sieve", "hooks", "run.sh");
+    await measure(
+      "plugin route (run.sh → go shim), warm, PreToolUse (small)",
+      [pluginHook, "PreToolUse"],
+      () => small,
+      n,
+    );
+    await measure(
+      "plugin route (run.sh → go shim), warm, PostToolUse 60 KB → receipt",
+      [pluginHook, "PostToolUse"],
+      big,
+      Math.min(n, 100),
+    );
     await measure(
       "go shim, warm, PreToolUse Read 100 KB file (outline / pass)",
       [SHIM, "claude-code", "PreToolUse"],
       () => readPre,
       Math.min(n, 100),
     );
+    // Guard parses every Bash command on PreToolUse; these are the expensive shapes: a wrapper
+    // chain with several commands, and a script lookup that reads package.json from disk.
+    writeFileSync(
+      join(repo, "package.json"),
+      JSON.stringify({ scripts: { ship: "tsc && node dist/cli.js --prod && echo done" } }),
+    );
+    const pre = (command: string) =>
+      JSON.stringify({
+        session_id: "b",
+        cwd: repo,
+        hook_event_name: "PreToolUse",
+        tool_name: "Bash",
+        tool_input: { command },
+      });
+    const chain = pre(
+      "sudo -u ci bash -lc 'cd /srv/app && git pull --rebase && npm ci && npm run build && rsync -a dist/ deploy@host:/var/www/'",
+    );
+    await measure(
+      "go shim, warm, PreToolUse Bash through Guard (wrapper chain, 5 commands)",
+      [SHIM, "claude-code", "PreToolUse"],
+      () => chain,
+      Math.min(n, 100),
+    );
+    const script = pre("npm run ship");
+    await measure(
+      "go shim, warm, PreToolUse Bash through Guard (reads package.json script)",
+      [SHIM, "claude-code", "PreToolUse"],
+      () => script,
+      Math.min(n, 100),
+    );
+
+    // Recall searches the archive on every prompt with a file name, identifier or error text.
+    // Another session, so the 60 KB outputs above are eligible and pointers are returned.
+    const recallPrompt = (i: number) =>
+      JSON.stringify({
+        session_id: `r${i}`,
+        cwd,
+        hook_event_name: "UserPromptSubmit",
+        prompt: `why does handlerTimeout fail in widget.test.ts? I saw "case ${i % 1500} iteration" twice`,
+      });
+    await measure(
+      "go shim, warm, UserPromptSubmit with recall (log + search)",
+      [SHIM, "claude-code", "UserPromptSubmit"],
+      recallPrompt,
+      Math.min(n, 100),
+    );
+    // Memory and skills add work to the first prompt of a session: facts are ranked against the
+    // prompt, and a matching skill is read from disk and checksummed. 40 facts, 3 skills.
+    {
+      const { GlobalStore, Skills, resolveProject } = await import("@sieve/core");
+      const ref = resolveProject(cwd);
+      const gs = new GlobalStore(join(home, "global.db"));
+      const where = { key: ref.key, root: ref.root, worktree: ref.worktree };
+      for (let i = 0; i < 40; i++)
+        gs.memory.remember(
+          {
+            subject: `module ${i}`,
+            predicate: "note",
+            object: `handler${i} limits requests per minute`,
+            writer: "user",
+            at: Date.now(),
+          },
+          where,
+        );
+      gs.close();
+      const skills = new Skills(join(home, "skills"));
+      for (const [name, desc] of [
+        ["db-migrations", "Plan and review database schema migrations safely"],
+        ["commit-style", "Write conventional commit messages and changelog entries"],
+        ["pdf-forms", "Fill in and extract PDF forms and fields"],
+      ] as const) {
+        const d = mkdtempSync("/tmp/svb-skill-");
+        writeFileSync(
+          join(d, "SKILL.md"),
+          `---\nname: ${name}\ndescription: ${desc}\n---\n${"Step one.\n".repeat(200)}`,
+        );
+        skills.add(d);
+        skills.setEnabled(name, true);
+        rmSync(d, { recursive: true, force: true });
+      }
+      const memPrompt = (i: number) =>
+        JSON.stringify({
+          session_id: `m${i}`,
+          cwd,
+          hook_event_name: "UserPromptSubmit",
+          prompt: `review this database schema migration, and why does handler${i % 40} limit requests per minute?`,
+        });
+      await measure(
+        "go shim, warm, first UserPromptSubmit with memory facts + a matching skill (40 facts, 3 skills)",
+        [SHIM, "claude-code", "UserPromptSubmit"],
+        memPrompt,
+        Math.min(n, 100),
+      );
+    }
     await measure(
       "ts fallback (sieve hook), warm, PreToolUse",
       [SIEVE, "hook", "claude-code", "PreToolUse"],

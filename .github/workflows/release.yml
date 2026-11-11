@@ -1,0 +1,112 @@
+name: release
+
+# Push a tag `v<version>` matching packages/protocol/src/version.ts. This builds every target,
+# tests on Linux and macOS, packages archives + SHA256SUMS, and creates a DRAFT prerelease.
+# Nothing is public until a maintainer reviews the draft and publishes it by hand.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  BUN_VERSION: "1.4.4"
+
+jobs:
+  build-macos:
+    name: macOS targets (test, build, ad-hoc sign)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - name: Tag matches the version in the binary
+        run: test "${GITHUB_REF_NAME}" = "v$(bun -e 'import {SIEVE_VERSION} from "./packages/protocol/src/version.ts"; console.log(SIEVE_VERSION)')"
+      - run: bun run build
+      - name: Test
+        run: bun test
+      - run: bun run build --all --targets darwin-arm64,darwin-x64
+      # Ad-hoc signature only: not Developer ID signed, not notarized (see README).
+      - name: Ad-hoc sign
+        run: for f in dist/darwin-*/*; do codesign --force --sign - "$f"; done
+      - name: Smoke test
+        run: dist/darwin-arm64/sieve version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-darwin
+          path: dist/darwin-*/
+          if-no-files-found: error
+
+  # Windows is not released: its daemon transport (named pipe) is not built (see ci.yml).
+  build-linux:
+    name: Linux targets (test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: shim/go.mod
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run build
+      - name: Test
+        run: bun test
+      - run: bun run build --all --targets linux-x64,linux-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux
+          path: dist/linux-*/
+          if-no-files-found: error
+
+  draft-release:
+    name: package and create a draft prerelease
+    needs: [build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      # Artifacts lose the executable bit in transit.
+      - run: chmod +x dist/*/*
+      - run: bun scripts/package.ts --tag "${GITHUB_REF_NAME}"
+      - name: Smoke test the packaged archive (what users download)
+        run: |
+          cd "$(mktemp -d)"
+          name="sieve-${GITHUB_REF_NAME#v}-linux-x64"
+          cp "$GITHUB_WORKSPACE/dist/release/SHA256SUMS" "$GITHUB_WORKSPACE/dist/release/$name.tar.gz" .
+          shasum -a 256 -c SHA256SUMS --ignore-missing
+          tar -xzf "$name.tar.gz"
+          "./$name/sieve" version | grep -F "${GITHUB_REF_NAME#v}"
+          test -x "./$name/sieve-hook"
+      - name: Create draft prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          Pre-1.0. Verified with Claude Code on macOS; every other agent adapter is "preview" (never run in a live session). `sieve_run` is sandboxed on macOS only. See PLAN.md for what is and is not tested.
+
+          Verify a download: `shasum -a 256 -c SHA256SUMS --ignore-missing`
+          Upgrade an existing install: `sieve upgrade --from <url of sieve-<platform>> --sha256-file SHA256SUMS`
+
+          macOS binaries are ad-hoc signed, not notarized: a browser download is quarantined by Gatekeeper; download with curl, or run `xattr -d com.apple.quarantine sieve sieve-hook`.
+          EOF
+          gh release create "${GITHUB_REF_NAME}" dist/release/* \
+            --draft --prerelease --title "Sieve ${GITHUB_REF_NAME}" --notes-file notes.md

@@ -1,4 +1,4 @@
-import { ERROR_LINE } from "../errors.ts";
+import { isErrorLine } from "../errors.ts";
 import type { Extractor } from "./types.ts";
 import { compact, lines, plural, share } from "./util.ts";
 
@@ -53,7 +53,7 @@ export function cluster(ls: string[]): Cluster[] {
         bestSim = sim;
       }
     }
-    const isErr = ERROR_LINE.test(line);
+    const isErr = isErrorLine(line);
     if (best) {
       best.tokens = best.tokens.map((t, k) => (t === toks[k] ? t : "<*>"));
       best.count++;

@@ -10,6 +10,14 @@
     "@sieve/protocol": "workspace:*",
     "@sieve/core": "workspace:*",
     "@sieve/adapter-claude-code": "workspace:*",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@sieve/adapter-gemini-cli": "workspace:*",
+    "@sieve/adapter-kit": "workspace:*",
+    "@sieve/adapter-opencode": "workspace:*",
+    "@sieve/adapter-cursor": "workspace:*",
+    "@sieve/adapter-codex": "workspace:*",
+    "@sieve/adapter-copilot-cli": "workspace:*",
+    "@sieve/sandbox": "workspace:*",
+    "@sieve/guard": "workspace:*"
   }
 }

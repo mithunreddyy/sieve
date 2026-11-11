@@ -1,4 +1,9 @@
 import * as claudeCode from "@sieve/adapter-claude-code";
+import * as codex from "@sieve/adapter-codex";
+import * as copilotCli from "@sieve/adapter-copilot-cli";
+import * as cursor from "@sieve/adapter-cursor";
+import * as geminiCli from "@sieve/adapter-gemini-cli";
+import * as opencode from "@sieve/adapter-opencode";
 import {
   cleanPrompt,
   commandKey,
@@ -13,9 +18,23 @@ import {
 } from "@sieve/core";
 import type { AgentCapabilities, HookResult, SieveEvent, SieveReply } from "@sieve/protocol";
 import type { DaemonContext } from "./context.ts";
+import { extractAfterTurn } from "./extraction.ts";
+import { guardBefore } from "./guard.ts";
+import { captureFromCommand, coreBlock, forgetShown, noteUserWords, relevantBlock } from "./memory.ts";
 import { type Hints, recordRead, smartReadBefore, staleNotice } from "./reads.ts";
+import {
+  buildStateLater,
+  logPrompt,
+  logTool,
+  recallNotice,
+  type SessionHooks,
+  startupNote,
+  stateFor,
+} from "./session.ts";
+import { skillNotice } from "./skills.ts";
+import { steerable, steerBefore } from "./steer.ts";
 
-export interface Adapter {
+export interface Adapter extends SessionHooks {
   capabilities: AgentCapabilities;
   toEvent(eventName: string, raw: unknown, at: number): SieveEvent | null;
   render(event: SieveEvent, reply: SieveReply, raw: unknown): string;
@@ -28,10 +47,23 @@ export interface Adapter {
 
 export const ADAPTERS: Record<string, Adapter> = {
   [claudeCode.AGENT]: claudeCode,
+  [geminiCli.AGENT]: geminiCli,
+  [opencode.AGENT]: opencode,
+  [cursor.AGENT]: cursor,
+  [codex.AGENT]: codex,
+  [copilotCli.AGENT]: copilotCli,
 };
 
 const PASS: HookResult = { stdout: "", exitCode: 0 };
 type ToolAfter = Extract<SieveEvent, { kind: "tool.after" }>;
+
+/** Deterministic: the same archived output is always, or never, in the audit sample. */
+function canaryPick(sample: number, id: string): boolean {
+  if (sample <= 0) return false;
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 10_000;
+  return h / 10_000 < sample;
+}
 
 function sourceOf(ev: ToolAfter): string {
   const input = (ev.input ?? {}) as Record<string, unknown>;
@@ -64,48 +96,194 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
   store.touchSession(ev.base.sessionId, agent, ref.worktree, at);
   const reader: ReaderRef = { sessionId: ev.base.sessionId, context: ev.base.context };
 
+  const caps = adapter.capabilities;
+  const sid = ev.base.sessionId;
   const reply: SieveReply = {};
+  const notes: string[] = [];
+  /** Deliver the state block now if this event can carry context, else on the next prompt. */
+  const deliverState = (at: "session.start" | "compact.before") => {
+    if (!ctx.config.session.state_block) return;
+    if (caps.contextAt.includes(at)) {
+      ctx.pendingState.delete(sid);
+      const body = bestEffort(ctx, () => stateFor(store, ref, sid));
+      if (body) notes.push(body);
+    } else ctx.pendingState.add(sid);
+  };
   switch (ev.kind) {
     case "session.start":
       // After compaction or /clear, nothing read before is in the context window any more.
       if (ev.source === "compact" || ev.source === "clear") newEpoch(ctx, store, reader);
+      if (ev.source === "clear") bestEffort(ctx, () => store.log.markCleared(sid));
+      if (ev.source === "compact") deliverState("session.start");
+      // Without a compaction hook, a resumed session gets its state rebuilt from the log.
+      if (ev.source === "resume" && !caps.events.includes("compact.before")) deliverState("session.start");
+      if (ev.source === "startup" && caps.contextAt.includes("session.start")) {
+        const note = bestEffort(ctx, () => startupNote(store, ref));
+        if (note) notes.push(note);
+      }
+      // Memory: the core block now if this event can carry it, else with the first prompt.
+      ctx.memoryDue.add(sid);
+      if (caps.contextAt.includes("session.start")) {
+        const core = bestEffort(ctx, () => coreBlock(ctx, ref));
+        ctx.memoryCoreSent.add(sid);
+        if (core) notes.push(core);
+      }
       break;
+    case "subagent.start": {
+      // A subagent has its own context window: give it the core facts and what matches the task.
+      const core = bestEffort(ctx, () => coreBlock(ctx, ref));
+      if (core) notes.push(core);
+      const last = ctx.lastPrompt.get(sid);
+      const rel = last
+        ? bestEffort(ctx, () => relevantBlock(ctx, ref, `${sid}|${ev.base.context}`, last, at))
+        : null;
+      if (rel) notes.push(rel);
+      break;
+    }
     case "compact.before":
+      // Some agents signal an automatic compaction before checking whether to compact at all
+      // (Gemini CLI fires PreCompress on every turn): only a manual one is a known reset there.
+      if (caps.compaction === "manual-only" && ev.trigger === "auto") break;
       newEpoch(ctx, store, reader);
+      // Deliver now if this event carries context; otherwise wait for session.start(compact),
+      // which clears the flag, or the next prompt, for agents that send no such start.
+      if (caps.contextAt.includes("compact.before")) deliverState("compact.before");
+      else ctx.pendingState.add(sid);
+      break;
+    case "turn.end":
+      buildStateLater(ctx, store, ref, sid);
+      // Optional, off by default: a model you chose suggests facts, on the background queue.
+      if (ctx.config.memory.extraction.provider !== "off")
+        ctx.queue.add("extract", () => {
+          // Not awaited by the queue: a slow model must not hold up indexing. Tracked so tests can wait.
+          const p = extractAfterTurn(ctx, store, ref, sid, at).then(() => {});
+          ctx.inflight.add(p);
+          void p.finally(() => ctx.inflight.delete(p));
+        });
       break;
     case "session.end":
-      store.endSession(ev.base.sessionId, at);
+      store.endSession(sid, at);
+      buildStateLater(ctx, store, ref, sid);
       break;
     case "prompt.submit": {
       const clean = cleanPrompt(ev.prompt);
       // Keep the last prompt that had content: "continue" or a tag-only prompt must not erase it.
-      if (intentTerms(clean).length) ctx.lastPrompt.set(ev.base.sessionId, clean.slice(0, 2000));
-      const note = staleNotice(ctx, store, ref, reader);
-      if (note) reply.context = note;
+      if (intentTerms(clean).length) ctx.lastPrompt.set(sid, clean.slice(0, 2000));
+      if (ctx.pendingState.delete(sid) && ctx.config.session.state_block) {
+        const body = bestEffort(ctx, () => stateFor(store, ref, sid));
+        if (body) notes.push(body);
+      }
+      // Recall runs before this prompt is logged, so it cannot point at the prompt itself.
+      const recall = ctx.config.session.recall
+        ? bestEffort(ctx, () => recallNotice(ctx, store, ref, reader, ev.prompt, at))
+        : null;
+      bestEffort(ctx, () => logPrompt(ctx, store, ref, reader, ev.prompt, at));
+      bestEffort(ctx, () => noteUserWords(ctx, sid, ev.prompt));
+      if (!ctx.memoryCoreSent.has(sid)) {
+        // First sight of this session (or its context was reset): the core facts, and the facts
+        // that match this first request.
+        ctx.memoryCoreSent.add(sid);
+        ctx.memoryDue.add(sid);
+        const core = bestEffort(ctx, () => coreBlock(ctx, ref));
+        if (core) notes.push(core);
+      }
+      if (ctx.memoryDue.delete(sid)) {
+        const rel = bestEffort(ctx, () => relevantBlock(ctx, ref, sid, clean, at));
+        if (rel) notes.push(rel);
+      }
+      const skill = bestEffort(ctx, () =>
+        skillNotice(ctx, sid, clean, !(caps.contextAt as string[]).includes("prompt.submit")),
+      );
+      if (skill) notes.push(skill);
+      const stale = staleNotice(ctx, store, ref, reader);
+      if (stale) notes.push(stale);
+      if (recall) notes.push(recall);
       break;
     }
     case "tool.before": {
+      // Guard first: a call that policy refuses (or hands to the agent's approval prompt) is not
+      // also answered with an outline.
+      const guarded = guardBefore(ctx, caps, ev, ref);
+      if (guarded) {
+        reply.decision = guarded;
+        break;
+      }
       const req = ev.tool.family === "read" ? adapter.readRequest?.(ev.input) : null;
       if (req?.full && adapter.readHints && adapter.capabilities.deny) {
-        const msg = smartReadBefore(ctx, store, ref, reader, req.path, ev.base.cwd, adapter.readHints);
+        const msg = smartReadBefore(ctx, store, ref, reader, req.path, ev.base.cwd, adapter.readHints, {
+          // Without a reliable compaction signal, what this reader read before may be gone.
+          trustHistory: caps.compaction === "reliable",
+        });
         if (msg) {
           reply.decision = { action: "deny", reason: msg, ruleId: "sieve.smart-read" };
           ctx.counters.readsDeclined++;
         }
       }
+      // Steering: a read-only command that printed a lot last time is declined once.
+      if (!reply.decision && ev.tool.family === "shell" && caps.deny) {
+        const cmd = str((ev.input as Record<string, unknown> | undefined)?.command);
+        const why = cmd
+          ? bestEffort(ctx, () => steerBefore(ctx, store, ref.worktree, reader, cmd, ev.base.cwd, at))
+          : null;
+        if (why) reply.decision = { action: "deny", reason: why, ruleId: "sieve.steer" };
+      }
       break;
     }
     case "tool.after":
       afterTool(ctx, adapter, store, ref, reader, agent, ev, reply, at);
+      // After afterTool, which archives large output: an error row points at that archive id.
+      bestEffort(ctx, () => logTool(ctx, adapter, store, ref, reader, agent, ev, at));
+      if (ev.tool.family === "shell" && !ev.output.isError)
+        bestEffort(ctx, () =>
+          captureFromCommand(
+            ctx,
+            ref,
+            str((ev.input as Record<string, unknown> | undefined)?.command) ?? "",
+            ev.output.text,
+            at,
+          ),
+        );
       break;
   }
+  // An event with no context slot parks its notes for the next tool result, if the agent has one.
+  const viaTool = (caps.contextAt as string[]).includes("tool.after");
+  if (notes.length && !(caps.contextAt as string[]).includes(ev.kind) && viaTool) {
+    const q = ctx.pendingNotes.get(sid) ?? [];
+    q.push(...notes);
+    notes.length = 0;
+    while (q.length > 4 || q.reduce((n, x) => n + x.length, 0) > 4096) q.shift(); // newest wins
+    ctx.pendingNotes.set(sid, q);
+  }
+  if (ev.kind === "tool.after" && viaTool) {
+    const q = ctx.pendingNotes.get(sid);
+    if (q?.length) {
+      notes.unshift(...q);
+      ctx.pendingNotes.delete(sid);
+    }
+  }
+  if (notes.length) reply.context = notes.join("\n\n");
   const stdout = adapter.render(ev, reply, raw);
   ctx.health.record(agent, eventName || ev.kind, at, performance.now() - t0);
   return { stdout, exitCode: 0 };
 }
 
+/** Session bookkeeping must never cost the agent a fold or a reply: failures are counted, not thrown. */
+function bestEffort<T>(ctx: DaemonContext, f: () => T): T | null {
+  try {
+    return f();
+  } catch {
+    ctx.counters.sessionErrors++;
+    return null;
+  }
+}
+
 function newEpoch(ctx: DaemonContext, store: ProjectStore, reader: ReaderRef): void {
   store.bumpEpoch(reader.sessionId);
+  ctx.recalled.delete(reader.sessionId);
+  // The context window is gone: the model must be told its facts again.
+  forgetShown(ctx, reader.sessionId);
+  ctx.skillsLoaded.delete(reader.sessionId);
+  ctx.memoryDue.add(reader.sessionId);
   for (const k of ctx.notified.keys()) if (k.startsWith(`${reader.sessionId}|`)) ctx.notified.delete(k);
 }
 
@@ -141,7 +319,11 @@ function afterTool(
   }
   if (ev.output.text.length < THRESHOLDS.passBelow) return;
 
+  // Secrets are masked once, here: the archive, the rerun diff and the receipt all use the
+  // masked text, so a secret can reach neither the database nor the model through Sieve.
+  const safe = store.mask(ev.output.text, ref.worktree);
   const item = store.put(ev.output.text, {
+    masked: safe,
     sessionId: reader.sessionId,
     worktree: ref.worktree,
     agent,
@@ -152,9 +334,33 @@ function afterTool(
   if (item.isNew) ctx.indexLater(store, item.id);
   const input = (ev.input ?? {}) as Record<string, unknown>;
   const intent = str(input.description) ?? str(input.prompt);
-  const command = ev.tool.family === "shell" ? str(input.command) : undefined;
+  const rawCommand = ev.tool.family === "shell" ? str(input.command) : undefined;
+  const command = rawCommand === undefined ? undefined : store.mask(rawCommand, ref.worktree);
   const pattern = str(input.pattern);
   const replaceable = canReplace(adapter.capabilities, ev);
+  const canary = canaryPick(ctx.config.canary.sample, item.id);
+  // What the dashboard shows and steering learns from, kept for every large output.
+  const note = (kind: "fold" | "rerun" | "pass", extractor: string | null, tokensOut: number) =>
+    bestEffort(ctx, () =>
+      store.recordFold({
+        at,
+        sessionId: reader.sessionId,
+        agent,
+        tool: ev.tool.name,
+        kind,
+        extractor,
+        archiveId: item.id,
+        tokensIn: item.tokens,
+        tokensOut,
+        source: store.mask(sourceOf(ev), ref.worktree),
+        canary: canary && kind !== "pass",
+      }),
+    );
+  if (rawCommand)
+    bestEffort(ctx, () => {
+      const s = steerable(rawCommand, ev.base.cwd);
+      if (s) store.bumpCommand(ref.worktree, s.family, item.tokens, at);
+    });
 
   // Reruns: compare with the previous run of the same command by this reader in this epoch.
   let preface: string | undefined;
@@ -168,12 +374,13 @@ function afterTool(
       const r = compareRuns(
         { runNo: prev.runNo, item: { ...prevInfo, isNew: false }, text: prevText },
         item,
-        ev.output.text,
+        safe,
         { command, isError: ev.output.isError, toolName: ev.tool.name, ...(intent ? { intent } : {}) },
       );
       if (r.kind === "identical" || r.kind === "diff") {
         reply.replaceOutput = r.text;
         ctx.counters.rerunsShortened++;
+        note("rerun", null, countTokens(r.text));
         ctx.counters.tokensIn += item.tokens;
         ctx.counters.tokensOut += countTokens(r.text);
         return;
@@ -181,10 +388,13 @@ function afterTool(
       if (r.kind === "summary") preface = r.preface;
     }
   }
-  if (!replaceable) return;
+  if (!replaceable) {
+    note("pass", null, item.tokens);
+    return;
+  }
   const d = decideFold(
     {
-      text: ev.output.text,
+      text: safe,
       isError: ev.output.isError,
       toolName: ev.tool.name,
       ...(intent ? { intent } : {}),
@@ -199,5 +409,6 @@ function afterTool(
     ctx.counters.folds++;
     ctx.counters.tokensIn += item.tokens;
     ctx.counters.tokensOut += countTokens(d.text);
-  }
+    note("fold", d.extractor, countTokens(d.text));
+  } else note("pass", null, item.tokens);
 }

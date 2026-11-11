@@ -41,6 +41,49 @@ export const GLOBAL_MIGRATIONS: Migration[] = [
       agent TEXT NOT NULL, event TEXT NOT NULL, last_at INTEGER NOT NULL,
       count INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (agent, event))`);
   },
+  (db) => {
+    // Slice 8: long-term memory. Facts have two timelines (DESIGN §4); `predicates.codebase`
+    // marks predicates that describe a codebase and so cannot be wider than a repo.
+    db.run(`CREATE TABLE predicates (
+      canonical TEXT PRIMARY KEY, single_valued INTEGER NOT NULL, codebase INTEGER NOT NULL DEFAULT 0)`);
+    db.run(`CREATE TABLE predicate_aliases (
+      alias TEXT PRIMARY KEY, canonical TEXT NOT NULL REFERENCES predicates(canonical))`);
+    db.run(`CREATE TABLE facts (
+      id INTEGER PRIMARY KEY,
+      subject TEXT NOT NULL, predicate TEXT NOT NULL, object TEXT NOT NULL,
+      scope TEXT NOT NULL CHECK (scope IN ('everywhere','repo','project','worktree')),
+      scope_ref TEXT,
+      trust TEXT NOT NULL CHECK (trust IN ('asserted','observed','inferred')),
+      writer TEXT NOT NULL,
+      valid_at INTEGER, invalid_at INTEGER,
+      created_at INTEGER NOT NULL, expired_at INTEGER,
+      source_archive_id TEXT, uses INTEGER NOT NULL DEFAULT 0, last_used_at INTEGER)`);
+    db.run(
+      "CREATE INDEX facts_active ON facts(scope, scope_ref) WHERE expired_at IS NULL AND invalid_at IS NULL",
+    );
+    db.run("CREATE INDEX facts_slot ON facts(predicate, scope, scope_ref)");
+  },
+  (db) => {
+    // Files a fact's value mentions (JSON array), to flag it when one changes.
+    db.run("ALTER TABLE facts ADD COLUMN files TEXT");
+  },
+  (db) => {
+    // Slice 10: the local proxy. One row per forwarded request (what the provider reported, and
+    // what Sieve changed), full tool definitions that were trimmed (for sieve_schema), and the
+    // budget thresholds already announced.
+    db.run(`CREATE TABLE proxy_calls (
+      id INTEGER PRIMARY KEY, at INTEGER NOT NULL, provider TEXT NOT NULL, model TEXT, session TEXT NOT NULL,
+      status INTEGER NOT NULL, input_tokens INTEGER NOT NULL DEFAULT 0, cache_read INTEGER NOT NULL DEFAULT 0,
+      cache_write INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+      trimmed_bytes INTEGER NOT NULL DEFAULT 0, folded INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0,
+      marks_added INTEGER NOT NULL DEFAULT 0, retried TEXT, failed_open TEXT, dollars REAL NOT NULL DEFAULT 0)`);
+    db.run("CREATE INDEX proxy_calls_at ON proxy_calls(at)");
+    db.run("CREATE INDEX proxy_calls_session ON proxy_calls(session, at)");
+    db.run(`CREATE TABLE proxy_schemas (
+      name TEXT PRIMARY KEY, hash TEXT NOT NULL, definition TEXT NOT NULL, seen_at INTEGER NOT NULL)`);
+    db.run(`CREATE TABLE proxy_alerts (
+      scope TEXT NOT NULL, key TEXT NOT NULL, pct INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (scope, key, pct))`);
+  },
 ];
 
 export const PROJECT_MIGRATIONS: Migration[] = [
@@ -114,5 +157,41 @@ export const PROJECT_MIGRATIONS: Migration[] = [
       worktree TEXT NOT NULL, command_key TEXT NOT NULL, archive_id TEXT NOT NULL, run_no INTEGER NOT NULL,
       created_at INTEGER NOT NULL)`);
     db.run("CREATE INDEX runs_lookup ON runs(session_id, context, command_key, id)");
+  },
+  // 4: session log, state blocks, decisions (slice 4).
+  (db) => {
+    // When the current epoch began (recall skips what the context saw since), and the last
+    // log row before a /clear (the state block starts after it).
+    db.run("ALTER TABLE sessions ADD COLUMN epoch_at INTEGER NOT NULL DEFAULT 0");
+    db.run("ALTER TABLE sessions ADD COLUMN cleared_seq INTEGER NOT NULL DEFAULT 0");
+    db.run(`CREATE TABLE session_log (
+      session_id TEXT NOT NULL, seq INTEGER NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('prompt','edit','command','error','decision','index','todo')),
+      context TEXT NOT NULL, worktree TEXT NOT NULL, summary TEXT NOT NULL, key TEXT, files TEXT,
+      detail_archive_id TEXT REFERENCES archive(id) ON DELETE SET NULL,
+      created_at INTEGER NOT NULL, PRIMARY KEY (session_id, seq))`);
+    db.run("CREATE INDEX session_log_detail ON session_log(detail_archive_id)");
+    db.run(`CREATE TABLE state_blocks (
+      session_id TEXT PRIMARY KEY, upto_seq INTEGER NOT NULL, body TEXT NOT NULL, built_at INTEGER NOT NULL)`);
+    db.run(`CREATE TABLE decisions (
+      id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, topic TEXT NOT NULL, label TEXT NOT NULL, text TEXT NOT NULL,
+      session_id TEXT, seq INTEGER, created_at INTEGER NOT NULL, superseded_by INTEGER REFERENCES decisions(id))`);
+    db.run("CREATE INDEX decisions_active ON decisions(worktree, topic) WHERE superseded_by IS NULL");
+  },
+  (db) => {
+    // Slice 9. `folds`: one row per tool output Sieve looked at, kept for the dashboard (what was
+    // shortened, by which extractor, for how many tokens). `command_stats`: how much each kind of
+    // command printed last time, for steering.
+    db.run(`CREATE TABLE folds (
+      id INTEGER PRIMARY KEY, at INTEGER NOT NULL, session_id TEXT NOT NULL, agent TEXT NOT NULL,
+      tool TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('fold','rerun','pass')),
+      extractor TEXT, archive_id TEXT REFERENCES archive(id) ON DELETE SET NULL,
+      tokens_in INTEGER NOT NULL, tokens_out INTEGER NOT NULL, source TEXT, canary INTEGER NOT NULL DEFAULT 0)`);
+    db.run("CREATE INDEX folds_at ON folds(at)");
+    db.run("CREATE INDEX folds_archive ON folds(archive_id)");
+    db.run(`CREATE TABLE command_stats (
+      worktree TEXT NOT NULL, family TEXT NOT NULL, runs INTEGER NOT NULL, last_tokens INTEGER NOT NULL,
+      max_tokens INTEGER NOT NULL, total_tokens INTEGER NOT NULL, updated_at INTEGER NOT NULL,
+      PRIMARY KEY (worktree, family))`);
   },
 ];
