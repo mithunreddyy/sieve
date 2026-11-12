@@ -62,13 +62,18 @@ jobs:
           go-version-file: shim/go.mod
       - run: bun install --frozen-lockfile
       - run: bun run build
-      # Dependencies are installed and binaries built above; the tests then run with no
-      # network interface at all, so any outbound call fails the test instead of passing.
-      - name: Tests with networking off
+      # Dependencies are installed and binaries built above; the tests then run in an empty network
+      # namespace, so any outbound call fails the test instead of passing. Only loopback is brought up:
+      # several tests host a local server (the proxy, the dashboard, the sandbox and behaviour tests), and
+      # a new namespace leaves `lo` down, which made them fail with "Failed to start server". There is no
+      # route out of the namespace, and the next step proves it.
+      - name: Tests with networking off (loopback only)
         run: |
           BUN="$(command -v bun)"
-          sudo env "PATH=$PATH" unshare -n -- "$BUN" test
-          sudo unshare -n -- sh -c 'if ping -c1 -W1 1.1.1.1 >/dev/null 2>&1; then echo "network reachable"; exit 1; else echo "network is off"; fi'
+          sudo env "PATH=$PATH" unshare -n -- sh -c 'ip link set lo up && exec "$1" test' sh "$BUN"
+      - name: The namespace really has no route out
+        run: |
+          sudo unshare -n -- sh -c 'ip link set lo up; if ping -c1 -W1 1.1.1.1 >/dev/null 2>&1; then echo "network reachable"; exit 1; else echo "no route out: network is off"; fi'
 
   macos:
     name: tests on macOS (FSEvents watcher, /var and /tmp symlinks)

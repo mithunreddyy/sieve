@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { homedir } from "node:os";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   bwrapArgs,
@@ -74,6 +75,64 @@ describe("bubblewrap command line", () => {
   });
   test("network on leaves the network namespace alone", () => {
     expect(bwrapArgs(policy({ network: true }), ["true"], "/", () => false)).not.toContain("--unshare-net");
+  });
+
+  /**
+   * In bubblewrap a later mount shadows an earlier one, unlike Seatbelt, where a deny always wins. Found
+   * by the first Linux CI run: a denied folder inside the project (`vault/`) was readable, because its
+   * --tmpfs came before the --bind of the project and was shadowed by it.
+   */
+  describe("a deny is mounted after every bind that could re-expose it", () => {
+    const at = (a: string[], flag: string, path: string) =>
+      a.findIndex((x, i) => x === flag && a[i + 1] === path);
+    // Real folders: the builder asks the file system whether a denied path is a directory.
+    const base = mkdtempSync(join(tmpdir(), "sv-bw-"));
+    const dir = (...parts: string[]) => {
+      const d = join(base, ...parts);
+      mkdirSync(d, { recursive: true });
+      return d;
+    };
+    const proj = dir("proj");
+    const scratch = dir("scratch");
+    const extra = dir("extra");
+    const pol = (over: Partial<ReturnType<typeof policy>> = {}) => ({
+      ...policy(),
+      project: [proj],
+      scratch,
+      ...over,
+    });
+
+    test("a folder inside the project", () => {
+      const vault = dir("proj", "vault");
+      const a = bwrapArgs(pol({ denyRead: [vault] }), ["true"], proj);
+      const bind = at(a, "--bind", proj);
+      expect(bind).toBeGreaterThanOrEqual(0);
+      expect(at(a, "--tmpfs", vault)).toBeGreaterThan(bind);
+    });
+
+    test("a folder inside a writable grant, and inside the scratch folder", () => {
+      const priv = dir("extra", "private");
+      const keys = dir("scratch", "keys");
+      const a = bwrapArgs(pol({ writable: [extra], denyRead: [priv, keys] }), ["true"], proj);
+      expect(at(a, "--tmpfs", priv)).toBeGreaterThan(at(a, "--bind", extra));
+      expect(at(a, "--tmpfs", keys)).toBeGreaterThan(at(a, "--bind", scratch));
+    });
+
+    test("a single file: covered by /dev/null, after the binds", () => {
+      const env = join(proj, ".env");
+      writeFileSync(env, "SECRET=1");
+      const a = bwrapArgs(pol({ denyRead: [env] }), ["true"], proj);
+      const deny = a.findIndex((x, i) => x === "--ro-bind" && a[i + 1] === "/dev/null" && a[i + 2] === env);
+      expect(deny).toBeGreaterThan(at(a, "--bind", proj));
+    });
+
+    test("the denies are the last mounts before --chdir: nothing is bound after them", () => {
+      const vault = dir("proj", "vault2");
+      const other = dir("elsewhere");
+      const a = bwrapArgs(pol({ writable: [extra], denyRead: [vault, other] }), ["true"], proj);
+      const lastBind = Math.max(...a.map((x, i) => (x === "--bind" ? i : -1)));
+      for (const d of [vault, other]) expect(at(a, "--tmpfs", d)).toBeGreaterThan(lastBind);
+    });
   });
 });
 

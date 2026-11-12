@@ -337,9 +337,12 @@ export function bwrapArgs(
     "/proc",
   ];
   if (!p.network) a.push("--unshare-net");
+  for (const w of [...p.project, p.scratch, ...p.writable]) a.push("--bind", w, w);
+  // The denies go LAST. In bubblewrap a later mount shadows an earlier one (in Seatbelt a deny always
+  // wins), so a denied folder inside the project or a grant was re-exposed by the bind above it when
+  // its --tmpfs came first: found by the first Linux CI run, where "top secret" was readable.
   for (const d of p.denyRead)
     if (exists(d)) a.push(...(isDir(d) ? ["--tmpfs", d] : ["--ro-bind", "/dev/null", d]));
-  for (const w of [...p.project, p.scratch, ...p.writable]) a.push("--bind", w, w);
   a.push("--chdir", cwd, "--", ...argv);
   return a;
 }

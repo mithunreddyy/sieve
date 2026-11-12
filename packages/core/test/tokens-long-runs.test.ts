@@ -56,12 +56,14 @@ describe("giant pre-tokens are counted quickly", () => {
     expect(countTokens("a".repeat(60_000))).toBeGreaterThan(a);
   });
 
+  // The reference is the real tokenizer, which is itself quadratic on these: kept just over the 256-character
+  // giant threshold so it stays fast on a slow CI machine (3,000 characters timed out there at 5 s).
   test("an estimate for a giant is close: within 10% of the real count", () => {
-    for (const text of ["a".repeat(3_000), "✓".repeat(2_000), " ".repeat(3_000)]) {
+    for (const text of ["a".repeat(600), "✓".repeat(400), " ".repeat(600), "=".repeat(500)]) {
       const real = getEncoding("o200k_base").encode(text, [], []).length;
       expect(Math.abs(countTokens(text) - real) / real).toBeLessThan(0.1);
     }
-  });
+  }, 30_000);
 });
 
 describe("what was never slow is counted exactly as before", () => {
