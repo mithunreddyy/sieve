@@ -1,0 +1,26 @@
+{
+  "tests": {
+    "prompt": "Run ./run-tests.sh in this directory. Reply with only the name of the failing test file and the expected and received status codes.",
+    "check": ["token.test.ts", "401", "200"]
+  },
+  "grep": {
+    "prompt": "Run: grep -rn rateLimitWindow src   Then reply with only the path of the file that DEFINES the function rateLimitWindow (not the files that import or call it).",
+    "check": ["src/core/windows.ts"]
+  },
+  "log": {
+    "prompt": "Run: cat server.log   Then reply with only the request id of the request that returned status 500.",
+    "check": ["req-7f3a91"]
+  },
+  "json": {
+    "prompt": "Run ./api.sh (it prints a JSON list of users). Reply with only the email address of the user whose id is 137.",
+    "check": ["maria.k.137@corp.example.com"]
+  },
+  "config": {
+    "prompt": "Run: cat settings.conf   Then reply with only the port number that the payments service listens on.",
+    "check": ["8443"]
+  },
+  "migrate": {
+    "prompt": "Run: cat migrate.log   Then reply with only the name of the database constraint that made migration 20261112_add_index fail.",
+    "check": ["orders_ref_key"]
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "build": {
+    "prompt": "Run ./build.sh. It fails with one error. Look at the source line the error points to and reply with only the full text of that source line.",
+    "check": ["retryBudget * backoff_ms"]
+  },
+  "correlate": {
+    "prompt": "In api.log find the request that got status 502. Then find in worker.log which job handled that request. Reply with only the job id.",
+    "check": ["job-5521"]
+  },
+  "fixrerun": {
+    "prompt": "Run ./test.sh, fix the bug it reports in src/calc.ts, run ./test.sh again, and reply with only the number of tests that passed on the final run.",
+    "check": ["300"]
+  },
+  "deps": {
+    "prompt": "In deps.json find the package that has a GPL-3.0 license. Then find which file under src imports it. Reply with only that file path.",
+    "check": ["src/billing/invoice.ts"]
+  }
+}
