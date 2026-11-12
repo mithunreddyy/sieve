@@ -194,4 +194,19 @@ export const PROJECT_MIGRATIONS: Migration[] = [
       max_tokens INTEGER NOT NULL, total_tokens INTEGER NOT NULL, updated_at INTEGER NOT NULL,
       PRIMARY KEY (worktree, family))`);
   },
+  // 6: what was removed on purpose (a purge, or retention), so `sieve_get` can say so for a receipt's
+  // id instead of "unknown". Only the id, when, why and how big: never any content.
+  (db) => {
+    db.run(`CREATE TABLE tombstones (
+      id TEXT PRIMARY KEY, removed_at INTEGER NOT NULL,
+      reason TEXT NOT NULL CHECK (reason IN ('retention','purge')), bytes INTEGER NOT NULL)`);
+  },
+  // 7: what Sieve itself added to the agent's context (recall, state blocks, memory, notices, and the
+  // text sent in place of a declined read or command), so savings can be reported net of it.
+  (db) => {
+    db.run(`CREATE TABLE injections (
+      id INTEGER PRIMARY KEY, at INTEGER NOT NULL, session_id TEXT NOT NULL, agent TEXT NOT NULL,
+      event TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('context','decision')), tokens INTEGER NOT NULL)`);
+    db.run("CREATE INDEX injections_at ON injections(at)");
+  },
 ];

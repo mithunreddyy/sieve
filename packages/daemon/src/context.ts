@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
+  applyPurge,
   type Config,
   GlobalStore,
   loadConfig,
@@ -42,6 +43,9 @@ const MAX_WATCHERS = 20;
 const WATCH_IDLE_MS = 2 * 3600_000;
 
 /** Everything the daemon keeps warm, shared by the hook pipeline and the tool handlers. */
+/** Items removed per retention task. */
+const RETENTION_BATCH = 50;
+
 export class DaemonContext {
   readonly global: GlobalStore;
   readonly health: Health;
@@ -70,6 +74,8 @@ export class DaemonContext {
   readonly declines = new Map<string, number>();
   /** Last user prompt per session: the intent for smart reads. */
   readonly lastPrompt = new Map<string, string>();
+  /** Sessions whose transcript was already read for a missed prompt (once each). */
+  readonly promptRecovered = new Set<string>();
   /** Staleness already reported (session|context|path → content id or "deleted"). */
   readonly notified = new Map<string, string>();
   /** Archive ids already given as recall pointers, per session (cleared on a new epoch). */
@@ -93,6 +99,12 @@ export class DaemonContext {
   readonly memoryDue = new Set<string>();
   /** Sessions whose state block waits for the next prompt (agents that cannot add context at session start). */
   readonly pendingState = new Set<string>();
+  /**
+   * Sessions whose PreCompact has not been followed by SessionStart(compact) yet. On an agent that
+   * always sends that start after a real compaction (Claude Code), a prompt that finds the session
+   * still here means the compaction was canceled: its state block would be ~2 KB for nothing.
+   */
+  readonly compactUnconfirmed = new Set<string>();
   /** Notes waiting for a tool result to ride on (agents with no context slot on prompts), per session. */
   readonly pendingNotes = new Map<string, string[]>();
   private stores = new Map<string, ProjectStore>();
@@ -130,12 +142,71 @@ export class DaemonContext {
     this.global.checkpoint();
   }
 
+  /** The network side of `sieve_index { url }`; tests put a fake here. Unset: the real one. */
+  fetchDeps?: import("./webfetch.ts").FetchDeps;
+
+  private lastRetention = 0;
+  /**
+   * Retention (`[archive] retention_days`, off by default): remove items not read for that many days
+   * from every project the daemon has open. Returns how many were removed. Each removal leaves a
+   * tombstone, so `sieve_get` can say what happened to an id in an old receipt.
+   */
+  retentionAll(now = Date.now()): number {
+    let total = 0;
+    for (;;) {
+      const r = this.retentionStep(now);
+      total += r.removed;
+      if (!r.more) return total;
+    }
+  }
+
+  /**
+   * One bounded batch per open project (at most RETENTION_BATCH items each), so that no single
+   * background task stalls hooks: removing everything on a 650-item project took 0.4 s in one go.
+   * `more` says a project may have items left.
+   */
+  retentionStep(now = Date.now()): { removed: number; more: boolean } {
+    const days = this.config.archive.retention_days;
+    this.lastRetention = now;
+    if (days <= 0) return { removed: 0, more: false };
+    let removed = 0;
+    let more = false;
+    for (const store of this.stores.values()) {
+      try {
+        const n = applyPurge(
+          store,
+          { kind: "older", days, now, limit: RETENTION_BATCH },
+          "retention",
+          now,
+        ).items;
+        removed += n;
+        if (n === RETENTION_BATCH) more = true;
+      } catch (e) {
+        console.error(`[sieved] retention failed: ${(e as Error).message}`);
+      }
+    }
+    return { removed, more };
+  }
+
+  /** From the maintenance tick: start retention at most every 6 hours; each batch is its own queued task. */
+  maybeRetention(): void {
+    if (this.config.archive.retention_days > 0 && Date.now() - this.lastRetention > 6 * 3_600_000)
+      this.queueRetention();
+  }
+
+  private queueRetention(): void {
+    this.queue.add("retention", () => {
+      if (this.retentionStep().more) this.queueRetention();
+    });
+  }
+
   project(cwd: string): { ref: ProjectRef; store: ProjectStore } {
     const ref = resolveProject(cwd);
     let store = this.stores.get(ref.key);
     if (!store) {
       store = new ProjectStore(ref, undefined, { manualCheckpoint: true });
       this.stores.set(ref.key, store);
+      this.lastRetention = 0; // a project was just opened: retention may run on the next tick
     }
     const now = Date.now();
     if ((this.touched.get(ref.key) ?? 0) < now - 60_000) {

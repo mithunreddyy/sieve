@@ -12,22 +12,26 @@ let failed = false;
 
 function table(rows: ReplayRow[], withSource: boolean) {
   console.log(
-    `| output |${withSource ? " source |" : ""} extractor | tokens in | tokens seen | saved | facts kept |`,
+    `| output |${withSource ? " source |" : ""} extractor | output tokens | Claude Code alone | with Sieve | saved vs Claude Code | facts kept (alone / Sieve) |`,
   );
-  console.log(`|---|${withSource ? "---|" : ""}---|---:|---:|---:|---|`);
+  console.log(`|---|${withSource ? "---|" : ""}---|---:|---:|---:|---:|---|`);
   for (const r of rows) {
-    const facts = r.factsKept ? "yes" : `**no**: missing ${r.missing.map((m) => `\`${m}\``).join(", ")}`;
+    const facts = `${r.baselineFactsKept ? "yes" : "no"} / ${r.factsKept ? "yes" : `**no**: missing ${r.missing.map((m) => `\`${m}\``).join(", ")}`}`;
+    const saved = Math.round((1 - r.tokensSeen / r.baselineTokens) * 100);
     console.log(
-      `| ${r.task} |${withSource ? ` ${r.source} |` : ""} ${r.extractor} | ${r.tokensIn} | ${r.tokensSeen} | ${r.savedPct}% | ${facts} |`,
+      `| ${r.task} |${withSource ? ` ${r.source} |` : ""} ${r.extractor}${r.previewed ? " (2 KB preview)" : ""} | ${r.tokensIn} | ${r.baselineTokens} | ${r.tokensSeen} | ${saved}% | ${facts} |`,
     );
   }
-  const tin = rows.reduce((n, r) => n + r.tokensIn, 0);
+  const base = rows.reduce((n, r) => n + r.baselineTokens, 0);
   const tout = rows.reduce((n, r) => n + r.tokensSeen, 0);
   const lost = rows.filter((r) => !r.factsKept).length;
+  const lostAlone = rows.filter((r) => !r.baselineFactsKept).length;
+  // Fails the gate: a fact Sieve's view loses that Claude Code alone would have shown.
+  const worse = rows.filter((r) => !r.factsKept && r.baselineFactsKept).length;
   console.log(
-    `\nTotal: ${tin} → ${tout} tokens (${Math.round((1 - tout / tin) * 100)}% fewer); ${lost} of ${rows.length} lost a fact.\n`,
+    `\nTotal against what Claude Code alone shows: ${base} → ${tout} tokens (${Math.round((1 - tout / base) * 100)}% fewer). Facts lost: ${lostAlone} of ${rows.length} with Claude Code alone, ${lost} with Sieve; ${worse} where Sieve loses a fact Claude Code alone would have shown.\n`,
   );
-  return lost;
+  return worse;
 }
 
 if (which === "paired") {
@@ -83,8 +87,11 @@ if (which === "latency" || which === "all") {
   const rows = await runLatency(Number(process.env.BENCH_N ?? 300));
   for (const r of rows) console.log(`| ${r.case} | ${r.n} | ${r.replied} | ${r.p50} | ${r.p99} | ${r.max} |`);
   const warm = rows.filter((r) => r.case.startsWith("go shim, warm"));
-  failed = warm.some((r) => r.p99 > 30);
-  console.log(`\nRelease gate (warm go shim p99 ≤ 30 ms): ${failed ? "FAIL" : "pass"}`);
+  const large = rows.filter((r) => r.case.startsWith("go shim, large"));
+  failed = warm.some((r) => r.p99 > 30) || large.some((r) => r.p99 > 200);
+  console.log(
+    `\nRelease gate (warm go shim p99 ≤ 30 ms; large results kept in a file p99 ≤ 200 ms, under the 250 ms hook timeout): ${failed ? "FAIL" : "pass"}`,
+  );
 }
 
 // Output piped into a reader that stops early (`| head`, `| tail`) must end the run quietly,

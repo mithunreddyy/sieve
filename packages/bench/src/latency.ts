@@ -244,6 +244,67 @@ export async function runLatency(n = 300): Promise<LatencyRow[]> {
         Math.min(n, 100),
       );
     }
+    // These come last: they write ~15 MB of files, and disk activity right before a call spikes the
+    // daemon's own writes (measured), which would perturb the rows after them.
+    // A result Claude Code cut at 30 KB and kept whole in a file (the common big-output case in
+    // Claude Code): the hook reads that file, archives all of it and returns a 2 KB receipt.
+    const { writeFileSync: write } = await import("node:fs");
+    const tdir = join(home, "claude", "projects", "-p", "sb", "tool-results");
+    mkdirSync(tdir, { recursive: true });
+    // The files are written up front: writing one just before each call makes the daemon's own disk
+    // writes spike by 40-60 ms (measured with a control: the same spikes appear with the output sent
+    // inline), which would measure the harness. Claude Code writes the file itself, with or without Sieve.
+    const persisted = (kbytes: number, count: number) => {
+      const lines = Math.ceil((kbytes * 1024) / 45);
+      const payloads = Array.from({ length: count }, (_, i) => {
+        const full = Array.from(
+          { length: lines },
+          (_, k) => `PASS case ${k} iteration ${i} lorem ipsum dolor`,
+        ).join("\n");
+        const file = join(tdir, `p${kbytes}-${i}.txt`);
+        write(file, full);
+        return JSON.stringify({
+          session_id: "sb",
+          cwd,
+          hook_event_name: "PostToolUse",
+          transcript_path: join(home, "claude", "projects", "-p", "sb.jsonl"),
+          tool_name: "Bash",
+          tool_input: { command: "npm test", description: "run tests" },
+          tool_response: {
+            stdout: full.slice(0, 29_999),
+            stderr: "",
+            interrupted: false,
+            persistedOutputPath: file,
+            persistedOutputSize: Buffer.byteLength(full),
+          },
+        });
+      });
+      return (i: number) => payloads[i % count]!;
+    };
+    // The common case first (it is gated like every warm row), then larger ones with their own gate,
+    // then one over the read bound, which is not read at all and so must cost almost nothing.
+    const p60 = persisted(60, Math.min(n, 100) + 10);
+    await Bun.sleep(300); // let the disk settle after the writes
+    for (let i = 0; i < 5; i++) await call([SHIM, "claude-code", "PostToolUse"], p60(100 + i), env);
+    await measure(
+      "go shim, warm, PostToolUse 60 KB kept whole in a file → 2 KB receipt",
+      [SHIM, "claude-code", "PostToolUse"],
+      p60,
+      Math.min(n, 100),
+    );
+    for (const [kbytes, what] of [
+      [250, "250 KB (just under the read bound)"],
+      [600, "600 KB (over the bound: not read, archived as a partial)"],
+    ] as const) {
+      const rows30 = persisted(kbytes, 30);
+      await Bun.sleep(2000); // each row starts with the background queue drained, so it measures itself
+      await measure(
+        `go shim, large, PostToolUse ${what} kept whole in a file → 2 KB receipt`,
+        [SHIM, "claude-code", "PostToolUse"],
+        rows30,
+        30,
+      );
+    }
     await measure(
       "ts fallback (sieve hook), warm, PreToolUse",
       [SIEVE, "hook", "claude-code", "PreToolUse"],

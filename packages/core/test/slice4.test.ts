@@ -103,6 +103,34 @@ describe("state block", () => {
     expect(openErrors(rows)).toEqual([]);
   });
 
+  test("a one-off command that failed long ago is not an open error forever (found: 16 stale errors crowding a real state block)", () => {
+    seq = 0;
+    const rows = [
+      row("command", "cd ../.. && ls", { key: "cd ../.. && ls" }),
+      row("error", "ls: no such file", { key: "cd ../.. && ls" }),
+      // 20 later commands, none of them that one
+      ...Array.from({ length: 20 }, (_, i) => row("command", `echo ${i}`, { key: `echo ${i}` })),
+    ];
+    expect(openErrors(rows)).toEqual([]);
+  });
+
+  test("a recent failure stays open, and at most the 5 most recent are listed", () => {
+    seq = 0;
+    const rows: LogRow[] = [];
+    for (let i = 0; i < 8; i++) {
+      rows.push(row("command", `step ${i}`, { key: `step ${i}` }));
+      rows.push(row("error", `step ${i}: failed`, { key: `step ${i}` }));
+    }
+    const open = openErrors(rows);
+    expect(open.map((e) => e.summary)).toEqual([
+      "step 3: failed",
+      "step 4: failed",
+      "step 5: failed",
+      "step 6: failed",
+      "step 7: failed",
+    ]);
+  });
+
   test("long rows become sieve_resume pointers; lines are never cut", () => {
     seq = 0;
     const long = `refactor ${"the whole auth module carefully ".repeat(30)}`;
@@ -125,12 +153,23 @@ describe("state block", () => {
         }),
       );
     }
-    const b = buildStateBlock({ uptoSeq: seq, goal: rows[0]!, rows, decisions: [], sessionId: "s" });
+    // many decisions in force as well, so the block has more than 2 KB to say
+    const decisions: DecisionRow[] = Array.from({ length: 40 }, (_, i) => ({
+      id: i + 1,
+      topic: `t${i}`,
+      label: `Choice ${i}`,
+      text: `option ${i} chosen after a fairly long discussion of the trade-offs`,
+      sessionId: "s",
+      seq: i + 2,
+      createdAt: 1,
+    }));
+    const b = buildStateBlock({ uptoSeq: seq, goal: rows[0]!, rows, decisions, sessionId: "s" });
     expect(bytes(b)).toBeLessThanOrEqual(STATE_BLOCK_BYTES);
     expect(b).toMatch(/… \d+ more line\(s\) did not fit/);
     expect(b).toContain("goal and last request (#1)");
-    // Newest errors first.
+    // Newest errors first, and only the 5 most recent.
     expect(b).toContain("check-79.sh");
+    expect(b).not.toContain("check-74.sh");
     for (const l of b.split("\n")) expect(bytes(l)).toBeLessThanOrEqual(280);
   });
 

@@ -5,13 +5,14 @@ import {
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   statSync,
   unlinkSync,
   writeSync,
 } from "node:fs";
 import { createServer, type Server, type Socket } from "node:net";
-import { basename } from "node:path";
+import { basename, join } from "node:path";
 import { paths, warmTokenizer } from "@sieve/core";
 import {
   PROTOCOL_VERSION,
@@ -23,7 +24,7 @@ import {
 import { DaemonContext } from "./context.ts";
 import { readMisses } from "./health.ts";
 import { Jobs } from "./jobs.ts";
-import { handleHook } from "./pipeline.ts";
+import { handleHook, replayHook } from "./pipeline.ts";
 import { callTool, ToolError } from "./tools.ts";
 
 export interface DaemonOptions {
@@ -132,6 +133,7 @@ export class Daemon {
       // Auto-checkpoint is off in the daemon (see OpenOptions.manualCheckpoint); do it here, every 10 s.
       ticks++;
       this.ctx.closeIdleWatchers();
+      this.ctx.maybeRetention();
       if (ticks % 2 === 0) this.ctx.queue.add("checkpoint", () => this.ctx.checkpointAll());
     }, this.maintenanceMs);
     this.flushTimer.unref?.();
@@ -151,6 +153,7 @@ export class Daemon {
       this.notifyTimer.unref?.();
     }
     this.touch();
+    this.replaySpool();
     this.log(`listening on ${this.socketPath} (pid ${process.pid}, v${SIEVE_VERSION})`);
     return true;
   }
@@ -163,6 +166,45 @@ export class Daemon {
       this.log("idle timeout, shutting down");
       void this.stop();
     }, this.idleMs);
+  }
+
+  /**
+   * Frames the shim kept while no daemon was running (run/spool, one per file, named by nanosecond time):
+   * a fresh session start or prompt is replayed, anything else or anything older than 10 minutes is
+   * dropped, and every file is removed.
+   */
+  private replaySpool(): void {
+    const dir = join(paths.runDir(), "spool");
+    let names: string[];
+    try {
+      names = readdirSync(dir)
+        .filter((n) => n.endsWith(".frame"))
+        .sort();
+    } catch {
+      return;
+    }
+    const now = Date.now();
+    for (const n of names) {
+      const file = join(dir, n);
+      try {
+        const at = Number(BigInt(n.split("-")[0]!) / 1_000_000n);
+        if (now - at < 10 * 60_000) {
+          const f = JSON.parse(readFileSync(file, "utf8")) as {
+            type?: string;
+            agent?: string;
+            event?: string;
+            input?: unknown;
+          };
+          if (f.type === "hook" && f.agent && f.event) replayHook(this.ctx, f.agent, f.event, f.input);
+        }
+      } catch (e) {
+        this.log(`spool: skipped ${n}: ${(e as Error).message}`);
+      } finally {
+        try {
+          unlinkSync(file);
+        } catch {}
+      }
+    }
   }
 
   private ownsSocket(): boolean {
@@ -193,6 +235,9 @@ export class Daemon {
 
   private async respond(sock: Socket, line: string): Promise<void> {
     this.touch();
+    // A frame spooled in the instant between a failed dial and this daemon listening is replayed by the
+    // next hook, not left until the next start. One stat per frame.
+    if (existsSync(join(paths.runDir(), "spool"))) this.replaySpool();
     this.inflight++;
     try {
       const reply = await this.handleLine(line);

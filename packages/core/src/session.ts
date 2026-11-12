@@ -318,15 +318,29 @@ function rowLine(prefix: string, text: string, seq: number, what: string): strin
   return `${prefix}${what} (${formatInt(text.length)} chars), ${resume(seq)}`;
 }
 
-/** Open errors: per command, the error of its latest run, if that run failed. */
+/** An error with this many later commands, none of them a rerun of its command, is no longer listed. */
+const ERROR_RECENT_COMMANDS = 20;
+/** At most this many open errors in the state block (the most recent). */
+const ERROR_MAX = 5;
+
+/**
+ * Open errors: per command, the error of its latest run, if that run failed, and only while it is
+ * recent. A one-off command is never rerun, so "until it passes" kept its failure open forever: a real
+ * state block listed 16 long-fixed errors and pushed decisions and next steps out of its 2 KB.
+ */
 export function openErrors(rows: LogRow[]): LogRow[] {
-  const open = new Map<string, LogRow | null>();
+  const open = new Map<string, { row: LogRow; at: number } | null>();
+  let commands = 0;
   for (const r of rows) {
+    if (r.kind === "command") commands++;
     if (!r.key) continue;
     if (r.kind === "command") open.set(r.key, null);
-    else if (r.kind === "error") open.set(r.key, r);
+    else if (r.kind === "error") open.set(r.key, { row: r, at: commands });
   }
-  return [...open.values()].filter((r): r is LogRow => r !== null);
+  return [...open.values()]
+    .filter((e): e is { row: LogRow; at: number } => e !== null && commands - e.at < ERROR_RECENT_COMMANDS)
+    .map((e) => e.row)
+    .slice(-ERROR_MAX);
 }
 
 export function parseTodos(summary: string): TodoItem[] {

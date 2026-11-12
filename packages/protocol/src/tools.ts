@@ -62,10 +62,15 @@ export const IndexArgs = z
     path: z.string().optional(),
     content: z.string().optional(),
     title: z.string().optional(),
+    url: z
+      .string()
+      .url()
+      .optional()
+      .describe("An https page to fetch and index (off unless [fetch] enabled)"),
   })
   .strict()
-  .refine((a) => (a.path === undefined) !== (a.content === undefined), {
-    message: "give exactly one of path or content",
+  .refine((a) => [a.path, a.content, a.url].filter((x) => x !== undefined).length === 1, {
+    message: "give exactly one of path, content or url",
   });
 
 export const BatchArgs = z
@@ -134,7 +139,7 @@ export const TOOLS = {
   sieve_index: {
     schema: IndexArgs,
     description:
-      "Index a file or folder (path, respects .gitignore) or raw content so it can be found with sieve_search later.",
+      "Index a file or folder (path, respects .gitignore), raw content, or a web page (url, https only; off unless the user enables [fetch] in config) so it can be found with sieve_search later.",
   },
   sieve_resume: {
     schema: ResumeArgs,

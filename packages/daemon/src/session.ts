@@ -331,18 +331,19 @@ export function recallNotice(
     sessionId: reader.sessionId,
     epochAt: store.epochAt(reader.sessionId),
     ...(skip ? { skip } : {}),
-    limit: 3,
+    limit: 6,
   });
-  if (!hits.length) return null;
+  const fresh = freshHits(hits, 3);
+  if (!fresh.length) return null;
   if (!skip) {
     skip = new Set();
     ctx.recalled.set(reader.sessionId, skip);
   }
   const out = ["[sieve] Earlier output matching this request (pointers only; expand one if it helps):"];
   let used = Buffer.byteLength(out[0]!) + 1;
-  for (const h of hits) {
+  for (const h of fresh) {
     const src = h.source.length > 100 ? `${h.source.slice(0, 97)}...` : h.source;
-    const what = h.stale ? `${src} (older version; the file changed since)` : src;
+    const what = src;
     const line = `- ${what} · ${ago(h.seenAt, now)} · sieve_get {"id":"${h.archiveId}","lines":"${h.startLine}-${h.endLine}"}`;
     if (used + Buffer.byteLength(line) + 1 > RECALL_BYTES) break;
     out.push(line);
@@ -350,6 +351,14 @@ export function recallNotice(
     skip.add(h.archiveId);
   }
   return out.length > 1 ? out.join("\n") : null;
+}
+
+/**
+ * Pointers worth injecting: not ones to an older version of a file that has changed since (the
+ * current file is one read away, and the old text is usually what the agent just replaced).
+ */
+export function freshHits<T extends { stale: boolean }>(hits: T[], n: number): T[] {
+  return hits.filter((h) => !h.stale).slice(0, n);
 }
 
 // ------------------------------------------------------------------ sieve_resume

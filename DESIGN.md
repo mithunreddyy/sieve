@@ -331,6 +331,12 @@ CREATE TABLE decisions (
   id INTEGER PRIMARY KEY, worktree TEXT NOT NULL, topic TEXT NOT NULL, label TEXT NOT NULL, text TEXT NOT NULL,
   session_id TEXT, seq INTEGER, created_at INTEGER NOT NULL, superseded_by INTEGER REFERENCES decisions(id)
 );
+-- (built, ADR 0018) what was removed on purpose by `sieve purge` or retention: never any content, so
+-- `sieve_get` can say what happened to an id in an old receipt. Archiving the same output again clears it.
+CREATE TABLE tombstones (
+  id TEXT PRIMARY KEY, removed_at INTEGER NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('retention','purge')), bytes INTEGER NOT NULL
+);
 
 -- (slice 8, built; `predicates` also has `codebase INTEGER`, see ADR 0011) memory facts with two timelines
 CREATE TABLE facts (
@@ -490,6 +496,13 @@ enabled = true             # SIEVE_WATCH=0
 max_files = 50000
 [reruns]
 diff = true                # SIEVE_RERUN_DIFF=0
+[archive]                  # ADR 0018
+retention_days = 0         # 0 = keep everything until `sieve purge`; N = remove items unread for N days
+[fetch]                    # ADR 0019: sieve_index { url }; off unless enabled
+enabled = false
+allow_hosts = []           # exact or "*.example.com"; empty = any public host
+max_kb = 2048
+timeout_ms = 15000
 [sandbox]                  # slice 6
 mode = "auto"              # SIEVE_SANDBOX=off|require; auto isolates when the OS can and says so when not
 [session]                  # slice 4

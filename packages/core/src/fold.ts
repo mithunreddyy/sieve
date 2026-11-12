@@ -26,6 +26,26 @@ export interface FallbackBudget {
 
 /** Hook replies: first 6 KB plus last 2 KB. */
 export const HOOK_BUDGET: FallbackBudget = { head: 6144, tail: 2048, intent: 1536, errors: 3072 };
+/**
+ * A result the agent shows the model only a 2 KB preview of (Claude Code, for a result it keeps in a
+ * file): the whole receipt has to fit in that window, errors included, or they are cut off.
+ */
+export const PREVIEW_WINDOW = 2000;
+const kb = (n: number) => Math.round(n / 1024);
+
+/** What goes under the receipt header when the agent shows the model only a 2 KB preview of it. Pure. */
+export function previewNote(id: string, receivedBytes: number, partialOf?: number): string {
+  const read = `Read any part exactly: sieve_get {"id":"${id}","lines":"a-b"}.`;
+  return partialOf === undefined
+    ? `Claude Code shows you only the first 2 KB of a result this large. ${read}`
+    : `Claude Code shows you only the first 2 KB of a result this large, and passed on just the first ${kb(receivedBytes)} KB of ${kb(partialOf)} KB to Sieve. ${read}`;
+}
+
+/** Bash output larger than this reaches a Claude Code hook as a prefix, and the model as a 2 KB preview (measured live). */
+export const CLAUDE_CODE_CUT_BYTES = 30_000;
+
+export const PREVIEW_BUDGET: FallbackBudget = { head: 448, tail: 224, intent: 192, errors: 576 };
+export const PREVIEW_EXTRACT_BUDGET = 768;
 /** sieve_run previews: at most 4 KB in total. */
 export const RUN_PREVIEW_BUDGET: FallbackBudget = { head: 1536, tail: 1024, intent: 512, errors: 768 };
 
@@ -119,6 +139,12 @@ function truncateBytes(s: string, n: number): string {
   return Buffer.from(s).subarray(0, n).toString("utf8").replace(/�$/, "");
 }
 
+/** "Full output archived (n KB)." — or, when the agent passed on only a prefix, what was archived of what. */
+const archivedLabel = (bytes: number, partialOf?: number) =>
+  partialOf !== undefined && partialOf > bytes
+    ? `Archived: the first ${Math.round(bytes / 1024)} KB of ${Math.round(partialOf / 1024)} KB (the agent passed on no more).`
+    : `Full output archived (${Math.round(bytes / 1024)} KB).`;
+
 /**
  * Render a receipt. A pure function of its inputs: no clock, no session, no counters, so
  * the same output always produces the same bytes (ADR 0003).
@@ -129,6 +155,7 @@ export function renderReceipt(
   originalBytes: number,
   note?: string,
   preface?: string,
+  partialOf?: number,
 ): string {
   const { from, to } = plan.omitted;
   const n = to - from + 1;
@@ -146,7 +173,7 @@ export function renderReceipt(
   if (plan.tail) parts.push(plan.tail);
   parts.push(
     "───",
-    `Full output archived (${Math.round(originalBytes / 1024)} KB). Expand: sieve_get {"id":"${item.id}","lines":"${from}-${to}"}`,
+    `${archivedLabel(originalBytes, partialOf)} Expand: sieve_get {"id":"${item.id}","lines":"${from}-${to}"}`,
     "Do not re-run the command to see more.",
   );
   return parts.join("\n");
@@ -158,6 +185,7 @@ export function renderExtraction(
   ex: Extraction,
   originalBytes: number,
   preface?: string,
+  partialOf?: number,
 ): string {
   return [
     `[sieve ${item.id}] ${formatInt(item.tokens)} tokens (${item.tokenizer}), ${formatInt(item.lines)} lines`,
@@ -166,7 +194,7 @@ export function renderExtraction(
     "───",
     ex.body,
     "───",
-    `Full output archived (${Math.round(originalBytes / 1024)} KB). Expand: sieve_get {"id":"${item.id}"}, or a range: {"id":"${item.id}","lines":"a-b"}`,
+    `${archivedLabel(originalBytes, partialOf)} Expand: sieve_get {"id":"${item.id}"}, or a range: {"id":"${item.id}","lines":"a-b"}`,
     "Do not re-run the command to see more.",
   ].join("\n");
 }
@@ -183,6 +211,10 @@ export interface FoldInput {
   pattern?: string;
   /** A line to put under the receipt header, e.g. a comparison with the previous run. */
   preface?: string;
+  /** The agent shows only a short preview of the reply: keep the receipt inside it (PREVIEW_WINDOW). */
+  compact?: boolean;
+  /** Total size of the output when only a prefix of it could be archived. */
+  partialOf?: number;
 }
 
 export type FoldDecision = { kind: "pass" } | { kind: "replace"; text: string; extractor: string };
@@ -216,20 +248,20 @@ export function decideFold(input: FoldInput, item: ArchivedItem | null): FoldDec
   const ex = runExtractors({
     text: cleaned,
     isError: input.isError,
-    budget: HOOK_EXTRACT_BUDGET,
+    budget: input.compact ? PREVIEW_EXTRACT_BUDGET : HOOK_EXTRACT_BUDGET,
     ...(input.intent ? { intent: input.intent } : {}),
     ...(input.command ? { command: input.command } : {}),
     ...(input.toolName ? { toolName: input.toolName } : {}),
     ...(input.pattern ? { pattern: input.pattern } : {}),
   });
   if (ex) {
-    const receipt = renderExtraction(item, ex, byteLength(text), input.preface);
+    const receipt = renderExtraction(item, ex, byteLength(text), input.preface, input.partialOf);
     if (worthIt(text.length, receipt.length))
       return { kind: "replace", text: receipt, extractor: ex.extractor };
   }
-  const plan = fallbackPlan(cleaned, HOOK_BUDGET, input.intent);
+  const plan = fallbackPlan(cleaned, input.compact ? PREVIEW_BUDGET : HOOK_BUDGET, input.intent);
   if (!plan) return cleanedOnly();
-  const receipt = renderReceipt(item, plan, byteLength(text), undefined, input.preface);
+  const receipt = renderReceipt(item, plan, byteLength(text), undefined, input.preface, input.partialOf);
   return worthIt(text.length, receipt.length)
     ? { kind: "replace", text: receipt, extractor: plan.extractor }
     : cleanedOnly();

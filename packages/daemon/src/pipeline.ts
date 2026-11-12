@@ -1,3 +1,4 @@
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import * as claudeCode from "@sieve/adapter-claude-code";
 import * as codex from "@sieve/adapter-codex";
 import * as copilotCli from "@sieve/adapter-copilot-cli";
@@ -5,14 +6,19 @@ import * as cursor from "@sieve/adapter-cursor";
 import * as geminiCli from "@sieve/adapter-gemini-cli";
 import * as opencode from "@sieve/adapter-opencode";
 import {
+  byteLength,
   cleanPrompt,
   commandKey,
   compareRuns,
   countTokens,
   decideFold,
   intentTerms,
+  lastUserPrompt,
+  matchingLines,
+  PREVIEW_WINDOW,
   type ProjectRef,
   type ProjectStore,
+  previewNote,
   type ReaderRef,
   THRESHOLDS,
 } from "@sieve/core";
@@ -21,6 +27,7 @@ import type { DaemonContext } from "./context.ts";
 import { extractAfterTurn } from "./extraction.ts";
 import { guardBefore } from "./guard.ts";
 import { captureFromCommand, coreBlock, forgetShown, noteUserWords, relevantBlock } from "./memory.ts";
+import { readPersisted } from "./persisted.ts";
 import { type Hints, recordRead, smartReadBefore, staleNotice } from "./reads.ts";
 import {
   buildStateLater,
@@ -41,6 +48,8 @@ export interface Adapter extends SessionHooks {
   /** Optional read support: agents with a file-read tool. */
   readRequest?(input: unknown): { path: string; full: boolean } | null;
   readWasWhole?(response: unknown): boolean;
+  /** Whether a receipt can be written back into this result shape; absent: assumed yes. */
+  canReplaceOutput?(response: unknown): boolean;
   editedPath?(input: unknown): string | null;
   readHints?: Hints;
 }
@@ -73,8 +82,11 @@ function sourceOf(ev: ToolAfter): string {
 }
 
 /** May the agent's result for this tool be replaced with a receipt? */
-function canReplace(caps: AgentCapabilities, ev: ToolAfter): boolean {
+function canReplace(caps: AgentCapabilities, ev: ToolAfter, adapter?: Adapter): boolean {
   if (caps.replace === "none") return false;
+  // A shape the adapter cannot write a receipt into would be counted as saved yet reach the model whole
+  // (found: every WebFetch result, for weeks). Only what can be replaced counts.
+  if (adapter?.canReplaceOutput && !adapter.canReplaceOutput(ev.response)) return false;
   if (caps.replace === "mcp-only" && ev.tool.family !== "mcp") return false;
   // Sieve's own tools already return receipts or exact expansions; never fold them again.
   if (ev.tool.server === "sieve") return false;
@@ -84,6 +96,19 @@ function canReplace(caps: AgentCapabilities, ev: ToolAfter): boolean {
 }
 
 const str = (v: unknown) => (typeof v === "string" && v ? v : undefined);
+
+/**
+ * Replay a hook the shim spooled while the daemon was down, so a session's start and its first prompt
+ * (the task) are not lost on a cold start. Only those two kinds: replaying a tool event would fold an
+ * output the agent already received whole, and count a saving that never happened.
+ */
+export function replayHook(ctx: DaemonContext, agent: string, eventName: string, raw: unknown): boolean {
+  const adapter = ADAPTERS[agent];
+  const ev = adapter?.toEvent(eventName, raw, Date.now());
+  if (!ev || (ev.kind !== "prompt.submit" && ev.kind !== "session.start")) return false;
+  handleHook(ctx, agent, eventName, raw);
+  return true;
+}
 
 export function handleHook(ctx: DaemonContext, agent: string, eventName: string, raw: unknown): HookResult {
   const adapter = ADAPTERS[agent];
@@ -114,7 +139,10 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
       // After compaction or /clear, nothing read before is in the context window any more.
       if (ev.source === "compact" || ev.source === "clear") newEpoch(ctx, store, reader);
       if (ev.source === "clear") bestEffort(ctx, () => store.log.markCleared(sid));
-      if (ev.source === "compact") deliverState("session.start");
+      if (ev.source === "compact") {
+        ctx.compactUnconfirmed.delete(sid); // the compaction really happened
+        deliverState("session.start");
+      }
       // Without a compaction hook, a resumed session gets its state rebuilt from the log.
       if (ev.source === "resume" && !caps.events.includes("compact.before")) deliverState("session.start");
       if (ev.source === "startup" && caps.contextAt.includes("session.start")) {
@@ -145,6 +173,7 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
       // (Gemini CLI fires PreCompress on every turn): only a manual one is a known reset there.
       if (caps.compaction === "manual-only" && ev.trigger === "auto") break;
       newEpoch(ctx, store, reader);
+      if (caps.compactStart) ctx.compactUnconfirmed.add(sid);
       // Deliver now if this event carries context; otherwise wait for session.start(compact),
       // which clears the flag, or the next prompt, for agents that send no such start.
       if (caps.contextAt.includes("compact.before")) deliverState("compact.before");
@@ -169,6 +198,8 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
       const clean = cleanPrompt(ev.prompt);
       // Keep the last prompt that had content: "continue" or a tag-only prompt must not erase it.
       if (intentTerms(clean).length) ctx.lastPrompt.set(sid, clean.slice(0, 2000));
+      // A compaction announced but never confirmed by its SessionStart was canceled: nothing to restore.
+      if (ctx.compactUnconfirmed.delete(sid)) ctx.pendingState.delete(sid);
       if (ctx.pendingState.delete(sid) && ctx.config.session.state_block) {
         const body = bestEffort(ctx, () => stateFor(store, ref, sid));
         if (body) notes.push(body);
@@ -230,6 +261,7 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
       break;
     }
     case "tool.after":
+      completeOutput(ev);
       afterTool(ctx, adapter, store, ref, reader, agent, ev, reply, at);
       // After afterTool, which archives large output: an error row points at that archive id.
       bestEffort(ctx, () => logTool(ctx, adapter, store, ref, reader, agent, ev, at));
@@ -261,8 +293,32 @@ export function handleHook(ctx: DaemonContext, agent: string, eventName: string,
       ctx.pendingNotes.delete(sid);
     }
   }
-  if (notes.length) reply.context = notes.join("\n\n");
+  if (notes.length) reply.context = [reply.context, ...notes].filter(Boolean).join("\n\n");
   const stdout = adapter.render(ev, reply, raw);
+  // What Sieve itself puts in front of the model, recorded only when it was actually delivered, so
+  // `sieve stats` can report savings net of it. Guard's own refusals are safety, not overhead: not counted.
+  if (stdout)
+    bestEffort(ctx, () => {
+      if (reply.context)
+        store.recordInjection({
+          at,
+          sessionId: sid,
+          agent,
+          event: ev.kind,
+          kind: "context",
+          tokens: countTokens(reply.context),
+        });
+      const d = reply.decision;
+      if (d?.reason && (d.ruleId === "sieve.smart-read" || d.ruleId === "sieve.steer"))
+        store.recordInjection({
+          at,
+          sessionId: sid,
+          agent,
+          event: ev.kind,
+          kind: "decision",
+          tokens: countTokens(d.reason),
+        });
+    });
   ctx.health.record(agent, eventName || ev.kind, at, performance.now() - t0);
   return { stdout, exitCode: 0 };
 }
@@ -285,6 +341,75 @@ function newEpoch(ctx: DaemonContext, store: ProjectStore, reader: ReaderRef): v
   ctx.skillsLoaded.delete(reader.sessionId);
   ctx.memoryDue.add(reader.sessionId);
   for (const k of ctx.notified.keys()) if (k.startsWith(`${reader.sessionId}|`)) ctx.notified.delete(k);
+}
+
+/**
+ * A result the agent cut and kept whole in a file: archive the whole of it. When the file cannot be
+ * trusted (see readPersisted) only what arrived is archived, and the receipt says so.
+ */
+function completeOutput(ev: ToolAfter): void {
+  const p = ev.output.persisted;
+  if (!p) return;
+  const received = byteLength(ev.output.text);
+  if (p.totalBytes <= received) {
+    p.complete = true;
+    return;
+  }
+  const whole = readPersisted(p, ev.output.text);
+  if (whole !== null) ev.output.text = whole;
+  p.complete = whole !== null;
+}
+
+/**
+ * Lines of this output matching the user's last request, or null. Only for the main agent (a subagent's
+ * task is not the user's prompt), never for web pages (their text would move into hook context, which a
+ * model may trust more than a tool result), only where the agent takes context on this event, and only
+ * when receipt plus note stays clearly smaller than the output. Built from the masked text.
+ */
+/** Largest transcript tail read to recover a missed prompt (once per session, on the hook path). */
+const TRANSCRIPT_TAIL = 256 * 1024;
+
+/**
+ * The session's latest prompt, from the transcript when the daemon missed the prompt hook (it was not
+ * running yet). Read once per session: the end of a regular .jsonl file, bounded.
+ */
+function promptFor(ctx: DaemonContext, ev: SieveEvent, sid: string): string | undefined {
+  const known = ctx.lastPrompt.get(sid);
+  if (known || !ev.base.transcriptPath || ctx.promptRecovered.has(sid)) return known;
+  ctx.promptRecovered.add(sid);
+  const p = ev.base.transcriptPath;
+  if (!p.endsWith(".jsonl")) return undefined;
+  const st = statSync(p, { throwIfNoEntry: false });
+  if (!st?.isFile()) return undefined;
+  const fd = openSync(p, "r");
+  try {
+    const len = Math.min(st.size, TRANSCRIPT_TAIL);
+    const buf = Buffer.alloc(len);
+    readSync(fd, buf, 0, len, st.size - len);
+    const prompt = lastUserPrompt(buf.toString("utf8"));
+    if (prompt) ctx.lastPrompt.set(sid, prompt.slice(0, 2000));
+    return prompt ?? undefined;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+function matchNote(
+  ctx: DaemonContext,
+  adapter: Adapter,
+  ev: ToolAfter,
+  safe: string,
+  receipt: string,
+  sid: string,
+  id?: string,
+): string | null {
+  if (!(adapter.capabilities.contextAt as string[]).includes("tool.after")) return null;
+  if (ev.base.context !== "main" || ev.tool.family === "web") return null;
+  const prompt = promptFor(ctx, ev, sid);
+  if (!prompt) return null;
+  const note = matchingLines(safe, prompt, receipt, id);
+  if (!note) return null;
+  return byteLength(receipt) + byteLength(note) < byteLength(safe) * 0.9 ? note : null;
 }
 
 function afterTool(
@@ -337,8 +462,16 @@ function afterTool(
   const rawCommand = ev.tool.family === "shell" ? str(input.command) : undefined;
   const command = rawCommand === undefined ? undefined : store.mask(rawCommand, ref.worktree);
   const pattern = str(input.pattern);
-  const replaceable = canReplace(adapter.capabilities, ev);
+  const replaceable = canReplace(adapter.capabilities, ev, adapter);
   const canary = canaryPick(ctx.config.canary.sample, item.id);
+  // A result the agent keeps in a file is shown to the model as a 2 KB preview, with or without
+  // Sieve (measured live): savings are counted against that, not against the whole output.
+  const pst = ev.output.persisted;
+  const clip = (t: string) => (pst ? Buffer.from(t, "utf8").subarray(0, PREVIEW_WINDOW).toString("utf8") : t);
+  const tokIn = pst ? countTokens(clip(ev.output.text)) : item.tokens;
+  const tokOut = (t: string) => countTokens(clip(t));
+  const partialOf = pst && !pst.complete ? pst.totalBytes : undefined;
+  const previewLine = pst ? previewNote(item.id, byteLength(ev.output.text), partialOf) : undefined;
   // What the dashboard shows and steering learns from, kept for every large output.
   const note = (kind: "fold" | "rerun" | "pass", extractor: string | null, tokensOut: number) =>
     bestEffort(ctx, () =>
@@ -350,7 +483,7 @@ function afterTool(
         kind,
         extractor,
         archiveId: item.id,
-        tokensIn: item.tokens,
+        tokensIn: tokIn,
         tokensOut,
         source: store.mask(sourceOf(ev), ref.worktree),
         canary: canary && kind !== "pass",
@@ -363,8 +496,10 @@ function afterTool(
     });
 
   // Reruns: compare with the previous run of the same command by this reader in this epoch.
+  // Not for a result the agent keeps in a file: it was shown only a 2 KB preview, so "same as run 1,
+  // still in your context" would claim content it never received. It gets the receipt again instead.
   let preface: string | undefined;
-  if (command && ctx.config.reruns.diff) {
+  if (command && ctx.config.reruns.diff && !pst) {
     const key = commandKey(command);
     const prev = store.lastRun(reader, ref.worktree, key);
     store.recordRun(reader, ref.worktree, key, item.id, at);
@@ -380,16 +515,16 @@ function afterTool(
       if (r.kind === "identical" || r.kind === "diff") {
         reply.replaceOutput = r.text;
         ctx.counters.rerunsShortened++;
-        note("rerun", null, countTokens(r.text));
-        ctx.counters.tokensIn += item.tokens;
-        ctx.counters.tokensOut += countTokens(r.text);
+        note("rerun", null, tokOut(r.text));
+        ctx.counters.tokensIn += tokIn;
+        ctx.counters.tokensOut += tokOut(r.text);
         return;
       }
       if (r.kind === "summary") preface = r.preface;
     }
   }
   if (!replaceable) {
-    note("pass", null, item.tokens);
+    note("pass", null, tokIn);
     return;
   }
   const d = decideFold(
@@ -400,15 +535,22 @@ function afterTool(
       ...(intent ? { intent } : {}),
       ...(command ? { command } : {}),
       ...(pattern ? { pattern } : {}),
-      ...(preface ? { preface } : {}),
+      ...(previewLine || preface ? { preface: [previewLine, preface].filter(Boolean).join("\n") } : {}),
+      ...(pst ? { compact: true } : {}),
+      ...(partialOf !== undefined ? { partialOf } : {}),
     },
     item,
   );
   if (d.kind === "replace") {
     reply.replaceOutput = d.text;
+    // The lines that answer the user's last request, as a note next to the receipt (ADR 0023).
+    const matched = bestEffort(ctx, () =>
+      matchNote(ctx, adapter, ev, safe, d.text, reader.sessionId, item.id),
+    );
+    if (matched) reply.context = matched;
     ctx.counters.folds++;
-    ctx.counters.tokensIn += item.tokens;
-    ctx.counters.tokensOut += countTokens(d.text);
-    note("fold", d.extractor, countTokens(d.text));
-  } else note("pass", null, item.tokens);
+    ctx.counters.tokensIn += tokIn;
+    ctx.counters.tokensOut += tokOut(d.text);
+    note("fold", d.extractor, tokOut(d.text));
+  } else note("pass", null, tokIn);
 }

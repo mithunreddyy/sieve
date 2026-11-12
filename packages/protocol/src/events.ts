@@ -10,6 +10,8 @@ export interface EventBase {
   cwd: string;
   /** ms since epoch, set by the daemon on receipt */
   at: number;
+  /** The agent's own transcript of this session, when the agent says where it is (Claude Code does). */
+  transcriptPath?: string;
 }
 
 export interface ToolRef {
@@ -22,6 +24,14 @@ export interface ToolRef {
 export interface ToolOutput {
   text: string;
   isError: boolean;
+  /**
+   * The agent kept this result in a file because it was large (Claude Code: `persistedOutputPath`),
+   * and shows the model only a 2 KB preview of whatever Sieve returns. `text` may then be just a
+   * prefix: Claude Code cuts Bash output near 30,000 characters before hooks run.
+   * `dir` is the one folder `file` must be inside; `complete` is set by the daemon once `text`
+   * has been replaced by the whole result read from `file`.
+   */
+  persisted?: { totalBytes: number; file?: string; dir?: string; complete?: boolean };
 }
 
 export type SieveEvent =
@@ -79,6 +89,8 @@ export interface AgentCapabilities {
    * agent still has earlier content ("unchanged since your read") for that agent.
    */
   compaction: "reliable" | "manual-only";
+  /** Sends session.start with source "compact" after every real compaction (so a lone compact.before was canceled). */
+  compactStart?: boolean;
   /**
    * "verified": a recorded real-agent run passed (docs/e2e). "live": used in real sessions by a
    * developer, but no recorded run. "preview": neither; the mapping comes from docs or source.

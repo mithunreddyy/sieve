@@ -21,6 +21,7 @@ import { runHook } from "./hook.ts";
 import { memoryCommand, memoryStatusLine } from "./memory.ts";
 import { notifyProblems } from "./notify.ts";
 import { proxyCommand } from "./proxy.ts";
+import { purgeCommand } from "./purge.ts";
 import { serviceCommand } from "./service.ts";
 import { sessionCommand } from "./session.ts";
 import { skillsCommand } from "./skills.ts";
@@ -152,6 +153,11 @@ async function status(json: boolean): Promise<number> {
   try {
     console.log(`memory   ${memoryStatusLine()}`);
   } catch {}
+  try {
+    const d = dataPolicy();
+    console.log(`archive  ${d.archive}`);
+    console.log(`fetch    ${d.fetch}`);
+  } catch {}
   const k = s.counters;
   console.log(
     `saved    ${k.folds} folds, ${k.rerunsShortened} reruns shortened, ${k.readsDeclined} reads answered without resending (since daemon start)`,
@@ -187,6 +193,21 @@ async function status(json: boolean): Promise<number> {
     }
   }
   return 0;
+}
+
+/** What happens to archived data, and whether Sieve may fetch web pages, as configured (invariant 5: say it). */
+export function dataPolicy(config = loadConfig()): { archive: string; fetch: string } {
+  const days = config.archive.retention_days;
+  const hosts = config.fetch.allow_hosts;
+  return {
+    archive:
+      days > 0
+        ? `items not read for ${days} days are removed (retention on); an id that was removed says so when expanded`
+        : "kept until you run sieve purge (retention off)",
+    fetch: config.fetch.enabled
+      ? `ON: sieve_index may fetch https pages ${hosts.length ? `from ${hosts.join(", ")} only` : "from any public host"}`
+      : "off: sieve_index does not fetch web pages",
+  };
 }
 
 /** What `sieve_run` is isolated by on this machine, stated as it is (also in every run receipt). */
@@ -308,6 +329,11 @@ async function doctor(): Promise<number> {
   } catch (e) {
     check(false, `guard: ${(e as Error).message}`, undefined, true);
   }
+  try {
+    const d = dataPolicy();
+    check(true, `archive: ${d.archive}`, undefined, true);
+    check(true, `fetch: ${d.fetch}`, undefined, true);
+  } catch {}
   if (watchers) {
     check(
       watchers.outlines,
@@ -458,6 +484,7 @@ const HELP = `sieve ${SIEVE_VERSION} — local context engine for coding agents
   sieve dash [--port N]          local web dashboard (127.0.0.1, token in the printed URL)
   sieve tui [--once]             live terminal view; --once prints one frame
   sieve proxy [--port N]         local gateway for Anthropic/OpenAI/Gemini-shaped APIs (trim, receipts, cache marks, budgets)
+  sieve purge --session <id> | --project | --older-than <days> [--yes]   remove archived output (a dry run without --yes)
   sieve session list | export [<id>] [-o file] [--encrypt] | import <file> [--as id]   move a session between machines
   sieve sync init <folder> | push | pull | status   encrypted sync through a folder you sync yourself
   sieve service install|uninstall|status [--dry-run]   start the daemon at login
@@ -520,6 +547,8 @@ async function main(argv: string[]): Promise<number> {
     }
     case "session":
       return sessionCommand(args);
+    case "purge":
+      return purgeCommand(args);
     case "sync":
       return syncCommand(args);
     case "service":

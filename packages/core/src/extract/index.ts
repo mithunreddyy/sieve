@@ -6,6 +6,7 @@ import { html } from "./html.ts";
 import { json } from "./json.ts";
 import { logs } from "./logs.ts";
 import { pkg } from "./packages.ts";
+import { repeats } from "./repeats.ts";
 import { searchResults } from "./search.ts";
 import { TEST_EXTRACTORS } from "./tests.ts";
 import type { ExtractInput, Extraction, Extractor } from "./types.ts";
@@ -23,6 +24,7 @@ export const EXTRACTORS: Extractor[] = [
   html,
   searchResults,
   logs,
+  repeats, // last: only when nothing format-aware claims the output
 ];
 
 /** Below this confidence an extractor is not used. */
@@ -51,6 +53,20 @@ export function runExtractors(input: ExtractInput): Extraction | null {
     const keep: string[] = [];
     let used = 0;
     let i = 0;
+    // A first line longer than the whole budget (a flattened document, a long shape summary) gets a
+    // third of it, so the lines after it, usually the actual values, still fit. Found: a JSON receipt
+    // whose body was empty, then one that held only a key list. The whole line is in the archive.
+    let firstCut = "";
+    if (ls.length && byteLength(ls[0]!) + 1 > limit) {
+      const head = Buffer.from(ls[0]!, "utf8")
+        .subarray(0, Math.floor(limit / 3))
+        .toString("utf8")
+        .replace(/\uFFFD$/, "");
+      keep.push(`${head}…`);
+      used = byteLength(head) + 4;
+      firstCut = ` (first line cut at ${Math.floor(limit / 3)} bytes)`;
+      i = 1;
+    }
     for (; i < ls.length && used + byteLength(ls[i]!) + 1 <= limit; i++) {
       keep.push(ls[i]!);
       used += byteLength(ls[i]!) + 1;
@@ -60,7 +76,7 @@ export function runExtractors(input: ExtractInput): Extraction | null {
       .filter((l) => isErrorLine(l))
       .slice(0, 60);
     keep.push(
-      `… extractor output cut at ${Math.round(limit / 1024)} KB (${ls.length - i} more lines in the archive)`,
+      `… extractor output cut at ${Math.round(limit / 1024)} KB${firstCut} (${ls.length - i} more lines in the archive)`,
     );
     if (errs.length)
       keep.push("error lines after the cut:", ...errs.map((l) => `  ${l.trim().slice(0, 300)}`));

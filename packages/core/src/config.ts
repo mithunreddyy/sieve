@@ -23,6 +23,32 @@ export const Config = z
       })
       .strict()
       .default({ smart: true, outline_above_kb: 16 }),
+    archive: z
+      .object({
+        /**
+         * Remove archived items not read (or seen again) for this many days. 0, the default, keeps
+         * everything until you run `sieve purge`. When on, an id in an old receipt that was removed
+         * says so (a tombstone), instead of failing as unknown. Runs for projects the daemon has open.
+         */
+        retention_days: z.number().int().min(0).max(36_500).default(0),
+      })
+      .strict()
+      .default({ retention_days: 0 }),
+    fetch: z
+      .object({
+        /**
+         * Let `sieve_index` fetch a web page (https only; every address checked as public, redirects
+         * re-checked; text only). Off by default: with it off, Sieve makes no network call of its own.
+         */
+        enabled: z.boolean().default(false),
+        /** Only these hosts (exact, or `*.example.com`). Empty: any public host. */
+        allow_hosts: z.array(z.string().min(1)).default([]),
+        /** Keep at most this much of a page. */
+        max_kb: z.number().int().min(16).max(16_384).default(2048),
+        timeout_ms: z.number().int().min(1000).max(60_000).default(15_000),
+      })
+      .strict()
+      .default({ enabled: false, allow_hosts: [], max_kb: 2048, timeout_ms: 15_000 }),
     watch: z
       .object({ enabled: z.boolean().default(true), max_files: z.number().int().min(0).default(50_000) })
       .strict()

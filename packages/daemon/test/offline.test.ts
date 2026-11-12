@@ -27,6 +27,8 @@ const ALLOWED: Record<string, string> = {
   "packages/proxy/src/server.ts": "sieve proxy: forwards to the upstream you configured",
   "packages/cli/src/upgrade.ts": "sieve upgrade --from https://…",
   "packages/daemon/src/extraction.ts": "opt-in extraction to a model server on this machine",
+  "packages/daemon/src/webfetch.ts":
+    "sieve_index { url }: refuses unless [fetch] enabled = true (off by default)",
   "packages/dashboard/src/server.ts": "sieve dash: listens on 127.0.0.1",
   "packages/dashboard/src/page.ts": "browser script in the dashboard page: fetches its own 127.0.0.1 origin",
   "packages/proxy/src/index.ts": "re-export only",

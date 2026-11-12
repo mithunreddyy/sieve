@@ -1,4 +1,12 @@
-import type { AgentCapabilities, SieveEvent, SieveReply, ToolFamily, ToolRef } from "@sieve/protocol";
+import { join } from "node:path";
+import type {
+  AgentCapabilities,
+  SieveEvent,
+  SieveReply,
+  ToolFamily,
+  ToolOutput,
+  ToolRef,
+} from "@sieve/protocol";
 
 export const AGENT = "claude-code";
 
@@ -18,11 +26,14 @@ export type ClaudeHookEvent = keyof typeof HOOK_EVENTS;
 export const capabilities: AgentCapabilities = {
   replace: "all",
   route: true,
-  contextAt: ["session.start", "prompt.submit", "subagent.start"],
+  // tool.after: PostToolUse takes additionalContext next to a replaced output (both seen honoured live).
+  contextAt: ["session.start", "prompt.submit", "subagent.start", "tool.after"],
   deny: true,
   ask: true,
   events: Object.values(HOOK_EVENTS),
   compaction: "reliable",
+  // SessionStart's "compact" matcher fires after every compaction (hooks reference); a canceled /compact sends only PreCompact.
+  compactStart: true,
   support: "live",
 };
 
@@ -35,6 +46,7 @@ interface HookInput {
   tool_name?: string;
   tool_input?: unknown;
   tool_response?: unknown;
+  transcript_path?: string;
   trigger?: string;
   agent_type?: string;
   agent_id?: string;
@@ -62,6 +74,26 @@ const FAMILY: Record<string, ToolFamily> = {
  */
 export const PLUGIN_NAME = "sieve";
 const PLUGIN_SERVER = `plugin_${PLUGIN_NAME}_sieve`;
+
+/**
+ * A result Claude Code kept in a file (observed live, 2.1.319): its tool_response then carries
+ * `persistedOutputPath` and `persistedOutputSize`, and `stdout` is only a prefix of the file.
+ * The file lives in `<transcript without .jsonl>/tool-results/`, which is the only place Sieve
+ * will read it from (the daemon checks).
+ */
+export function persistedOf(response: unknown, transcriptPath: unknown): ToolOutput["persisted"] | undefined {
+  if (!response || typeof response !== "object" || Array.isArray(response)) return undefined;
+  const r = response as Record<string, unknown>;
+  const total = r.persistedOutputSize;
+  if (typeof total !== "number" || !Number.isFinite(total) || total < 0) return undefined;
+  const file =
+    typeof r.persistedOutputPath === "string" && r.persistedOutputPath ? r.persistedOutputPath : null;
+  const dir =
+    typeof transcriptPath === "string" && transcriptPath.endsWith(".jsonl")
+      ? join(transcriptPath.slice(0, -".jsonl".length), "tool-results")
+      : null;
+  return { totalBytes: total, ...(file ? { file } : {}), ...(dir ? { dir } : {}) };
+}
 
 export function toolRef(name: string): ToolRef {
   if (name.startsWith("mcp__")) {
@@ -94,6 +126,9 @@ export function outputText(response: unknown): { text: string; isError: boolean 
       };
     }
     if (typeof r.content === "string") return { text: r.content, isError };
+    // WebFetch: {bytes, code, codeText, durationMs, result, url} (seen in real transcripts). The model
+    // sees `result`; before this, the whole object was archived as JSON and could not be written back.
+    if (typeof r.result === "string") return { text: r.result, isError };
     if (
       r.file &&
       typeof r.file === "object" &&
@@ -132,10 +167,14 @@ export function replacementFor(response: unknown, text: string): unknown | undef
     if (typeof r.mode === "string" && Array.isArray(r.filenames))
       return r.mode === "content" ? { ...r, content: text } : undefined;
     if (typeof r.content === "string") return { ...r, content: text };
+    if (typeof r.result === "string") return { ...r, result: text };
   }
   // An unknown shape: replacing it with a bare string could break how the agent renders it.
   return undefined;
 }
+
+/** Can a receipt be written back into this result? If not, nothing may be counted as saved. */
+export const canReplaceOutput = (response: unknown): boolean => replacementFor(response, "") !== undefined;
 
 /** Claude Code's Read input: a full read has no offset, limit or pages. */
 export function readRequest(input: unknown): { path: string; full: boolean } | null {
@@ -252,6 +291,7 @@ export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent
     context: input.agent_id ? `sub:${input.agent_id}` : "main",
     cwd: input.cwd ?? process.cwd(),
     at,
+    ...(typeof input.transcript_path === "string" ? { transcriptPath: input.transcript_path } : {}),
   };
   switch (name) {
     case "SessionStart": {
@@ -263,15 +303,17 @@ export function toEvent(eventName: string, raw: unknown, at: number): SieveEvent
       return { kind: "prompt.submit", base, prompt: input.prompt ?? "" };
     case "PreToolUse":
       return { kind: "tool.before", base, tool: toolRef(input.tool_name ?? ""), input: input.tool_input };
-    case "PostToolUse":
+    case "PostToolUse": {
+      const persisted = persistedOf(input.tool_response, input.transcript_path);
       return {
         kind: "tool.after",
         base,
         tool: toolRef(input.tool_name ?? ""),
         input: input.tool_input,
-        output: outputText(input.tool_response),
+        output: { ...outputText(input.tool_response), ...(persisted ? { persisted } : {}) },
         response: input.tool_response,
       };
+    }
     case "PreCompact":
       return { kind: "compact.before", base, trigger: input.trigger === "manual" ? "manual" : "auto" };
     case "SubagentStart":

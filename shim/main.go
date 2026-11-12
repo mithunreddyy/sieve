@@ -99,14 +99,6 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 	}
 	deadline := time.Now().Add(timeout)
 
-	conn, err := net.DialTimeout("unix", filepath.Join(runDir, "sieved.sock"), timeout)
-	if err != nil {
-		startDaemon(home)
-		return miss("daemon-down")
-	}
-	defer conn.Close()
-	_ = conn.SetDeadline(deadline)
-
 	// The agent's JSON is embedded as-is; the shim never parses it.
 	var frame bytes.Buffer
 	frame.Grow(len(input) + 160)
@@ -114,6 +106,15 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 		protocolVersion, version, timeout.Milliseconds(), jsonString(agent), jsonString(event))
 	frame.Write(input)
 	frame.WriteString("}\n")
+
+	conn, err := net.DialTimeout("unix", filepath.Join(runDir, "sieved.sock"), timeout)
+	if err != nil {
+		spool(runDir, frame.Bytes())
+		startDaemon(home)
+		return miss("daemon-down")
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(deadline)
 	if _, err := conn.Write(frame.Bytes()); err != nil {
 		return miss("write-failed")
 	}
@@ -148,6 +149,33 @@ func run(args []string, stdin io.Reader, stdout io.Writer) int {
 		}
 	}
 	return int(exitCode)
+}
+
+const (
+	spoolMaxBytes = 64 << 10
+	spoolMaxFiles = 32
+)
+
+// spool keeps a frame the daemon could not take, for a daemon that is just starting to replay: on a
+// cold start the first hooks of a session (its start and the user's first prompt) are otherwise lost.
+// Small frames only (tool outputs are not kept), a bounded number of them, written then renamed so the
+// daemon never reads half a file. Never blocks: any error just skips it.
+func spool(runDir string, frame []byte) {
+	if len(frame) > spoolMaxBytes {
+		return
+	}
+	dir := filepath.Join(runDir, "spool")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return
+	}
+	if ents, err := os.ReadDir(dir); err != nil || len(ents) >= spoolMaxFiles {
+		return
+	}
+	name := filepath.Join(dir, fmt.Sprintf("%d-%d.frame", time.Now().UnixNano(), os.Getpid()))
+	if err := os.WriteFile(name+".tmp", frame, 0o600); err != nil {
+		return
+	}
+	_ = os.Rename(name+".tmp", name)
 }
 
 // setupHooksPresent reports whether Claude Code's user settings run sieve-hook for claude-code,

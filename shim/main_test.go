@@ -207,3 +207,36 @@ func TestPluginRouteDefersToSetupHooks(t *testing.T) {
 		t.Fatalf("settings route: code=%d out=%q", code, out.String())
 	}
 }
+
+// A cold daemon misses the first hooks of a session (found: every fresh benchmark run lost its
+// SessionStart and first UserPromptSubmit), so the shim keeps what it could not deliver for the
+// daemon to replay when it starts. Small frames only, and a bounded number of them.
+func TestDaemonDownSpoolsTheFrame(t *testing.T) {
+	home := setup(t)
+	var out bytes.Buffer
+	in := `{"session_id":"s1","hook_event_name":"UserPromptSubmit","prompt":"find user 137"}`
+	if code := run([]string{"claude-code", "UserPromptSubmit"}, strings.NewReader(in), &out); code != 0 || out.Len() != 0 {
+		t.Fatalf("daemon down must pass through: code=%d out=%q", code, out.String())
+	}
+	ents, _ := os.ReadDir(filepath.Join(home, "run", "spool"))
+	if len(ents) != 1 {
+		t.Fatalf("want 1 spooled frame, got %d", len(ents))
+	}
+	b, _ := os.ReadFile(filepath.Join(home, "run", "spool", ents[0].Name()))
+	if !strings.Contains(string(b), `"event":"UserPromptSubmit"`) || !strings.Contains(string(b), "find user 137") || !strings.HasSuffix(string(b), "}\n") {
+		t.Fatalf("bad spooled frame: %q", b)
+	}
+	// a large input (a tool output) is not spooled
+	big := `{"session_id":"s1","hook_event_name":"PostToolUse","tool_response":{"stdout":"` + strings.Repeat("x", 70<<10) + `"}}`
+	run([]string{"claude-code", "PostToolUse"}, strings.NewReader(big), &out)
+	if ents, _ := os.ReadDir(filepath.Join(home, "run", "spool")); len(ents) != 1 {
+		t.Fatalf("a large frame was spooled: %d files", len(ents))
+	}
+	// and the spool is bounded
+	for i := 0; i < 40; i++ {
+		run([]string{"claude-code", "UserPromptSubmit"}, strings.NewReader(in), &out)
+	}
+	if ents, _ := os.ReadDir(filepath.Join(home, "run", "spool")); len(ents) > 32 {
+		t.Fatalf("spool not bounded: %d files", len(ents))
+	}
+}

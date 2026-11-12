@@ -102,6 +102,68 @@ export class ProjectStore {
   }
 
   /**
+   * Rewrite the database file without its free pages and empty the WAL, so removed content is gone
+   * from the disk, not just from queries. Slow on a big database and blocks writers: for `sieve purge`.
+   */
+  compact(): void {
+    // FTS5 keeps a deleted row's terms in old index segments until they are merged, and VACUUM
+    // copies those pages as they are: merge them away first.
+    for (const t of ["chunks_fts", "chunks_tri", "chunks_words"])
+      this.db.run(`INSERT INTO ${t}(${t}) VALUES ('optimize')`);
+    this.db.run("PRAGMA wal_checkpoint(TRUNCATE)");
+    this.db.run("VACUUM");
+    this.db.run("PRAGMA wal_checkpoint(TRUNCATE)");
+  }
+
+  /** What Sieve shortened in this project since the beginning: results folded or rerun-shortened, not passed. */
+  foldTotals(): { results: number; tokensIn: number; tokensOut: number; since: number | null } {
+    const r = this.db
+      .query(
+        `SELECT COUNT(*) AS results, COALESCE(SUM(tokens_in), 0) AS tokensIn,
+           COALESCE(SUM(tokens_out), 0) AS tokensOut, MIN(at) AS since
+         FROM folds WHERE kind IN ('fold','rerun')`,
+      )
+      .get() as { results: number; tokensIn: number; tokensOut: number; since: number | null };
+    return r;
+  }
+
+  /** Record what Sieve added to the agent's context in one hook reply. */
+  recordInjection(r: {
+    at: number;
+    sessionId: string;
+    agent: string;
+    event: string;
+    kind: "context" | "decision";
+    tokens: number;
+  }): void {
+    this.db.run(
+      "INSERT INTO injections (at, session_id, agent, event, kind, tokens) VALUES (?, ?, ?, ?, ?, ?)",
+      [r.at, r.sessionId, r.agent, r.event, r.kind, r.tokens],
+    );
+  }
+
+  /** All of it, by kind: context notes, and text sent in place of a declined read or command. */
+  injectionTotals(): {
+    context: { replies: number; tokens: number };
+    decision: { replies: number; tokens: number };
+  } {
+    const one = (kind: string) =>
+      this.db
+        .query(
+          "SELECT COUNT(*) AS replies, COALESCE(SUM(tokens), 0) AS tokens FROM injections WHERE kind = ?",
+        )
+        .get(kind) as { replies: number; tokens: number };
+    return { context: one("context"), decision: one("decision") };
+  }
+
+  /** Why an archive id no longer expands, if it was removed on purpose. */
+  tombstone(id: string): { removedAt: number; reason: "retention" | "purge"; bytes: number } | null {
+    return this.db
+      .query("SELECT removed_at AS removedAt, reason, bytes FROM tombstones WHERE id = ?")
+      .get(id) as { removedAt: number; reason: "retention" | "purge"; bytes: number } | null;
+  }
+
+  /**
    * Mask secrets in text bound for the database or a receipt: known key formats, private keys,
    * values assigned to secret-looking names, and the values in the worktree's .env files.
    */
@@ -147,6 +209,7 @@ export class ProjectStore {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [id, item.bytes, item.tokens, item.tokenizer, item.lines, Bun.gzipSync(raw), at, at],
       );
+      this.db.run("DELETE FROM tombstones WHERE id = ?", [id]); // archived again: it expands again
     }
     this.db.run(
       `INSERT INTO sightings (archive_id, session_id, worktree, agent, source_kind, source, created_at)

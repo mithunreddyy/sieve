@@ -94,6 +94,11 @@ describe("session log → state block after compaction", () => {
     expect(ctx).toContain("- [in progress] Make the limiter test pass");
     expect(ctx).toContain("files changed: src/limiter.ts");
     expect(Buffer.byteLength(ctx)).toBeLessThanOrEqual(2048);
+    // A canceled /compact sends PreCompact and nothing after it. Claude Code always sends
+    // SessionStart(compact) after a real one, so the next prompt must not carry the state block.
+    expect(await hook("A", "PreCompact", { trigger: "manual" })).toBeNull();
+    const next = (await prompt("A", "carry on with the limiter"))?.additionalContext ?? "";
+    expect(next).not.toContain("[sieve state]");
   });
 
   test("sieve_resume gives the state block, and any row in full", async () => {
@@ -149,6 +154,18 @@ describe("recall pointers", () => {
     expect(ctx.slice(ctx.indexOf("[sieve] Earlier output")).split("\n").length).toBeLessThanOrEqual(4);
     // The same pointers are not repeated in this context window.
     expect(await prompt("B", "and refreshLimiter in limiter.ts again?")).toBeNull();
+  });
+  test("a pointer to an older version of a file that changed since is not worth its tokens: the current file is a read away", async () => {
+    const { freshHits } = await import("../src/session.ts");
+    const h = (id: string, stale: boolean) =>
+      ({ archiveId: id, stale }) as { archiveId: string; stale: boolean };
+    expect(
+      freshHits(
+        [h("a", true), h("b", false), h("c", true), h("d", false), h("e", false), h("f", false)],
+        3,
+      ).map((x) => x.archiveId),
+    ).toEqual(["b", "d", "e"]);
+    expect(freshHits([h("a", true)], 3)).toEqual([]);
   });
   test("an ordinary prompt adds nothing", async () => {
     expect(await prompt("C", "thanks, that looks good")).toBeNull();
